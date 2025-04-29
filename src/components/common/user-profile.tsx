@@ -2,6 +2,7 @@
 "use client"; // Add use client because we're using hooks/interactive components
 
 import Image from 'next/image';
+import Link from 'next/link'; // Import Link for navigation
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -12,7 +13,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button"; // Use Button for trigger consistency
-import { User, LogOut, Settings } from 'lucide-react'; // Import icons
+import { User, LogOut, Settings, FileText } from 'lucide-react'; // Import icons including FileText
 import { cn } from "@/lib/utils";
 import { useToast } from '@/hooks/use-toast'; // Import useToast
 
@@ -33,12 +34,12 @@ export function UserProfile({ name, imageUrl, className }: UserProfileProps) {
 
   // Placeholder actions - replace with actual logic
   const handleManageProfile = () => {
-    // Add navigation or modal logic here
+    // TODO: Implement navigation to manage profile page
     toast({ title: "Action", description: "Navigate to Manage Profile page." });
   };
 
   const handleLogout = () => {
-    // Add logout logic here
+    // TODO: Add logout logic here
     toast({ title: "Action", description: "User logged out." });
   };
 
@@ -74,11 +75,20 @@ export function UserProfile({ name, imageUrl, className }: UserProfileProps) {
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator className="bg-border/50" />
+        {/* Key Documents Link */}
+        <DropdownMenuItem asChild className="cursor-pointer focus:bg-accent focus:text-accent-foreground">
+            <Link href="/documents">
+                <FileText className="mr-2 h-4 w-4" />
+                <span>Key Documents</span>
+            </Link>
+        </DropdownMenuItem>
+        {/* Manage Profile */}
         <DropdownMenuItem onClick={handleManageProfile} className="cursor-pointer focus:bg-accent focus:text-accent-foreground">
           <Settings className="mr-2 h-4 w-4" />
           <span>Manage Profile</span>
         </DropdownMenuItem>
         <DropdownMenuSeparator className="bg-border/50" />
+        {/* Logout */}
         <DropdownMenuItem onClick={handleLogout} className="cursor-pointer text-destructive focus:text-destructive focus:bg-destructive/10">
           <LogOut className="mr-2 h-4 w-4" />
           <span>Log out</span>
