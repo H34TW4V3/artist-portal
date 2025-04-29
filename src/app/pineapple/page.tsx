@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react"; // Import useEffect
 import Link from "next/link";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,7 @@ import { ForumFeed } from "@/components/pineapple/forum-feed";
 import { CreatePostForm } from "@/components/pineapple/create-post-form";
 import { Home, MessageSquarePlus, Users } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useAuth } from "@/context/auth-context"; // Import useAuth
 
 // Updated Pineapple SVG Icon based on the requested style (wired/gradient)
 const PineappleIcon = () => (
@@ -22,8 +23,21 @@ const PineappleIcon = () => (
 
 
 export default function PineapplePage() {
+    const { user } = useAuth(); // Get user info
     // State for active tab
     const [activeTab, setActiveTab] = useState("forum"); // Default to forum tab
+    // State for artist name
+    const [artistName, setArtistName] = useState("Artist"); // Default name
+
+    // Update artist name from user context when available
+   useEffect(() => {
+       if (user?.displayName) {
+           setArtistName(user.displayName);
+       } else if (user?.email) {
+           setArtistName(user.email.split('@')[0]);
+       }
+       // TODO: Fetch from Firestore profile if needed
+   }, [user]);
 
     // Handler for successful post creation
     const handlePostSuccess = () => {
@@ -51,7 +65,8 @@ export default function PineapplePage() {
                              <PineappleIcon /> {/* Use the Pineapple Icon component */}
                             <div className="text-center sm:text-left">
                                 <CardTitle className="text-xl sm:text-3xl font-bold tracking-tight text-primary">
-                                    Pineapple Corner
+                                     {/* Display the artist's name */}
+                                    {artistName}'s Pineapple Corner
                                 </CardTitle>
                                 <CardDescription className="text-muted-foreground text-xs sm:text-sm">
                                     Connect, collaborate, and share ideas with fellow artists.

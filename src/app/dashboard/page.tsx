@@ -47,6 +47,8 @@ export default function DashboardPage() {
        // Fallback to part of the email if display name isn't set
        setArtistName(user.email.split('@')[0]);
     }
+    // TODO: Ideally, fetch the name from the Firestore profile for accuracy
+    // This might require lifting state from UserProfile or a shared context
   }, [user]);
 
 
@@ -67,8 +69,8 @@ export default function DashboardPage() {
               <div className="text-center sm:text-left">
                 {/* Display title and description for the active tab */}
                 <CardTitle className="text-xl sm:text-3xl font-bold tracking-tight text-primary">
-                  {/* Updated informal greeting */}
-                  Welcome, {artistName}!
+                   {/* Display the artist's name and the current tab title */}
+                   {artistName} - {currentHeader.title}
                 </CardTitle>
                 <CardDescription className="text-muted-foreground text-xs sm:text-sm">
                   {currentHeader.description}

@@ -1,7 +1,7 @@
 
 "use client"; // Add use client because we use state
 
-import { useState } from "react"; // Import useState
+import { useState, useEffect } from "react"; // Import useEffect
 import { AgreementCard } from "@/components/documents/agreement-card";
 import UserProfile from "@/components/common/user-profile"; // Changed to default import
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FileText, FolderKanban, BookOpenText, Home } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/context/auth-context"; // Import useAuth
 
 // Define content for each tab's header
 const tabHeaders = {
@@ -25,8 +26,21 @@ const tabHeaders = {
 };
 
 export default function DocumentsPage() {
+  const { user } = useAuth(); // Get user info
   // State to manage the active tab
   const [activeTab, setActiveTab] = useState<keyof typeof tabHeaders>("agreements");
+  // State for artist name
+  const [artistName, setArtistName] = useState("Artist"); // Default name
+
+   // Update artist name from user context when available
+   useEffect(() => {
+       if (user?.displayName) {
+           setArtistName(user.displayName);
+       } else if (user?.email) {
+           setArtistName(user.email.split('@')[0]);
+       }
+       // TODO: Fetch from Firestore profile if needed
+   }, [user]);
 
   // Get the current header content based on activeTab
   const currentHeader = tabHeaders[activeTab] || tabHeaders.agreements; // Default to agreements
@@ -62,7 +76,8 @@ export default function DocumentsPage() {
               <div className="text-center sm:text-left">
                 {/* Display title and description for the active tab */}
                 <CardTitle className="text-xl sm:text-3xl font-bold tracking-tight text-primary">
-                  {currentHeader.title}
+                   {/* Display the artist's name and the current tab title */}
+                   {artistName} - {currentHeader.title}
                 </CardTitle>
                 <CardDescription className="text-muted-foreground text-xs sm:text-sm">
                   {currentHeader.description}
