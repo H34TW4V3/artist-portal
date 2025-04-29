@@ -23,9 +23,9 @@ export default function RootLayout({
       <body className={`${GeistSans.variable} font-sans antialiased bg-background text-foreground relative min-h-screen`}>
         {/* Global Background Image - Increased opacity */}
         <div
-            className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat opacity-[0.08] dark:opacity-[0.10]" // Increased opacity values
-            // Using a generic blurred image for the background
-            style={{ backgroundImage: "url('https://picsum.photos/seed/musicbg/1920/1080?grayscale&blur=2')" }}
+            className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat opacity-[0.08] dark:opacity-[0.10]" // Kept opacity values
+            // Using the new requested background image
+            style={{ backgroundImage: "url('https://t4.ftcdn.net/jpg/08/62/54/35/360_F_862543518_D0LQEQDZqkbTNM8CMB6iuiauhfaj4wr6.jpg')" }}
         />
         {/* Content wrapper */}
         <div className="relative z-10 min-h-screen flex flex-col">
