@@ -32,7 +32,7 @@ const navItems = [
   { title: "Documents", href: "/documents", icon: <FileText className="h-10 w-10" />, description: "Access agreements & handbooks" },
   { title: "Pineapple", href: "/pineapple", icon: <PineappleIcon />, description: "Connect & Collaborate" },
   // Add Release Management link pointing to the dedicated page
-  { title: "Release Mgmt", href: "/releases", icon: <ListMusic className="h-10 w-10" />, description: "Manage your music" },
+  { title: "My Releases", href: "/releases", icon: <ListMusic className="h-10 w-10" />, description: "Manage your music" },
 ];
 
 // List of informal greeting templates
