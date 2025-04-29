@@ -15,6 +15,7 @@ import { useAuth } from "@/context/auth-context"; // Import useAuth
 import { useRouter } from 'next/navigation'; // Import useRouter
 import { Loader2 } from 'lucide-react'; // Import Loader2 for loading animation
 import { CreatePostModal } from "@/components/pineapple/create-post-modal"; // Import the new modal component
+import { cn } from "@/lib/utils"; // Import cn for conditional classes
 
 // Updated Pineapple SVG Icon based on the requested style (wired/gradient)
 const PineappleIcon = () => (
@@ -67,24 +68,18 @@ export default function PineapplePage() {
             <main className="relative z-10 flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
                 {/* Header Card */}
                 <Card className="mb-4 sm:mb-8 bg-card/80 dark:bg-card/70 backdrop-blur-md shadow-lg rounded-lg border-border/30">
-                    {/* Center align text */}
                     <CardHeader className="flex flex-row items-center justify-between gap-4">
                         <div className="flex items-center gap-4">
                             <Link href="/" passHref legacyBehavior>
-                                {/* Use lg size and adjust padding */}
                                 <Button variant="ghost" size="lg" className="h-12 w-12 text-primary hover:bg-primary/10 active:bg-primary/20 p-0" aria-label="Go to Home">
-                                    <Home className="h-7 w-7" /> {/* Ensure icon size fits */}
+                                    <Home className="h-7 w-7" />
                                 </Button>
                             </Link>
-                             <PineappleIcon /> {/* Use the Pineapple Icon component */}
-                             {/* Center align text */}
+                             <PineappleIcon />
                             <div className="text-center sm:text-left">
-                                 {/* Center align text */}
                                 <CardTitle className="text-xl sm:text-3xl font-bold tracking-tight text-primary text-center sm:text-left">
-                                     {/* Display only the static title, removed artist name */}
                                     Pineapple Corner
                                 </CardTitle>
-                                 {/* Center align text */}
                                 <CardDescription className="text-muted-foreground text-xs sm:text-sm text-center sm:text-left">
                                     Connect, collaborate, and share ideas with fellow artists.
                                 </CardDescription>
@@ -96,7 +91,6 @@ export default function PineapplePage() {
 
                  {/* Tabbed Content for Forum and Messages */}
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                     {/* Updated grid columns to 2 */}
                      <TabsList className="grid w-full grid-cols-2 gap-2 mb-6 h-auto bg-card/70 dark:bg-card/60 backdrop-blur-sm border border-border/20 shadow-sm rounded-lg p-1 max-w-md mx-auto">
                         <TabsTrigger value="forum" className="py-2 data-[state=active]:shadow-md transition-subtle rounded-md flex items-center justify-center gap-2 data-[state=active]:hover-glow data-[state=active]:focus-glow">
                             <Users className="h-4 w-4" /> Forum Feed
@@ -107,27 +101,29 @@ export default function PineapplePage() {
                      </TabsList>
 
                     <TabsContent value="forum">
-                         {/* Add Create Post button within the forum feed area */}
-                         <Card className="bg-card/80 dark:bg-card/70 backdrop-blur-md border-border/30 shadow-md rounded-lg mb-6">
-                             <CardHeader className="flex flex-row justify-between items-center">
-                                <CardTitle className="text-lg font-semibold text-foreground">
-                                    Community Feed
-                                </CardTitle>
-                                <Button size="sm" onClick={() => setIsCreateModalOpen(true)}>
-                                <PlusCircle className="mr-2 h-4 w-4" /> Create Post
-                                </Button>
-                             </CardHeader>
-                             <CardContent>
-                                 {/* Render ForumFeed component here */}
-                                 <ForumFeed />
-                             </CardContent>
-                         </Card>
+                         {/* ForumFeed component */}
+                         {/* Removed the Card wrapper and Header for the feed itself */}
+                         <ForumFeed />
                     </TabsContent>
-                     {/* Removed TabsContent for create */}
+
                      <TabsContent value="messages">
-                        <DirectMessagesView className="bg-card/80 dark:bg-card/70 backdrop-blur-md border-border/30" />
-                    </TabsContent>
+                        {/* DirectMessagesView component */}
+                        <DirectMessagesView className="bg-card/80 dark:bg-card/70 backdrop-blur-md border-border/30 shadow-md rounded-lg" />
+                     </TabsContent>
                 </Tabs>
+
+                 {/* Floating Create Post Button */}
+                 <Button
+                    size="lg"
+                    className={cn(
+                        "fixed bottom-20 right-4 z-40 h-14 w-14 rounded-full shadow-lg bg-primary hover:bg-primary/90 text-primary-foreground p-0", // Positioning and size
+                        "hover-glow focus-glow" // Glow effects
+                    )}
+                    onClick={() => setIsCreateModalOpen(true)}
+                    aria-label="Create New Post"
+                 >
+                     <PlusCircle className="h-7 w-7" />
+                 </Button>
 
                  {/* Create Post Modal */}
                 <CreatePostModal

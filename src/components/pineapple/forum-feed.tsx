@@ -93,8 +93,8 @@ export function ForumFeed({ className }: ForumFeedProps) {
 
 
     return (
-        // Added max-w-3xl and mx-auto to center and constrain width
-        <div className={cn("space-y-6", className)}> {/* Removed max-w and mx-auto if parent handles layout */}
+        // Removed max-w and mx-auto if parent handles layout
+        <div className={cn("space-y-6", className)}>
             {isLoading ? (
                 // Skeleton Loading State - More refined skeleton
                 Array.from({ length: 3 }).map((_, index) => (
@@ -119,8 +119,8 @@ export function ForumFeed({ className }: ForumFeedProps) {
                     </Card>
                 ))
             ) : posts.length === 0 ? (
-                 // Removed Card wrapper here too, let parent page show this state if needed or wrap here if preferred
-                 <div className="p-6 text-center text-muted-foreground">
+                 // Display 'No Posts' message directly in the feed area
+                 <div className="p-6 text-center text-muted-foreground bg-card/70 dark:bg-card/60 backdrop-blur-sm border border-border/30 shadow-md rounded-lg min-h-[300px] flex flex-col justify-center items-center">
                     <p className="text-lg font-medium">No Posts Yet</p>
                     <p className="mt-2">
                         The forum is quiet... Be the first to start a discussion!
