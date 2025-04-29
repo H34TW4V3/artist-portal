@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -31,11 +30,11 @@ const fetchForumPosts = async (): Promise<ForumPost[]> => {
 
     // Generate more diverse mock data
     return [
-        { id: 'post1', authorName: 'Melody Maker', authorAvatarUrl: 'https://picsum.photos/seed/user1/40/40', timestamp: new Date(Date.now() - 1000 * 60 * 5), title: 'Need feedback on new track!', content: 'Hey everyone, just finished mastering a new synthwave track. Looking for honest opinions on the mix and overall vibe. Link in bio!', likes: 15, comments: 4 },
-        { id: 'post2', authorName: 'Beat Weaver', authorAvatarUrl: 'https://picsum.photos/seed/user2/40/40', timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2), title: 'Collaboration Opportunity - Lo-fi Hip Hop', content: 'Looking for a vocalist or instrumentalist (guitar/keys preferred) for a chill lo-fi hip hop EP. DM me if interested with samples!', likes: 28, comments: 9 },
-        { id: 'post3', authorName: 'Rhythm Architect', timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24), title: 'Best practices for sidechain compression?', content: 'What are your go-to techniques for sidechain compression, especially getting that pumping effect in electronic music without making it sound muddy? Share your tips!', likes: 42, comments: 15 },
+        { id: 'post1', authorName: 'Melody Maker', authorAvatarUrl: 'https://picsum.photos/seed/user1/40/40', timestamp: new Date(Date.now() - 1000 * 60 * 5), title: 'Need feedback on new track!', content: 'Hey everyone, just finished mastering a new synthwave track.\nLooking for honest opinions on the mix and overall vibe. Link in bio!', likes: 15, comments: 4 },
+        { id: 'post2', authorName: 'Beat Weaver', authorAvatarUrl: 'https://picsum.photos/seed/user2/40/40', timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2), title: 'Collaboration Opportunity - Lo-fi Hip Hop', content: 'Looking for a vocalist or instrumentalist (guitar/keys preferred) for a chill lo-fi hip hop EP.\n\nDM me if interested with samples!', likes: 28, comments: 9 },
+        { id: 'post3', authorName: 'Rhythm Architect', timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24), title: 'Best practices for sidechain compression?', content: 'What are your go-to techniques for sidechain compression, especially getting that pumping effect in electronic music without making it sound muddy?\n\nShare your tips!', likes: 42, comments: 15 },
         { id: 'post4', authorName: 'Sound Sculptor', authorAvatarUrl: 'https://picsum.photos/seed/user4/40/40', timestamp: new Date(Date.now() - 1000 * 60 * 60 * 48), title: 'Anyone using the new [Synth Plugin Name]?', content: 'Just picked up the latest synth plugin from [Company]. Curious about others experiences and any cool presets you\'ve found or created.', likes: 8, comments: 2 },
-         { id: 'post5', authorName: 'Groove Guru', authorAvatarUrl: 'https://picsum.photos/seed/user5/40/40', timestamp: new Date(Date.now() - 1000 * 60 * 15), title: 'Mixing Drums Q&A', content: 'Struggling to get my drum mix to punch through. Any advice on EQ, compression, or bussing techniques for electronic drums?', likes: 22, comments: 7 },
+         { id: 'post5', authorName: 'Groove Guru', authorAvatarUrl: 'https://picsum.photos/seed/user5/40/40', timestamp: new Date(Date.now() - 1000 * 60 * 15), title: 'Mixing Drums Q&A', content: 'Struggling to get my drum mix to punch through.\nAny advice on EQ, compression, or bussing techniques for electronic drums?', likes: 22, comments: 7 },
     ].sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime()); // Sort by newest first
 };
 
@@ -93,7 +92,7 @@ export function ForumFeed({ className }: ForumFeedProps) {
 
 
     return (
-        // Removed max-w and mx-auto if parent handles layout
+        // Removed max-w and mx-auto as parent handles layout
         <div className={cn("space-y-6", className)}>
             {isLoading ? (
                 // Skeleton Loading State - More refined skeleton
@@ -129,8 +128,8 @@ export function ForumFeed({ className }: ForumFeedProps) {
              ) : (
                 // Display Posts - Enhanced Styling
                 posts.map((post) => (
-                    <Card key={post.id} className="bg-card/80 dark:bg-card/70 backdrop-blur-md border border-border/30 shadow-md rounded-lg overflow-hidden transition-shadow duration-300 hover:shadow-xl">
-                        <CardHeader className="flex flex-row items-center gap-4 p-4 border-b border-border/30">
+                    <Card key={post.id} className="bg-card/80 dark:bg-card/70 backdrop-blur-md border border-border/30 shadow-lg rounded-xl overflow-hidden transition-all duration-300 hover:shadow-xl hover:border-primary/40"> {/* Rounded-xl, updated border/shadow */}
+                        <CardHeader className="flex flex-row items-center gap-4 p-4 border-b border-border/20"> {/* Less prominent border */}
                             <Avatar className="h-11 w-11 border-2 border-primary/40">
                                 <AvatarImage src={post.authorAvatarUrl} alt={post.authorName} />
                                 <AvatarFallback className="bg-muted text-muted-foreground font-semibold text-base">
@@ -144,22 +143,23 @@ export function ForumFeed({ className }: ForumFeedProps) {
                                 </CardDescription>
                             </div>
                         </CardHeader>
-                        <CardContent className="p-4">
-                             <h3 className="text-lg font-bold text-primary mb-3">{post.title}</h3>
+                        <CardContent className="p-5"> {/* Slightly more padding */}
+                             <h3 className="text-lg font-semibold text-primary mb-3">{post.title}</h3> {/* Adjusted font weight */}
                              {/* Use whitespace-pre-wrap to preserve line breaks and leading-relaxed for better readability */}
-                             <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed line-clamp-4">{post.content}</p>
+                             {/* Clamped to 6 lines initially */}
+                             <p className="text-sm text-foreground/90 whitespace-pre-wrap leading-relaxed line-clamp-6">{post.content}</p>
                              {/* Add a subtle 'read more' if content is long? (future enhancement) */}
                         </CardContent>
-                        <CardFooter className="flex justify-between items-center p-3 border-t border-border/30 bg-muted/10 dark:bg-muted/5">
+                        <CardFooter className="flex justify-between items-center p-3 border-t border-border/20 bg-muted/5 dark:bg-black/10"> {/* Less prominent border, adjusted bg */}
                             {/* Action Buttons - Slightly improved styling */}
                             <div className="flex gap-1">
-                                <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-primary hover:bg-primary/10 h-8 px-2 group" onClick={() => handleLike(post.id)}>
+                                <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-accent-foreground hover:bg-accent/70 h-8 px-2.5 group rounded-md" onClick={() => handleLike(post.id)}> {/* Rounded-md */}
                                     <ThumbsUp className="mr-1.5 h-4 w-4 group-hover:scale-110 transition-transform" /> {post.likes > 0 ? post.likes : ''} <span className="sr-only sm:not-sr-only sm:ml-1">Like</span>
                                 </Button>
-                                <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-primary hover:bg-primary/10 h-8 px-2 group" onClick={() => handleComment(post.id)}>
+                                <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-accent-foreground hover:bg-accent/70 h-8 px-2.5 group rounded-md" onClick={() => handleComment(post.id)}> {/* Rounded-md */}
                                     <MessageSquare className="mr-1.5 h-4 w-4 group-hover:scale-110 transition-transform" /> {post.comments > 0 ? post.comments : ''} <span className="sr-only sm:not-sr-only sm:ml-1">Comment</span>
                                 </Button>
-                                <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-primary hover:bg-primary/10 h-8 px-2 group" onClick={() => handleShare(post.id)}>
+                                <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-accent-foreground hover:bg-accent/70 h-8 px-2.5 group rounded-md" onClick={() => handleShare(post.id)}> {/* Rounded-md */}
                                     <Share2 className="mr-1.5 h-4 w-4 group-hover:scale-110 transition-transform" /> <span className="sr-only sm:not-sr-only sm:ml-1">Share</span>
                                 </Button>
                             </div>

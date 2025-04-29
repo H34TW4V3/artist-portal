@@ -100,29 +100,32 @@ export default function PineapplePage() {
                         </TabsTrigger>
                      </TabsList>
 
-                    <TabsContent value="forum">
+                     {/* Apply max-width and center the forum feed */}
+                    <TabsContent value="forum" className="max-w-3xl mx-auto w-full">
                          {/* ForumFeed component */}
                          {/* Removed the Card wrapper and Header for the feed itself */}
                          <ForumFeed />
                     </TabsContent>
 
-                     <TabsContent value="messages">
+                     {/* Apply max-width and center the messages view */}
+                     <TabsContent value="messages" className="max-w-3xl mx-auto w-full">
                         {/* DirectMessagesView component */}
                         <DirectMessagesView className="bg-card/80 dark:bg-card/70 backdrop-blur-md border-border/30 shadow-md rounded-lg" />
                      </TabsContent>
                 </Tabs>
 
-                 {/* Floating Create Post Button */}
+                 {/* Floating Create Post Button - Increased size */}
                  <Button
-                    size="lg"
+                    size="lg" // Use size="lg" for overall button size
                     className={cn(
-                        "fixed bottom-20 right-4 z-40 h-14 w-14 rounded-full shadow-lg bg-primary hover:bg-primary/90 text-primary-foreground p-0", // Positioning and size
+                        "fixed bottom-20 right-4 z-40 h-16 w-16 rounded-full shadow-lg bg-primary hover:bg-primary/90 text-primary-foreground p-0", // Increased h/w
                         "hover-glow focus-glow" // Glow effects
                     )}
                     onClick={() => setIsCreateModalOpen(true)}
                     aria-label="Create New Post"
                  >
-                     <PlusCircle className="h-7 w-7" />
+                     {/* Increased icon size */}
+                     <PlusCircle className="h-8 w-8" />
                  </Button>
 
                  {/* Create Post Modal */}
