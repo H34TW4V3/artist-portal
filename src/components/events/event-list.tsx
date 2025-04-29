@@ -138,7 +138,7 @@ export function EventList({ events, isLoading, className }: EventListProps) {
 
        {/* Delete Confirmation Dialog */}
         <AlertDialog open={!!deletingEventId} onOpenChange={(open) => !open && setDeletingEventId(null)}>
-          <AlertDialogContent className="bg-card border-border">
+          <AlertDialogContent className="bg-card/85 dark:bg-card/70 border-border"> {/* Adjusted opacity */}
             <AlertDialogHeader>
               <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
               <AlertDialogDescription className="text-muted-foreground">

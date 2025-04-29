@@ -36,7 +36,7 @@ export default function ReleasesPage() {
     <div className="flex min-h-screen w-full flex-col bg-transparent">
       <main className="relative z-10 flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
         {/* Header Card */}
-        <Card className="mb-4 sm:mb-8 bg-card/80 dark:bg-card/70 shadow-lg rounded-lg border-border/30"> {/* Removed backdrop-blur-md */}
+        <Card className="mb-4 sm:mb-8 bg-card/60 dark:bg-card/50 shadow-lg rounded-lg border-border/30"> {/* Adjusted opacity */}
           <CardHeader className="flex flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-4">
               <Link href="/" passHref legacyBehavior>
@@ -60,7 +60,7 @@ export default function ReleasesPage() {
         </Card>
 
         {/* Release List Component */}
-        <ReleaseList className="bg-card/80 dark:bg-card/70 border-border/30" /> {/* Removed backdrop-blur-md */}
+        <ReleaseList className="bg-card/60 dark:bg-card/50 border-border/30" /> {/* Adjusted opacity */}
 
       </main>
     </div>

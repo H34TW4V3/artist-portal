@@ -92,7 +92,7 @@ export function LoginForm() {
                     {...field}
                     disabled={isLoading}
                     autoComplete="email"
-                    className="bg-background/70 dark:bg-background/50 border-input focus:ring-accent" // Style input
+                    className="bg-background/50 dark:bg-background/30 border-input focus:ring-accent" // Adjusted opacity
                   />
                 </FormControl>
                 <FormMessage />
@@ -114,7 +114,7 @@ export function LoginForm() {
                     {...field}
                     disabled={isLoading}
                     autoComplete="current-password"
-                    className="bg-background/70 dark:bg-background/50 border-input focus:ring-accent" // Style input
+                    className="bg-background/50 dark:bg-background/30 border-input focus:ring-accent" // Adjusted opacity
                   />
                 </FormControl>
                 <FormMessage />

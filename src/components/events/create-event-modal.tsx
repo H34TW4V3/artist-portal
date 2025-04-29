@@ -21,7 +21,7 @@ interface CreateEventModalProps {
 export function CreateEventModal({ isOpen, onClose, onSuccess }: CreateEventModalProps) {
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-md md:max-w-lg bg-card/95 dark:bg-card/80 border-border/50"> {/* Removed backdrop-blur-sm */}
+      <DialogContent className="sm:max-w-md md:max-w-lg bg-card/85 dark:bg-card/70 border-border/50"> {/* Adjusted opacity */}
         <DialogHeader>
           <DialogTitle className="text-primary">Create New Event</DialogTitle>
           <DialogDescription className="text-muted-foreground">

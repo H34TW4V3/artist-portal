@@ -69,7 +69,7 @@ export default function LoginPage() {
         <div className="flex min-h-screen w-full items-center justify-center bg-transparent p-4 relative z-10">
             {/* Add entrance animation to the card container */}
             <div className={cn(
-                "w-full max-w-md rounded-xl border border-border/30 shadow-xl overflow-hidden animate-fade-in-up" // Removed background/blur classes & Added animation
+                "w-full max-w-md rounded-xl border border-border/30 shadow-xl overflow-hidden animate-fade-in-up bg-card/20 dark:bg-card/10" // Added background opacity
             )}>
                 {/* Card Header */}
                  <CardHeader className="items-center text-center p-6 border-b border-border/30"> {/* Removed background */}
@@ -86,7 +86,7 @@ export default function LoginPage() {
                  </CardContent>
 
                 {/* Footer - Optional */}
-                <div className="p-4 text-center text-xs text-muted-foreground border-t border-border/30 bg-muted/20 dark:bg-muted/10">
+                <div className="p-4 text-center text-xs text-muted-foreground border-t border-border/30 bg-muted/10 dark:bg-muted/5"> {/* Adjusted footer bg */}
                     © {new Date().getFullYear()} Oxygen Group PLC. All rights reserved.
                 </div>
             </div>

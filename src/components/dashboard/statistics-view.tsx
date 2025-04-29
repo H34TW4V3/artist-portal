@@ -1,3 +1,4 @@
+
 "use client"; // Required for Recharts in app directory (client component)
 
 import { DollarSign, Play, Users, TrendingUp } from "lucide-react";
@@ -149,21 +150,21 @@ export function StatisticsView({ className }: StatisticsViewProps) {
                 value={formatNumber(stats.streams)}
                 icon={<Play className="h-5 w-5 text-accent" />}
                 description="All-time streams across platforms"
-                className="bg-background/80 dark:bg-background/50"
+                className="bg-background/60 dark:bg-background/40" // Adjusted opacity
               />
               <StatCard
                 title="Revenue"
                 value={formatCurrency(stats.revenue)}
                 icon={<DollarSign className="h-5 w-5 text-accent" />}
                 description="Estimated earnings (USD)"
-                className="bg-background/80 dark:bg-background/50"
+                className="bg-background/60 dark:bg-background/40" // Adjusted opacity
               />
               <StatCard
                 title="Listeners"
                 value={formatNumber(stats.listeners)}
                 icon={<Users className="h-5 w-5 text-accent" />}
                 description="Unique listeners this month"
-                className="bg-background/80 dark:bg-background/50"
+                className="bg-background/60 dark:bg-background/40" // Adjusted opacity
               />
             </>
           )}
@@ -171,7 +172,7 @@ export function StatisticsView({ className }: StatisticsViewProps) {
 
         <div className="grid gap-6 md:grid-cols-2">
           {/* Streams Chart */}
-          <Card className="bg-background/80 dark:bg-background/50 border border-border/40 shadow-sm rounded-lg">
+          <Card className="bg-background/60 dark:bg-background/40 border border-border/40 shadow-sm rounded-lg"> {/* Adjusted opacity */}
             <CardHeader>
               <CardTitle className="text-lg font-medium text-muted-foreground flex items-center gap-2">
                 <TrendingUp className="h-5 w-5 text-accent" /> Streams Over Time
@@ -231,7 +232,7 @@ export function StatisticsView({ className }: StatisticsViewProps) {
           </Card>
 
           {/* Revenue Chart */}
-          <Card className="bg-background/80 dark:bg-background/50 border border-border/40 shadow-sm rounded-lg">
+          <Card className="bg-background/60 dark:bg-background/40 border border-border/40 shadow-sm rounded-lg"> {/* Adjusted opacity */}
             <CardHeader>
               <CardTitle className="text-lg font-medium text-muted-foreground flex items-center gap-2">
                 <DollarSign className="h-5 w-5 text-accent" /> Revenue Over Time

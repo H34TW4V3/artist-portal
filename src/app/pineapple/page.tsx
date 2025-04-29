@@ -67,7 +67,7 @@ export default function PineapplePage() {
         <div className="flex min-h-screen w-full flex-col bg-transparent">
             <main className="relative z-10 flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
                 {/* Header Card */}
-                <Card className="mb-4 sm:mb-8 bg-card/80 dark:bg-card/70 shadow-lg rounded-lg border-border/30"> {/* Removed backdrop-blur-md */}
+                <Card className="mb-4 sm:mb-8 bg-card/60 dark:bg-card/50 shadow-lg rounded-lg border-border/30"> {/* Adjusted opacity */}
                     <CardHeader className="flex flex-row items-center justify-between gap-4">
                         <div className="flex items-center gap-4">
                             <Link href="/" passHref legacyBehavior>
@@ -91,7 +91,7 @@ export default function PineapplePage() {
 
                  {/* Tabbed Content for Forum and Messages */}
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                     <TabsList className="grid w-full grid-cols-2 gap-2 mb-6 h-auto bg-card/70 dark:bg-card/60 border border-border/20 shadow-sm rounded-lg p-1 max-w-md mx-auto"> {/* Removed backdrop-blur-sm */}
+                     <TabsList className="grid w-full grid-cols-2 gap-2 mb-6 h-auto bg-card/60 dark:bg-card/50 border border-border/20 shadow-sm rounded-lg p-1 max-w-md mx-auto"> {/* Adjusted opacity */}
                         <TabsTrigger value="forum" className="py-2 data-[state=active]:shadow-md transition-subtle rounded-md flex items-center justify-center gap-2 data-[state=active]:hover-glow data-[state=active]:focus-glow">
                             <Users className="h-4 w-4" /> Forum Feed
                         </TabsTrigger>
@@ -110,7 +110,7 @@ export default function PineapplePage() {
                      {/* Apply max-width and center the messages view */}
                      <TabsContent value="messages" className="max-w-3xl mx-auto w-full">
                         {/* DirectMessagesView component */}
-                        <DirectMessagesView className="bg-card/80 dark:bg-card/70 border-border/30 shadow-md rounded-lg" /> {/* Removed backdrop-blur-md */}
+                        <DirectMessagesView className="bg-card/60 dark:bg-card/50 border-border/30 shadow-md rounded-lg" /> {/* Adjusted opacity */}
                      </TabsContent>
                 </Tabs>
 

@@ -86,7 +86,7 @@ export function ForgotPasswordModal({ isOpen, onClose }: ForgotPasswordModalProp
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-md bg-card/95 dark:bg-card/80 border-border/50"> {/* Removed backdrop-blur-sm */}
+      <DialogContent className="sm:max-w-md bg-card/85 dark:bg-card/70 border-border/50"> {/* Adjusted opacity */}
         <DialogHeader>
           <DialogTitle className="text-primary">Reset Your Password</DialogTitle>
           <DialogDescription className="text-muted-foreground">

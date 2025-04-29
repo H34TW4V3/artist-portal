@@ -15,7 +15,7 @@ export function StatCard({ title, value, icon, description, className }: StatCar
   return (
     // Adjusted background/opacity for dark mode, consistent border
     <Card className={cn(
-        "bg-background/60 dark:bg-background/40 border border-border/40 shadow-sm rounded-lg transition-subtle hover:shadow-md hover:border-border/60", // Removed backdrop-blur-sm
+        "bg-background/50 dark:bg-background/30 border border-border/40 shadow-sm rounded-lg transition-subtle hover:shadow-md hover:border-border/60", // Adjusted opacity
         className
     )}>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">

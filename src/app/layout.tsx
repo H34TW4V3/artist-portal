@@ -94,7 +94,7 @@ export default function RootLayout({
         <AuthProvider> {/* Wrap content with AuthProvider */}
             {/* Global Background Image */}
             <div
-                className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat opacity-[0.08] dark:opacity-[0.10] transition-all duration-500 ease-in-out"
+                className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat opacity-[0.15] dark:opacity-[0.20] transition-all duration-500 ease-in-out" // Adjusted opacity
                 style={{ backgroundImage: `url('${wallpaperUrl}')` }}
             />
 

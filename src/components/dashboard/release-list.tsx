@@ -189,7 +189,7 @@ export function ReleaseList({ className }: ReleaseListProps) {
   return (
     <>
     {/* Adjust background/opacity for dark mode */}
-    <Card className={cn("col-span-1 lg:col-span-2 shadow-md rounded-lg", className)}>
+    <Card className={cn("col-span-1 lg:col-span-2 shadow-md rounded-lg bg-card/60 dark:bg-card/50", className)}> {/* Adjusted opacity */}
         <CardHeader className="flex flex-row justify-between items-center gap-4 flex-wrap">
             <div>
                 <CardTitle className="text-xl font-semibold text-primary">Manage Releases</CardTitle>
@@ -300,7 +300,7 @@ export function ReleaseList({ className }: ReleaseListProps) {
                                             </DropdownMenuContent>
                                         </DropdownMenu>
                                         {/* Delete Confirmation Dialog */}
-                                        <AlertDialogContent className="bg-card border-border">
+                                        <AlertDialogContent className="bg-card/85 dark:bg-card/70 border-border"> {/* Adjusted opacity */}
                                             <AlertDialogHeader>
                                             <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
                                             <AlertDialogDescription className="text-muted-foreground">
@@ -338,7 +338,7 @@ export function ReleaseList({ className }: ReleaseListProps) {
 
     {/* Edit Release Metadata Dialog */}
      <Dialog open={isEditDialogOpen} onOpenChange={handleEditDialogClose}>
-         <DialogContent className="sm:max-w-[425px] md:max-w-lg lg:max-w-xl bg-card/95 dark:bg-card/80 border-border/50"> {/* Removed backdrop-blur-sm */}
+         <DialogContent className="sm:max-w-[425px] md:max-w-lg lg:max-w-xl bg-card/85 dark:bg-card/70 border-border/50"> {/* Adjusted opacity */}
              <DialogHeader>
                 <DialogTitle className="text-primary">Edit Release Metadata</DialogTitle>
                 <DialogDescription className="text-muted-foreground">

@@ -136,7 +136,7 @@ export default function HomePage() {
         <div className="flex min-h-screen w-full flex-col bg-transparent">
             <main className="relative z-10 flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
                 {/* Header Card */}
-                <Card className="mb-4 sm:mb-8 bg-card/80 dark:bg-card/70 shadow-lg rounded-lg border-border/30"> {/* Removed backdrop-blur-md */}
+                <Card className="mb-4 sm:mb-8 bg-card/60 dark:bg-card/50 shadow-lg rounded-lg border-border/30"> {/* Adjusted opacity */}
                 <CardHeader className="flex flex-row items-center justify-between gap-4">
                     {/* App Title/Greeting */}
                     <div className="flex items-center gap-4">
@@ -163,7 +163,7 @@ export default function HomePage() {
                     <Link href={item.href} key={item.href} passHref legacyBehavior>
                     <a className="block group"> {/* Use anchor tag for legacyBehavior */}
                         <Card className={cn(
-                            "bg-card/70 dark:bg-card/60 border border-border/30 shadow-md rounded-lg transition-all duration-200 ease-in-out cursor-pointer text-center h-full flex flex-col justify-center items-center p-6", // Removed backdrop-blur-sm
+                            "bg-card/50 dark:bg-card/40 border border-border/30 shadow-md rounded-lg transition-all duration-200 ease-in-out cursor-pointer text-center h-full flex flex-col justify-center items-center p-6", // Adjusted opacity
                             "hover:shadow-lg hover:border-primary/50 hover:-translate-y-1 hover-glow" // Hover effects
                         )}>
                         <CardContent className="flex flex-col items-center justify-center space-y-3 p-0">

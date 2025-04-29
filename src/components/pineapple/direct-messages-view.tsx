@@ -9,7 +9,7 @@ interface DirectMessagesViewProps {
 
 export function DirectMessagesView({ className }: DirectMessagesViewProps) {
   return (
-    <Card className={cn("shadow-md rounded-lg min-h-[400px]", className)}> {/* Added min-height */}
+    <Card className={cn("shadow-md rounded-lg min-h-[400px] bg-card/60 dark:bg-card/50", className)}> {/* Adjusted opacity */}
       <CardHeader>
         <CardTitle className="text-xl font-semibold text-primary flex items-center gap-2">
             <Send className="h-5 w-5" /> Direct Messages

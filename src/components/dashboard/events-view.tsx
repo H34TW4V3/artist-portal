@@ -9,7 +9,7 @@ interface EventsViewProps {
 
 export function EventsView({ className }: EventsViewProps) {
   return (
-    <Card className={cn("shadow-md rounded-lg", className)}>
+    <Card className={cn("shadow-md rounded-lg bg-card/60 dark:bg-card/50", className)}> {/* Adjusted opacity */}
       <CardHeader>
         <CardTitle className="text-xl font-semibold text-primary flex items-center gap-2">
             <CalendarClock className="h-5 w-5" /> Event Management
