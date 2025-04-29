@@ -94,7 +94,7 @@ export function ForumFeed({ className }: ForumFeedProps) {
 
     return (
         // Added max-w-3xl and mx-auto to center and constrain width
-        <div className={cn("space-y-6 max-w-3xl mx-auto", className)}>
+        <div className={cn("space-y-6", className)}> {/* Removed max-w and mx-auto if parent handles layout */}
             {isLoading ? (
                 // Skeleton Loading State - More refined skeleton
                 Array.from({ length: 3 }).map((_, index) => (
@@ -119,12 +119,13 @@ export function ForumFeed({ className }: ForumFeedProps) {
                     </Card>
                 ))
             ) : posts.length === 0 ? (
-                 <Card className="bg-card/70 dark:bg-card/60 backdrop-blur-sm border border-border/30 shadow-md rounded-lg p-6 text-center">
-                    <CardTitle className="text-lg font-medium text-muted-foreground">No Posts Yet</CardTitle>
-                    <CardDescription className="mt-2 text-muted-foreground">
+                 // Removed Card wrapper here too, let parent page show this state if needed or wrap here if preferred
+                 <div className="p-6 text-center text-muted-foreground">
+                    <p className="text-lg font-medium">No Posts Yet</p>
+                    <p className="mt-2">
                         The forum is quiet... Be the first to start a discussion!
-                    </CardDescription>
-                 </Card>
+                    </p>
+                 </div>
              ) : (
                 // Display Posts - Enhanced Styling
                 posts.map((post) => (

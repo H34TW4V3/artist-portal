@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+// Removed Card imports
 import { Button } from "@/components/ui/button";
 // Import FormDescription here
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form";
@@ -39,10 +39,11 @@ const createForumPost = async (data: PostFormValues): Promise<{ success: boolean
 
 interface CreatePostFormProps {
     onSuccess: () => void; // Callback when post is successfully created
+    onCancel: () => void; // Callback when cancel button is clicked
     className?: string;
 }
 
-export function CreatePostForm({ onSuccess, className }: CreatePostFormProps) {
+export function CreatePostForm({ onSuccess, onCancel, className }: CreatePostFormProps) {
     const { toast } = useToast();
     const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -79,66 +80,63 @@ export function CreatePostForm({ onSuccess, className }: CreatePostFormProps) {
     }
 
     return (
-        <Card className={cn("shadow-md rounded-lg", className)}>
-            <CardHeader>
-                <CardTitle className="text-xl font-semibold text-primary">Create a New Post</CardTitle>
-                <CardDescription className="text-muted-foreground">Share your ideas, ask questions, or start a collaboration.</CardDescription>
-            </CardHeader>
-            <CardContent>
-                <Form {...form}>
-                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                        {/* Post Title */}
-                        <FormField
-                            control={form.control}
-                            name="title"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Post Title</FormLabel>
-                                    <FormControl>
-                                        <Input placeholder="What's the main topic?" {...field} disabled={isSubmitting} className="focus:ring-accent" />
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
+        // Removed Card wrapper
+        <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className={cn("space-y-6", className)}>
+                {/* Post Title */}
+                <FormField
+                    control={form.control}
+                    name="title"
+                    render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Post Title</FormLabel>
+                            <FormControl>
+                                <Input placeholder="What's the main topic?" {...field} disabled={isSubmitting} className="focus:ring-accent" />
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                />
 
-                        {/* Post Content */}
-                        <FormField
-                            control={form.control}
-                            name="content"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Content</FormLabel>
-                                    <FormControl>
-                                        <Textarea
-                                            placeholder="Elaborate on your topic here..."
-                                            className="resize-y min-h-[150px] focus:ring-accent"
-                                            {...field}
-                                            disabled={isSubmitting}
-                                        />
-                                    </FormControl>
-                                     {/* Now FormDescription is defined */}
-                                     <FormDescription className="text-xs">
-                                         You can use simple markdown for formatting (e.g., **bold**, *italic*).
-                                     </FormDescription>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
+                {/* Post Content */}
+                <FormField
+                    control={form.control}
+                    name="content"
+                    render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Content</FormLabel>
+                            <FormControl>
+                                <Textarea
+                                    placeholder="Elaborate on your topic here..."
+                                    className="resize-y min-h-[150px] focus:ring-accent"
+                                    {...field}
+                                    disabled={isSubmitting}
+                                />
+                            </FormControl>
+                                {/* Now FormDescription is defined */}
+                                <FormDescription className="text-xs">
+                                    You can use simple markdown for formatting (e.g., **bold**, *italic*).
+                                </FormDescription>
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                />
 
-                        <div className="flex justify-end">
-                            <Button
-                                type="submit"
-                                disabled={isSubmitting || !form.formState.isValid}
-                                className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-primary-foreground shadow-md disabled:shadow-none disabled:bg-muted disabled:text-muted-foreground"
-                            >
-                                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                {isSubmitting ? 'Posting...' : 'Create Post'}
-                            </Button>
-                        </div>
-                    </form>
-                </Form>
-            </CardContent>
-        </Card>
+                {/* Action Buttons */}
+                <div className="flex justify-end gap-2 pt-4">
+                     <Button type="button" variant="outline" onClick={onCancel} disabled={isSubmitting}>
+                         Cancel
+                     </Button>
+                    <Button
+                        type="submit"
+                        disabled={isSubmitting || !form.formState.isValid}
+                        className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-primary-foreground shadow-md disabled:shadow-none disabled:bg-muted disabled:text-muted-foreground"
+                    >
+                        {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        {isSubmitting ? 'Posting...' : 'Create Post'}
+                    </Button>
+                </div>
+            </form>
+        </Form>
     );
 }

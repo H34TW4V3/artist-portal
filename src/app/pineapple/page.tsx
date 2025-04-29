@@ -3,17 +3,18 @@
 
 import { useState, useEffect } from "react"; // Import useEffect
 import Link from "next/link";
-import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardDescription, CardHeader, CardTitle, CardContent } from "@/components/ui/card"; // Import CardContent
 import { Button } from "@/components/ui/button";
 import UserProfile from "@/components/common/user-profile"; // Changed to default import
 import { ForumFeed } from "@/components/pineapple/forum-feed";
-import { CreatePostForm } from "@/components/pineapple/create-post-form";
+// Removed CreatePostForm import, now handled by modal
 import { DirectMessagesView } from "@/components/pineapple/direct-messages-view"; // Import DM View
-import { Home, MessageSquarePlus, Users, Send } from "lucide-react"; // Added Send icon
+import { Home, Users, Send, PlusCircle } from "lucide-react"; // Removed MessageSquarePlus, Added PlusCircle
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/context/auth-context"; // Import useAuth
 import { useRouter } from 'next/navigation'; // Import useRouter
 import { Loader2 } from 'lucide-react'; // Import Loader2 for loading animation
+import { CreatePostModal } from "@/components/pineapple/create-post-modal"; // Import the new modal component
 
 // Updated Pineapple SVG Icon based on the requested style (wired/gradient)
 const PineappleIcon = () => (
@@ -30,6 +31,8 @@ export default function PineapplePage() {
     const router = useRouter();
     // State for active tab - default to forum
     const [activeTab, setActiveTab] = useState("forum");
+    // State for Create Post Modal
+    const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     // Removed artistName state
 
     // Redirect unauthenticated users
@@ -39,11 +42,13 @@ export default function PineapplePage() {
         }
     }, [user, loading, router]);
 
-    // Handler for successful post creation
+    // Handler for successful post creation (from modal)
     const handlePostSuccess = () => {
         // In a real app, you would likely refetch the forum feed here
         console.log("New post created (placeholder). Refreshing feed...");
-        // Switch back to the forum tab after successful post
+        // Close the modal after successful post
+        setIsCreateModalOpen(false);
+        // Optionally switch back to forum tab if needed, though it should stay there now
         setActiveTab('forum');
     };
 
@@ -89,15 +94,12 @@ export default function PineapplePage() {
                     </CardHeader>
                 </Card>
 
-                 {/* Tabbed Content for Forum, Create Post, and Messages */}
+                 {/* Tabbed Content for Forum and Messages */}
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                     {/* Updated grid columns to 3 */}
-                     <TabsList className="grid w-full grid-cols-3 gap-2 mb-6 h-auto bg-card/70 dark:bg-card/60 backdrop-blur-sm border border-border/20 shadow-sm rounded-lg p-1 max-w-lg mx-auto">
+                     {/* Updated grid columns to 2 */}
+                     <TabsList className="grid w-full grid-cols-2 gap-2 mb-6 h-auto bg-card/70 dark:bg-card/60 backdrop-blur-sm border border-border/20 shadow-sm rounded-lg p-1 max-w-md mx-auto">
                         <TabsTrigger value="forum" className="py-2 data-[state=active]:shadow-md transition-subtle rounded-md flex items-center justify-center gap-2 data-[state=active]:hover-glow data-[state=active]:focus-glow">
                             <Users className="h-4 w-4" /> Forum Feed
-                        </TabsTrigger>
-                        <TabsTrigger value="create" className="py-2 data-[state=active]:shadow-md transition-subtle rounded-md flex items-center justify-center gap-2 data-[state=active]:hover-glow data-[state=active]:focus-glow">
-                            <MessageSquarePlus className="h-4 w-4" /> Create Post
                         </TabsTrigger>
                          <TabsTrigger value="messages" className="py-2 data-[state=active]:shadow-md transition-subtle rounded-md flex items-center justify-center gap-2 data-[state=active]:hover-glow data-[state=active]:focus-glow">
                             <Send className="h-4 w-4" /> Messages
@@ -105,18 +107,34 @@ export default function PineapplePage() {
                      </TabsList>
 
                     <TabsContent value="forum">
-                        <ForumFeed className="bg-card/80 dark:bg-card/70 backdrop-blur-md border-border/30" />
+                         {/* Add Create Post button within the forum feed area */}
+                         <Card className="bg-card/80 dark:bg-card/70 backdrop-blur-md border-border/30 shadow-md rounded-lg mb-6">
+                             <CardHeader className="flex flex-row justify-between items-center">
+                                <CardTitle className="text-lg font-semibold text-foreground">
+                                    Community Feed
+                                </CardTitle>
+                                <Button size="sm" onClick={() => setIsCreateModalOpen(true)}>
+                                <PlusCircle className="mr-2 h-4 w-4" /> Create Post
+                                </Button>
+                             </CardHeader>
+                             <CardContent>
+                                 {/* Render ForumFeed component here */}
+                                 <ForumFeed />
+                             </CardContent>
+                         </Card>
                     </TabsContent>
-                    <TabsContent value="create">
-                        <CreatePostForm
-                            onSuccess={handlePostSuccess}
-                            className="bg-card/80 dark:bg-card/70 backdrop-blur-md border-border/30"
-                        />
-                    </TabsContent>
+                     {/* Removed TabsContent for create */}
                      <TabsContent value="messages">
                         <DirectMessagesView className="bg-card/80 dark:bg-card/70 backdrop-blur-md border-border/30" />
                     </TabsContent>
                 </Tabs>
+
+                 {/* Create Post Modal */}
+                <CreatePostModal
+                    isOpen={isCreateModalOpen}
+                    onClose={() => setIsCreateModalOpen(false)}
+                    onSuccess={handlePostSuccess}
+                 />
 
             </main>
         </div>
