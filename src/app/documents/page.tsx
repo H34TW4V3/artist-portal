@@ -4,7 +4,9 @@ import { UserProfile } from "@/components/common/user-profile";
 // Import CardContent
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FileText, FolderKanban, BookOpenText } from "lucide-react"; // Added BookOpenText
+import { FileText, FolderKanban, BookOpenText, Home } from "lucide-react"; // Added BookOpenText and Home
+import Link from "next/link"; // Import Link
+import { Button } from "@/components/ui/button"; // Import Button
 
 export default function DocumentsPage() {
   // Placeholder user data (replace with actual data fetching later)
@@ -35,6 +37,12 @@ export default function DocumentsPage() {
          <Card className="mb-4 sm:mb-8 bg-card/80 dark:bg-card/70 backdrop-blur-md shadow-lg rounded-lg border-border/30">
              <CardHeader className="flex flex-row items-center justify-between gap-4">
                  <div className="flex items-center gap-4">
+                      {/* Home Icon Link */}
+                     <Link href="/" passHref legacyBehavior>
+                          <Button variant="ghost" size="icon" className="h-9 w-9 text-primary hover:bg-primary/10 active:bg-primary/20" aria-label="Go to Dashboard">
+                             <Home className="h-5 w-5" />
+                          </Button>
+                     </Link>
                      <FolderKanban className="h-8 w-8 text-primary hidden sm:block" />
                      <div>
                         <CardTitle className="text-xl sm:text-3xl font-bold tracking-tight text-primary">Key Documents</CardTitle>
@@ -102,4 +110,3 @@ export default function DocumentsPage() {
     </div>
   );
 }
-
