@@ -1,13 +1,14 @@
 
-"use client"; // Add "use client" directive
+"use client";
 
 import type { Metadata } from 'next';
 import { GeistSans } from 'geist/font/sans';
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
-import { SettingsMenuButton } from '@/components/common/settings-menu-button'; // Import new settings button
-import { WallpaperCustomizerModal } from '@/components/common/wallpaper-customizer-modal'; // Import modal
-import { useState, useEffect } from 'react'; // Import hooks
+import { SettingsMenuButton } from '@/components/common/settings-menu-button';
+import { WallpaperCustomizerModal } from '@/components/common/wallpaper-customizer-modal';
+import { AuthProvider } from '@/context/auth-context'; // Import AuthProvider
+import { useState, useEffect } from 'react';
 
 // Default wallpaper URL
 const DEFAULT_WALLPAPER_URL = "https://t4.ftcdn.net/jpg/08/62/54/35/360_F_862543518_D0LQEQDZqkbTNM8CMB6iuiauhfaj4wr6.jpg";
@@ -20,44 +21,36 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   const [wallpaperUrl, setWallpaperUrl] = useState(DEFAULT_WALLPAPER_URL);
-  const [theme, setTheme] = useState<'light' | 'dark'>('dark'); // Default to dark
+  const [theme, setTheme] = useState<'light' | 'dark'>('dark');
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isMounted, setIsMounted] = useState(false); // Prevent SSR hydration mismatch
+  const [isMounted, setIsMounted] = useState(false);
 
-  // Effect for loading wallpaper and theme from localStorage
   useEffect(() => {
-    setIsMounted(true); // Component has mounted on client
-
-    // Load Wallpaper
+    setIsMounted(true);
     const savedWallpaperUrl = localStorage.getItem(LOCAL_STORAGE_WALLPAPER_KEY);
     if (savedWallpaperUrl) {
       setWallpaperUrl(savedWallpaperUrl);
     }
-
-    // Load Theme
     const savedTheme = localStorage.getItem(LOCAL_STORAGE_THEME_KEY);
     if (savedTheme === 'light' || savedTheme === 'dark') {
       setTheme(savedTheme);
     } else {
-       // Optional: Check system preference if no theme saved
        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
        setTheme(prefersDark ? 'dark' : 'light');
     }
-  }, []); // Run only once on mount
+  }, []);
 
-  // Effect for applying theme class to HTML tag
   useEffect(() => {
-    if (isMounted) { // Ensure this runs only on the client
+    if (isMounted) {
       const root = window.document.documentElement;
       root.classList.remove('light', 'dark');
       root.classList.add(theme);
-      localStorage.setItem(LOCAL_STORAGE_THEME_KEY, theme); // Save theme preference
+      localStorage.setItem(LOCAL_STORAGE_THEME_KEY, theme);
     }
-  }, [theme, isMounted]); // Run when theme or isMounted changes
+  }, [theme, isMounted]);
 
-  // Handles applying URL or Data URI
   const handleApplyWallpaper = (newUrlOrDataUri: string) => {
-    const urlToSet = newUrlOrDataUri.trim() || DEFAULT_WALLPAPER_URL; // Use default if empty
+    const urlToSet = newUrlOrDataUri.trim() || DEFAULT_WALLPAPER_URL;
     setWallpaperUrl(urlToSet);
     localStorage.setItem(LOCAL_STORAGE_WALLPAPER_KEY, urlToSet);
     setIsModalOpen(false);
@@ -73,52 +66,48 @@ export default function RootLayout({
     setTheme((prevTheme) => (prevTheme === 'dark' ? 'light' : 'dark'));
   };
 
-
+  // Ensure GeistSans variable is applied correctly
+  // Remove whitespace between <html> tags
   return (
-    // Apply theme class dynamically to html tag
-    <html lang="en" className={isMounted ? theme : 'dark'}>
+    <html lang="en" className={`${GeistSans.variable} ${isMounted ? theme : 'dark'}`}>
       <head>
-         {/* Basic metadata for client component */}
          <title>Artist Hub</title>
          <meta name="description" content="Manage your music releases and view streaming statistics." />
-         {/* Add theme-color meta tag if needed for PWA/mobile browsers */}
-         {/* <meta name="theme-color" content={theme === 'dark' ? '#1f2937' : '#ffffff'} /> */}
       </head>
-      <body className={`${GeistSans.variable} font-sans antialiased bg-background text-foreground relative min-h-screen`}>
-        {/* Global Background Image - Uses dynamic URL state */}
-        <div
-            className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat opacity-[0.08] dark:opacity-[0.10] transition-all duration-500 ease-in-out"
-            // Style works with both standard URLs and data URIs
-            style={{ backgroundImage: `url('${wallpaperUrl}')` }}
-        />
-
-        {/* Content wrapper */}
-        <div className="relative z-10 min-h-screen flex flex-col">
-             {children}
-        </div>
-
-        {/* Settings Menu and Wallpaper Modal - Only render on client */}
-        {isMounted && (
-          <>
-            {/* Replace WallpaperCustomizerButton with SettingsMenuButton */}
-            <SettingsMenuButton
-                onOpenWallpaperModal={() => setIsModalOpen(true)}
-                onToggleTheme={handleToggleTheme}
-                currentTheme={theme}
+      <body className="font-sans antialiased bg-background text-foreground relative min-h-screen">
+        <AuthProvider> {/* Wrap content with AuthProvider */}
+            {/* Global Background Image */}
+            <div
+                className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat opacity-[0.08] dark:opacity-[0.10] transition-all duration-500 ease-in-out"
+                style={{ backgroundImage: `url('${wallpaperUrl}')` }}
             />
-            <WallpaperCustomizerModal
-              isOpen={isModalOpen}
-              onClose={() => setIsModalOpen(false)}
-              // Pass the current URL or data URI (used for reset and initial input state)
-              currentUrl={wallpaperUrl === DEFAULT_WALLPAPER_URL ? '' : wallpaperUrl}
-              onApply={handleApplyWallpaper}
-              onReset={handleResetWallpaper}
-              defaultUrl={DEFAULT_WALLPAPER_URL}
-            />
-          </>
-        )}
 
-        <Toaster />
+            {/* Content wrapper */}
+            <div className="relative z-10 min-h-screen flex flex-col">
+                 {children}
+            </div>
+
+            {/* Settings Menu and Wallpaper Modal - Render only when authenticated or needed */}
+            {isMounted && (
+              <>
+                <SettingsMenuButton
+                    onOpenWallpaperModal={() => setIsModalOpen(true)}
+                    onToggleTheme={handleToggleTheme}
+                    currentTheme={theme}
+                />
+                <WallpaperCustomizerModal
+                  isOpen={isModalOpen}
+                  onClose={() => setIsModalOpen(false)}
+                  currentUrl={wallpaperUrl === DEFAULT_WALLPAPER_URL ? '' : wallpaperUrl}
+                  onApply={handleApplyWallpaper}
+                  onReset={handleResetWallpaper}
+                  defaultUrl={DEFAULT_WALLPAPER_URL}
+                />
+              </>
+            )}
+
+            <Toaster />
+        </AuthProvider>
       </body>
     </html>
   );
