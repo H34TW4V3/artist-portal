@@ -48,19 +48,22 @@ export function UserProfile({ name, imageUrl, className }: UserProfileProps) {
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
          {/* Wrap the profile display in a button for accessibility and styling */}
-         <Button variant="ghost" className={cn("flex items-center space-x-3 p-1 rounded-full h-auto focus-visible:ring-1 focus-visible:ring-ring", className)}>
-            <Avatar className="h-9 w-9 sm:h-10 sm:w-10 border-2 border-primary/40">
+         {/* Increased Avatar size and adjusted button padding/height */}
+         <Button variant="ghost" className={cn("flex items-center space-x-3 p-1.5 rounded-full h-auto focus-visible:ring-1 focus-visible:ring-ring", className)}>
+            {/* Increased avatar size */}
+            <Avatar className="h-10 w-10 sm:h-12 sm:w-12 border-2 border-primary/40">
               {imageUrl ? (
                 <AvatarImage src={imageUrl} alt={`${name}'s profile picture`} />
               ) : null}
-              <AvatarFallback className="bg-muted text-muted-foreground font-semibold">
+              <AvatarFallback className="bg-muted text-muted-foreground font-semibold text-base sm:text-lg"> {/* Slightly larger initials */}
                 {initials}
               </AvatarFallback>
             </Avatar>
             <div className="hidden sm:block text-left"> {/* Hide name on small screens */}
-              <p className="text-sm font-medium leading-none text-foreground">{name}</p>
+              {/* Increased font size for name */}
+              <p className="text-sm sm:text-base font-medium leading-none text-foreground">{name}</p>
               {/* Optional: Role */}
-              <p className="text-xs leading-none text-muted-foreground">Artist</p>
+              <p className="text-xs sm:text-sm leading-none text-muted-foreground">Artist</p>
             </div>
         </Button>
       </DropdownMenuTrigger>
@@ -97,3 +100,4 @@ export function UserProfile({ name, imageUrl, className }: UserProfileProps) {
     </DropdownMenu>
   );
 }
+
