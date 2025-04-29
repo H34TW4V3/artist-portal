@@ -1,4 +1,6 @@
 
+"use client"; // Add use client because useToast is a client-side hook
+
 import type React from 'react';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
