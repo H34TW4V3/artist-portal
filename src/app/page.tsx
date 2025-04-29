@@ -9,28 +9,11 @@ import { cn } from "@/lib/utils";
 
 // Updated Pineapple SVG Icon based on the requested style (wired/gradient)
 const PineappleIcon = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="h-10 w-10">
-        <defs>
-            {/* Gradient using primary and accent colors */}
-            <linearGradient id="pineapple-gradient-wired" x1="0%" y1="0%" x2="100%" y2="100%">
-                 <stop offset="0%" style={{stopColor: 'hsl(var(--primary))', stopOpacity: 0.8}} />
-                 <stop offset="100%" style={{stopColor: 'hsl(var(--accent))', stopOpacity: 1}} />
-            </linearGradient>
-        </defs>
-        {/* Leaves (Stroke only for wired look) */}
-        <path d="M16 2c-1.5 1.5-2 4-1 6s3 3 4.5 1.5" stroke="hsl(var(--primary) / 0.9)" />
-        <path d="M15 7c.5-1.5 2-3 3.5-2" stroke="hsl(var(--primary) / 0.9)" />
-        <path d="M12 5c1.5-1.5 3.5-1.5 5 0" stroke="hsl(var(--primary) / 0.9)" />
-        <path d="M10 6c1-1.5 2.5-2 4-1" stroke="hsl(var(--primary) / 0.9)" />
-        <path d="M8 8c.5-1 1.5-2 2.5-2" stroke="hsl(var(--primary) / 0.9)" />
-        {/* Body (Use gradient fill, thin border) */}
-        <path d="M17.8 10.2c-.8-.8-1.8-1.2-2.8-1.2-3.3 0-6 2.7-6 6 0 1 .2 2 .7 2.8.8.8 1.8 1.2 2.8 1.2 3.3 0 6-2.7 6-6 0-1-.2-2-.7-2.8z" fill="url(#pineapple-gradient-wired)" stroke="hsl(var(--border) / 0.4)" />
-        {/* Body Pattern Lines (thin strokes) */}
-        <path d="m10.5 13.5 4 4" stroke="hsl(var(--foreground) / 0.15)" />
-        <path d="m14.5 13.5-4 4" stroke="hsl(var(--foreground) / 0.15)" />
-        <path d="m12.5 11.5 2 6" stroke="hsl(var(--foreground) / 0.15)" />
-        <path d="m11.5 17.5 2-6" stroke="hsl(var(--foreground) / 0.15)" />
-    </svg>
+  <img
+      src="https://media.lordicon.com/icons/wired/gradient/1843-pineapple.svg"
+      alt="Pineapple Icon"
+      className="h-10 w-10"
+  />
 );
 
 
