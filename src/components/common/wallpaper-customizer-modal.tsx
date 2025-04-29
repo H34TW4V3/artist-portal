@@ -217,9 +217,8 @@ export function WallpaperCustomizerModal({
         </ScrollArea>
 
         <DialogFooter className="gap-2 sm:gap-0 pt-4 border-t border-border/50">
-           <div className="flex items-center text-xs text-muted-foreground mr-auto">
-              Default: <a href={defaultUrl} target="_blank" rel="noopener noreferrer" className="underline hover:text-primary ml-1 truncate max-w-[150px]">{defaultUrl.split('/').pop()}</a>
-           </div>
+           {/* Removed the display of default URL */}
+           <div className="flex-grow"></div> {/* Add spacer if needed for alignment */}
           <Button
             type="button"
             variant="outline"
@@ -242,3 +241,4 @@ export function WallpaperCustomizerModal({
     </Dialog>
   );
 }
+
