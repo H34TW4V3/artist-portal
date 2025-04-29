@@ -21,11 +21,11 @@ export default function RootLayout({
     <html lang="en" className="dark">
       {/* Apply the font variable directly from the imported object */}
       <body className={`${GeistSans.variable} font-sans antialiased bg-background text-foreground relative min-h-screen`}>
-        {/* Global Background Image */}
+        {/* Global Background Image - Increased opacity */}
         <div
-            className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat opacity-[0.04] dark:opacity-[0.06]"
+            className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat opacity-[0.08] dark:opacity-[0.10]" // Increased opacity values
             // Using a generic blurred image for the background
-            style={{ backgroundImage: "url('https://picsum.photos/seed/musicbg/1920/1080?grayscale&blur=2')" }} // Increased blur slightly
+            style={{ backgroundImage: "url('https://picsum.photos/seed/musicbg/1920/1080?grayscale&blur=2')" }}
         />
         {/* Content wrapper */}
         <div className="relative z-10 min-h-screen flex flex-col">
