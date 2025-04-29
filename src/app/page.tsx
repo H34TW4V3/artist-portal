@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/auth-context"; // Import useAuth
 import { Skeleton } from "@/components/ui/skeleton"; // Import Skeleton
 import { useRouter } from 'next/navigation'; // Import useRouter
-import { useEffect } from 'react'; // Import useEffect
+import { useEffect, useState } from 'react'; // Import useEffect and useState
 import { Loader2 } from 'lucide-react'; // Import Loader2 for loading animation
 import { Button } from "@/components/ui/button"; // Keep button for potential future use or structure
 
@@ -32,14 +32,37 @@ const navItems = [
   { title: "Release Mgmt", href: "/releases", icon: <ListMusic className="h-10 w-10" />, description: "Manage your music" },
 ];
 
+// List of informal greeting templates
+const greetings = [
+    "Hey, {{name}}!",
+    "What's up, {{name}}?",
+    "Welcome back, {{name}}!",
+    "Good to see you, {{name}}!",
+    "Hi there, {{name}}!",
+    "How's it going, {{name}}?",
+    "Yo, {{name}}!",
+];
+
+// Function to get a random greeting
+const getRandomGreeting = (name: string) => {
+    const randomIndex = Math.floor(Math.random() * greetings.length);
+    return greetings[randomIndex].replace("{{name}}", name);
+};
+
+
 export default function HomePage() {
     const { user, loading } = useAuth(); // Use the auth context
     const router = useRouter();
+    const [greeting, setGreeting] = useState(""); // State for the greeting
 
     useEffect(() => {
         // Redirect unauthenticated users to login page after loading is complete
         if (!loading && !user) {
             router.replace('/login');
+        } else if (user) {
+            // Set the greeting once the user is loaded
+            const userName = user.displayName || user.email?.split('@')[0] || 'Artist';
+            setGreeting(getRandomGreeting(userName));
         }
     }, [user, loading, router]);
 
@@ -74,11 +97,10 @@ export default function HomePage() {
                         <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="hsl(var(--primary))" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-8 w-8 hidden sm:block"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
                         <div className="text-center sm:text-left"> {/* Center align text */}
                             <CardTitle className="text-xl sm:text-3xl font-bold tracking-tight text-primary">
-                            {/* Informal greeting using display name or email part */}
-                            Welcome, {user.displayName || user.email?.split('@')[0] || 'Artist'}!
+                                {greeting || `Welcome, ${user.displayName || user.email?.split('@')[0] || 'Artist'}!`} {/* Display the generated greeting */}
                             </CardTitle>
                             <CardDescription className="text-muted-foreground text-xs sm:text-sm">
-                            Your central hub for management and insights.
+                                Your central hub for management and insights.
                             </CardDescription>
                         </div>
                     </div>
