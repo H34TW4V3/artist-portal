@@ -33,7 +33,8 @@ export default function DashboardPage() {
                      </Link>
                      <Music className="h-8 w-8 text-primary hidden sm:block" /> {/* Hide icon on small screens if profile is shown */}
                      <div>
-                        <CardTitle className="text-xl sm:text-3xl font-bold tracking-tight text-primary">Artist Hub</CardTitle>
+                        {/* Updated title to informal greeting */}
+                        <CardTitle className="text-xl sm:text-3xl font-bold tracking-tight text-primary">Welcome back, {artistName}!</CardTitle>
                         <CardDescription className="text-muted-foreground text-xs sm:text-sm">Manage your music and events.</CardDescription>
                      </div>
                  </div>
