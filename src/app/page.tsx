@@ -7,34 +7,29 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { LayoutDashboard, ListMusic, CalendarClock, FileText, UserCog, Settings } from "lucide-react"; // Import relevant icons
 import { cn } from "@/lib/utils";
 
-// Pineapple SVG Icon - Reverted to previous themeable version
+// Updated Pineapple SVG Icon based on the requested style (wired/gradient)
 const PineappleIcon = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-10 w-10">
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="h-10 w-10">
         <defs>
-            <linearGradient id="pineapple-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" style={{stopColor: 'hsl(var(--primary))', stopOpacity: 0.7}} />
-                <stop offset="100%" style={{stopColor: 'hsl(var(--accent))', stopOpacity: 0.9}} />
+            {/* Gradient using primary and accent colors */}
+            <linearGradient id="pineapple-gradient-wired" x1="0%" y1="0%" x2="100%" y2="100%">
+                 <stop offset="0%" style={{stopColor: 'hsl(var(--primary))', stopOpacity: 0.8}} />
+                 <stop offset="100%" style={{stopColor: 'hsl(var(--accent))', stopOpacity: 1}} />
             </linearGradient>
         </defs>
-        {/* Leaves */}
-        <path d="M15.186 13.452c1.348-.76 2.203-2.05 2.141-3.448-.064-1.43-1.083-2.7-2.573-3.433" stroke="hsl(var(--primary) / 0.8)" />
-        <path d="M15.72 7.364c.37-.6.58-1.26.58-1.96 0-1.56-1.04-2.8-2.33-3.25" stroke="hsl(var(--primary) / 0.8)" />
-        <path d="M12.843 2.344c-.092.02-.182.046-.27.076" stroke="hsl(var(--primary) / 0.8)" />
-        <path d="M12.843 2.344c-.534.16-1.02.41-1.43.73-.675.51-1.16 1.23-1.37 2.03" stroke="hsl(var(--primary) / 0.8)" />
-        <path d="M10.313 5.124c-.75 1.09-1.02 2.44-.7 3.71.31 1.27 1.17 2.36 2.33 3.02" stroke="hsl(var(--primary) / 0.8)" />
-        <path d="M10.313 5.124c-.17-.25-.32-.5-.46-.75" stroke="hsl(var(--primary) / 0.8)" />
-        <path d="M9.853 4.374c-1.27.13-2.4.8-3.05 1.79-.65 1-1.05 2.2-.93 3.45.12 1.25.8 2.37 1.8 3.1" stroke="hsl(var(--primary) / 0.8)" />
-        <path d="M7.673 12.714c.18.14.37.27.56.39" stroke="hsl(var(--primary) / 0.8)" />
-        {/* Body */}
-        <path d="M18.744 13.98c.64-.994.81-2.19.45-3.33-.35-1.14-1.17-2.04-2.26-2.54-.773-1.09-1.93-1.87-3.25-2.16l-.4-.09" fill="url(#pineapple-gradient)" stroke="hsl(var(--border) / 0.5)"/>
-        <path d="M13.284 5.86c-1.32.29-2.48 1.07-3.25 2.16-1.09.5-1.91 1.4-2.26 2.54-.36 1.14-.19 2.336.45 3.33 1.056 1.634 2.8 2.69 4.78 2.69s3.724-1.056 4.78-2.69Z" fill="url(#pineapple-gradient)" stroke="hsl(var(--border) / 0.5)" />
-        {/* Body Pattern Lines */}
-        <path d="m8.12 12.25 5.19 3.34" stroke="hsl(var(--foreground) / 0.2)" />
-        <path d="M15.88 12.25 10.7 15.6" stroke="hsl(var(--foreground) / 0.2)" />
-        <path d="m12 16.19 3.88-2.5" stroke="hsl(var(--foreground) / 0.2)" />
-        <path d="M12 16.19 8.12 13.7" stroke="hsl(var(--foreground) / 0.2)" />
-        <path d="m8.69 9.81 1.95 5.6" stroke="hsl(var(--foreground) / 0.2)" />
-        <path d="M15.31 9.81 13.36 15.4" stroke="hsl(var(--foreground) / 0.2)" />
+        {/* Leaves (Stroke only for wired look) */}
+        <path d="M16 2c-1.5 1.5-2 4-1 6s3 3 4.5 1.5" stroke="hsl(var(--primary) / 0.9)" />
+        <path d="M15 7c.5-1.5 2-3 3.5-2" stroke="hsl(var(--primary) / 0.9)" />
+        <path d="M12 5c1.5-1.5 3.5-1.5 5 0" stroke="hsl(var(--primary) / 0.9)" />
+        <path d="M10 6c1-1.5 2.5-2 4-1" stroke="hsl(var(--primary) / 0.9)" />
+        <path d="M8 8c.5-1 1.5-2 2.5-2" stroke="hsl(var(--primary) / 0.9)" />
+        {/* Body (Use gradient fill, thin border) */}
+        <path d="M17.8 10.2c-.8-.8-1.8-1.2-2.8-1.2-3.3 0-6 2.7-6 6 0 1 .2 2 .7 2.8.8.8 1.8 1.2 2.8 1.2 3.3 0 6-2.7 6-6 0-1-.2-2-.7-2.8z" fill="url(#pineapple-gradient-wired)" stroke="hsl(var(--border) / 0.4)" />
+        {/* Body Pattern Lines (thin strokes) */}
+        <path d="m10.5 13.5 4 4" stroke="hsl(var(--foreground) / 0.15)" />
+        <path d="m14.5 13.5-4 4" stroke="hsl(var(--foreground) / 0.15)" />
+        <path d="m12.5 11.5 2 6" stroke="hsl(var(--foreground) / 0.15)" />
+        <path d="m11.5 17.5 2-6" stroke="hsl(var(--foreground) / 0.15)" />
     </svg>
 );
 
@@ -44,7 +39,7 @@ const navItems = [
   { title: "Dashboard", href: "/dashboard", icon: <LayoutDashboard className="h-10 w-10" />, description: "View stats & releases" },
   { title: "Documents", href: "/documents", icon: <FileText className="h-10 w-10" />, description: "Access agreements & handbooks" },
   { title: "Manage Profile", href: "/profile", icon: <UserCog className="h-10 w-10" />, description: "Update your details" },
-  { title: "Pineapple", href: "/pineapple", icon: <PineappleIcon />, description: "A tropical surprise!" }, // New Pineapple item
+  { title: "Pineapple", href: "/pineapple", icon: <PineappleIcon />, description: "A tropical surprise!" }, // Uses the updated icon
   // Add more sections here if needed
   // { title: "Settings", href: "/settings", icon: <Settings className="h-10 w-10" />, description: "App settings" },
 ];
@@ -102,3 +97,4 @@ export default function HomePage() {
     </div>
   );
 }
+
