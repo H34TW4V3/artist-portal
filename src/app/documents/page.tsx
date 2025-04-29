@@ -62,6 +62,7 @@ export default function DocumentsPage() {
               </Link>
               {/* Display icon for the active tab */}
               {currentHeader.icon}
+              {/* Added text-center sm:text-left */}
               <div className="text-center sm:text-left">
                 {/* Display title and description for the active tab */}
                 <CardTitle className="text-xl sm:text-3xl font-bold tracking-tight text-primary">

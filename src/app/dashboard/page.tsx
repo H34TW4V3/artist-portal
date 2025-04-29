@@ -8,7 +8,9 @@ import { EventsView } from "@/components/dashboard/events-view";
 import { UserProfile } from "@/components/common/user-profile";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ListMusic, CalendarClock, BarChart3 } from "lucide-react";
+import { ListMusic, CalendarClock, BarChart3, Home } from "lucide-react"; // Import Home icon
+import Link from "next/link"; // Import Link
+import { Button } from "@/components/ui/button"; // Import Button
 
 // Define content for each tab's header
 const tabHeaders = {
@@ -47,8 +49,15 @@ export default function DashboardPage() {
         <Card className="mb-4 sm:mb-8 bg-card/80 dark:bg-card/70 backdrop-blur-md shadow-lg rounded-lg border-border/30">
           <CardHeader className="flex flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-4">
+                {/* Add Home Button */}
+                <Link href="/" passHref legacyBehavior>
+                    <Button variant="ghost" size="lg" className="h-12 w-12 text-primary hover:bg-primary/10 active:bg-primary/20 p-0" aria-label="Go to Home">
+                       <Home className="h-7 w-7" />
+                    </Button>
+                </Link>
               {/* Display icon for the active tab */}
               {currentHeader.icon}
+              {/* Added text-center sm:text-left */}
               <div className="text-center sm:text-left">
                 {/* Display title and description for the active tab */}
                 <CardTitle className="text-xl sm:text-3xl font-bold tracking-tight text-primary">

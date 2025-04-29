@@ -222,7 +222,7 @@ export default function ProfilePage() {
                           </Button>
                      </Link>
                      <UserCog className="h-8 w-8 text-primary hidden sm:block" />
-                     {/* Added text-center to center the title and description */}
+                     {/* Added text-center sm:text-left */}
                      <div className="text-center sm:text-left">
                         <CardTitle className="text-xl sm:text-3xl font-bold tracking-tight text-primary">Manage Profile</CardTitle>
                         <CardDescription className="text-muted-foreground text-xs sm:text-sm">Update your personal information and profile picture.</CardDescription>
