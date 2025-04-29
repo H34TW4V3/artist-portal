@@ -104,7 +104,8 @@ export default function RootLayout({
             </div>
 
             {/* Settings Menu and Wallpaper Modal - Render only when authenticated or needed */}
-            {isMounted && pathname !== '/login' && ( // Hide if on login page
+            {/* Conditionally render based on mount state and pathname */}
+            {isMounted && pathname !== '/login' && (
               <>
                 <SettingsMenuButton
                     onOpenWallpaperModal={() => setIsModalOpen(true)}
