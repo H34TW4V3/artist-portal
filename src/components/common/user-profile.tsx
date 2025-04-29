@@ -247,27 +247,27 @@ export function UserProfile({ name: initialNameProp, imageUrl: initialImageUrlPr
       </DropdownMenu>
 
       {/* Profile Edit Modal */}
-      <Dialog open={isProfileModalOpen} onOpenChange={setIsProfileModalOpen}>
-          <DialogContent className="sm:max-w-md md:max-w-lg lg:max-w-xl bg-card/95 dark:bg-card/80 backdrop-blur-sm border-border/50">
-              <DialogHeader>
-                 <DialogTitle className="text-primary">Manage Your Profile</DialogTitle>
-                 <DialogDescription className="text-muted-foreground">
-                    Update your personal information and profile picture.
-                 </DialogDescription>
-              </DialogHeader>
-              {/* Ensure initialData is passed correctly when modal is open */}
-               {isProfileModalOpen && (
-                    <ProfileForm
-                        key={user?.uid} // Re-render form if user changes
-                        initialData={profileData} // Pass fetched/current data
-                        // Modify ProfileForm's onSubmit to use `updateProfileData(user, ...)`
-                        onSuccess={handleProfileUpdateSuccess}
-                        onCancel={() => setIsProfileModalOpen(false)}
-                        className="mt-4"
-                   />
-               )}
-          </DialogContent>
-      </Dialog>
+       <Dialog open={isProfileModalOpen} onOpenChange={setIsProfileModalOpen}>
+           <DialogContent className="sm:max-w-md md:max-w-lg lg:max-w-xl bg-card/95 dark:bg-card/80 backdrop-blur-sm border-border/50">
+               <DialogHeader>
+                  <DialogTitle className="text-primary">Manage Your Profile</DialogTitle>
+                  <DialogDescription className="text-muted-foreground">
+                     Update your personal information and profile picture.
+                  </DialogDescription>
+               </DialogHeader>
+               {/* Ensure initialData is passed correctly when modal is open */}
+                {isProfileModalOpen && (
+                     <ProfileForm
+                         key={user?.uid} // Re-render form if user changes
+                         initialData={profileData} // Pass fetched/current data
+                         // Modify ProfileForm's onSubmit to use `updateProfileData(user, ...)`
+                         onSuccess={handleProfileUpdateSuccess}
+                         onCancel={() => setIsProfileModalOpen(false)}
+                         className="mt-4"
+                    />
+                )}
+           </DialogContent>
+       </Dialog>
 
        {/* Password Update Modal */}
       <Dialog open={isPasswordModalOpen} onOpenChange={setIsPasswordModalOpen}>
@@ -276,7 +276,7 @@ export function UserProfile({ name: initialNameProp, imageUrl: initialImageUrlPr
                  <DialogTitle className="text-primary">Update Password</DialogTitle>
                  <DialogDescription className="text-muted-foreground">
                     Enter your current password and choose a new one.
-                 </Description>
+                 </DialogDescription>
               </DialogHeader>
               {isPasswordModalOpen && ( // Render form only when modal is open
                 <PasswordUpdateForm
