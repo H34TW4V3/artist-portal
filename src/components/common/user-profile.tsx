@@ -25,9 +25,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { PasswordUpdateForm } from "@/components/profile/password-update-form"; // Import Password Update Form
 import { ProfileForm, type ProfileFormValues } from "@/components/profile/profile-form"; // Import Profile Form and its type
 import { useToast } from "@/hooks/use-toast";
-import { LogOut, UserCog, KeyRound, Loader2, FileText } from "lucide-react"; // Import icons
+import { LogOut, UserCog, KeyRound, Loader2 } from "lucide-react"; // Removed FileText icon
 import { cn } from "@/lib/utils";
-import router from "next/router";
+import { useRouter } from "next/navigation"; // Import useRouter from next/navigation
 
 // --- Zod Schema for User Profile Data (Matches ProfileForm) ---
 const profileSchema = z.object({
@@ -47,6 +47,7 @@ export default function UserProfile() {
   const { toast } = useToast();
   const db = getFirestore(app); // Get Firestore instance
   const storage = getStorage(app); // Get Storage instance
+  const router = useRouter(); // Use next/navigation router
 
   const [profileData, setProfileData] = useState<ProfileFormValues | null>(null);
   const [isProfileLoading, setIsProfileLoading] = useState(true); // Separate loading state for profile data
@@ -240,10 +241,11 @@ export default function UserProfile() {
                <KeyRound className="mr-2 h-4 w-4" />
               <span>Change Password</span>
             </DropdownMenuItem>
-             <DropdownMenuItem onClick={() => router.push('/documents')} className="cursor-pointer focus:bg-accent focus:text-accent-foreground">
-                <FileText className="mr-2 h-4 w-4" /> {/* Added Documents Link */}
+            {/* Removed Key Documents link */}
+            {/* <DropdownMenuItem onClick={() => router.push('/documents')} className="cursor-pointer focus:bg-accent focus:text-accent-foreground">
+                <FileText className="mr-2 h-4 w-4" />
                 <span>Key Documents</span>
-            </DropdownMenuItem>
+            </DropdownMenuItem> */}
             <DropdownMenuSeparator className="bg-border/50" />
             <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive focus:bg-destructive/10 cursor-pointer">
               <LogOut className="mr-2 h-4 w-4" />
