@@ -21,11 +21,16 @@ const LOCAL_STORAGE_THEME_KEY = 'artistHubTheme';
 //   description: 'Manage your music releases and view streaming statistics.',
 // };
 
+// Define props type explicitly for RootLayout
+interface RootLayoutProps {
+  children: React.ReactNode;
+  // We don't expect params here as it's a client component
+}
+
+
 export default function RootLayout({
   children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+}: RootLayoutProps) { // Use the defined interface
   const [wallpaperUrl, setWallpaperUrl] = useState(DEFAULT_WALLPAPER_URL);
   // Set initial state to 'dark'
   const [theme, setTheme] = useState<'light' | 'dark'>('dark');
