@@ -25,14 +25,11 @@ export default function DocumentsPage() {
 
 
   return (
-    <div className="flex min-h-screen w-full flex-col relative bg-background">
-       {/* Optional: Background Image (similar to dashboard) */}
-        <div
-            className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat opacity-[0.04] dark:opacity-[0.06]"
-            style={{ backgroundImage: "url('https://picsum.photos/1920/1080?grayscale&blur=1')" }}
-        />
+    // Removed the relative positioning here, layout handles background
+    <div className="flex min-h-screen w-full flex-col bg-transparent">
+       {/* Background Image Removed - Handled in layout.tsx */}
 
-      {/* Content Area */}
+      {/* Content Area - Ensure z-10 is kept */}
       <main className="relative z-10 flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
          {/* Header Card - Consistent with Dashboard */}
          <Card className="mb-4 sm:mb-8 bg-card/80 dark:bg-card/70 backdrop-blur-md shadow-lg rounded-lg border-border/30">
@@ -105,3 +102,4 @@ export default function DocumentsPage() {
     </div>
   );
 }
+
