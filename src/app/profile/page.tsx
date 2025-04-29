@@ -7,7 +7,7 @@ import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { Loader2, Home, UserCog, Upload, AlertCircle } from "lucide-react";
 import Link from "next/link";
-import Image from "next/image";
+import Image from "next/image"; // Keep Image import if needed elsewhere, though Avatar is used
 
 import { Button } from "@/components/ui/button";
 import {
@@ -202,12 +202,13 @@ export default function ProfilePage() {
     } finally {
       setIsSubmitting(false);
     }
-  }
+  } // <-- End of onSubmit function
 
   const formIsDirty = form.formState.isDirty || !!selectedImageFile;
   const formIsValid = form.formState.isValid; // Schema validation status
 
-  return (
+   // Correct placement for the return statement
+   return (
     <div className="flex min-h-screen w-full flex-col bg-transparent">
       <main className="relative z-10 flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
         {/* Header Card */}
@@ -225,6 +226,7 @@ export default function ProfilePage() {
                         <CardDescription className="text-muted-foreground text-xs sm:text-sm">Update your personal information and profile picture.</CardDescription>
                      </div>
                  </div>
+                 {/* Pass current image URL to UserProfile header component */}
                  <UserProfile name={artistName} imageUrl={currentImageUrl} />
             </CardHeader>
          </Card>
@@ -262,6 +264,7 @@ export default function ProfilePage() {
                                 <Avatar className="h-24 w-24 cursor-pointer border-2 border-primary/30 hover:border-primary/60 transition-colors" onClick={handleAvatarClick}>
                                     <AvatarImage src={imagePreviewUrl || currentImageUrl} alt={artistName} />
                                     <AvatarFallback className="text-3xl bg-muted text-muted-foreground">
+                                        {/* Calculate initials based on potentially updated artistName state */}
                                         {artistName?.split(' ').map(n => n[0]).join('').toUpperCase()}
                                     </AvatarFallback>
                                 </Avatar>
@@ -338,6 +341,7 @@ export default function ProfilePage() {
                             <FormItem>
                               <FormLabel>Phone Number (Optional)</FormLabel>
                               <FormControl>
+                                {/* Ensure value is handled correctly for optional/nullable field */}
                                 <Input type="tel" placeholder="e.g., +1 555-123-4567" {...field} value={field.value ?? ""} disabled={isSubmitting}/>
                               </FormControl>
                               <FormDescription>
@@ -359,6 +363,7 @@ export default function ProfilePage() {
                                     placeholder="Tell us a little bit about yourself or your music..."
                                     className="resize-y min-h-[100px]"
                                     {...field}
+                                    // Ensure value is handled correctly for optional/nullable field
                                     value={field.value ?? ""}
                                     disabled={isSubmitting}
                                  />
@@ -388,6 +393,4 @@ export default function ProfilePage() {
       </main>
     </div>
   );
-}
-
-    
+} // <-- End of ProfilePage component
