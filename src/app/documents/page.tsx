@@ -4,20 +4,24 @@ import { UserProfile } from "@/components/common/user-profile";
 // Import CardContent
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FileText, FolderKanban } from "lucide-react";
+import { FileText, FolderKanban, BookOpenText } from "lucide-react"; // Added BookOpenText
 
 export default function DocumentsPage() {
   // Placeholder user data (replace with actual data fetching later)
   const artistName = "Artist Name";
   const artistLogoUrl = "https://picsum.photos/seed/artistlogo/40/40"; // Placeholder logo
 
+   // Separate agreements and handbooks
    const agreements = [
     { title: "Artist Agreement", icon: <FileText className="h-5 w-5 text-primary" /> },
-    { title: "Artist Handbook", icon: <FileText className="h-5 w-5 text-primary" /> },
     { title: "Social Media Management Agreement", icon: <FileText className="h-5 w-5 text-primary" /> },
     { title: "Events Management Agreement", icon: <FileText className="h-5 w-5 text-primary" /> },
     { title: "Merchandising Agreement", icon: <FileText className="h-5 w-5 text-primary" /> },
   ];
+
+   const handbooks = [
+      { title: "Artist Handbook", icon: <BookOpenText className="h-5 w-5 text-primary" /> },
+   ];
 
 
   return (
@@ -46,26 +50,29 @@ export default function DocumentsPage() {
 
         {/* Tabbed Content */}
         <Tabs defaultValue="agreements" className="w-full">
-          <TabsList className="grid w-full grid-cols-1 sm:grid-cols-3 gap-2 mb-6 h-auto bg-card/70 dark:bg-card/60 backdrop-blur-sm border border-border/20 shadow-sm rounded-lg p-1 max-w-md">
-            {/* Only one tab for now */}
+           {/* Adjusted grid cols for two tabs */}
+          <TabsList className="grid w-full grid-cols-2 gap-2 mb-6 h-auto bg-card/70 dark:bg-card/60 backdrop-blur-sm border border-border/20 shadow-sm rounded-lg p-1 max-w-md">
+             {/* Agreements Tab */}
             <TabsTrigger value="agreements" className="py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-subtle rounded-md flex items-center justify-center gap-2">
                 <FileText className="h-4 w-4" /> My Agreements
             </TabsTrigger>
-             {/* Placeholder for potential future tabs
-            <TabsTrigger value="other" disabled className="py-2">Other Docs</TabsTrigger>
-             */}
+             {/* Handbooks Tab */}
+            <TabsTrigger value="handbooks" className="py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-subtle rounded-md flex items-center justify-center gap-2">
+                <BookOpenText className="h-4 w-4" /> Handbooks
+            </TabsTrigger>
           </TabsList>
 
+          {/* Content for Agreements Tab */}
           <TabsContent value="agreements">
              <Card className="bg-card/80 dark:bg-card/70 backdrop-blur-md border-border/30 shadow-md rounded-lg">
                  <CardHeader>
                     <CardTitle className="text-lg font-semibold text-foreground">Your Agreements</CardTitle>
-                    <CardDescription className="text-muted-foreground">Review and download your signed agreements and handbooks.</CardDescription>
+                    <CardDescription className="text-muted-foreground">Review and download your signed agreements.</CardDescription>
                  </CardHeader>
                  <CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                     {agreements.map((agreement, index) => (
                       <AgreementCard
-                        key={index}
+                        key={`agreement-${index}`}
                         title={agreement.title}
                         icon={agreement.icon}
                       />
@@ -73,17 +80,28 @@ export default function DocumentsPage() {
                  </CardContent>
              </Card>
           </TabsContent>
-           {/* Placeholder for potential future tab content
-          <TabsContent value="other">
-             <Card className="bg-card/80 dark:bg-card/70 backdrop-blur-md border-border/30">
-                 <CardHeader><CardTitle>Other Documents</CardTitle></CardHeader>
-                 <CardContent><p className="text-muted-foreground">Coming soon.</p></CardContent>
+
+          {/* Content for Handbooks Tab */}
+           <TabsContent value="handbooks">
+             <Card className="bg-card/80 dark:bg-card/70 backdrop-blur-md border-border/30 shadow-md rounded-lg">
+                 <CardHeader>
+                     <CardTitle className="text-lg font-semibold text-foreground">Handbooks</CardTitle>
+                     <CardDescription className="text-muted-foreground">Access helpful guides and handbooks.</CardDescription>
+                 </CardHeader>
+                 <CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {handbooks.map((handbook, index) => (
+                      <AgreementCard
+                        key={`handbook-${index}`}
+                        title={handbook.title}
+                        icon={handbook.icon}
+                      />
+                    ))}
+                 </CardContent>
              </Card>
           </TabsContent>
-           */}
+
         </Tabs>
       </main>
     </div>
   );
 }
-
