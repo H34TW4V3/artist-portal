@@ -78,7 +78,8 @@ export default function HomePage() {
                         // Center align text
                         <div className="text-center sm:text-left">
                             <CardTitle className="text-xl sm:text-3xl font-bold tracking-tight text-primary">
-                            Welcome, {user.displayName || user.email?.split('@')[0] || 'Artist'}! // Informal Greeting
+                            // Removed informal greeting: {user.displayName || user.email?.split('@')[0] || 'Artist'}!
+                            Artist Hub // Changed back to static title or remove altogether if not needed
                             </CardTitle>
                             <CardDescription className="text-muted-foreground text-xs sm:text-sm">
                             Your central place for management and insights.

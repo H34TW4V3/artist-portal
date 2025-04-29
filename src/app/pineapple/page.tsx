@@ -29,8 +29,7 @@ export default function PineapplePage() {
     const router = useRouter();
     // State for active tab
     const [activeTab, setActiveTab] = useState("forum"); // Default to forum tab
-    // State for artist name
-    const [artistName, setArtistName] = useState("Artist"); // Default name
+    // Removed artistName state
 
     // Redirect unauthenticated users
     useEffect(() => {
@@ -38,17 +37,6 @@ export default function PineapplePage() {
             router.replace('/login');
         }
     }, [user, loading, router]);
-
-
-    // Update artist name from user context when available
-   useEffect(() => {
-       if (user?.displayName) {
-           setArtistName(user.displayName);
-       } else if (user?.email) {
-           setArtistName(user.email.split('@')[0]);
-       }
-       // TODO: Fetch from Firestore profile if needed
-   }, [user]);
 
     // Handler for successful post creation
     const handlePostSuccess = () => {
@@ -88,8 +76,8 @@ export default function PineapplePage() {
                             <div className="text-center sm:text-left">
                                  {/* Center align text */}
                                 <CardTitle className="text-xl sm:text-3xl font-bold tracking-tight text-primary text-center sm:text-left">
-                                     {/* Display the artist's name */}
-                                    {artistName}'s Pineapple Corner
+                                     {/* Display only the static title, removed artist name */}
+                                    Pineapple Corner
                                 </CardTitle>
                                  {/* Center align text */}
                                 <CardDescription className="text-muted-foreground text-xs sm:text-sm text-center sm:text-left">

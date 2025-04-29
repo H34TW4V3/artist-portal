@@ -32,8 +32,7 @@ export default function DocumentsPage() {
   const router = useRouter();
   // State to manage the active tab
   const [activeTab, setActiveTab] = useState<keyof typeof tabHeaders>("agreements");
-  // State for artist name
-  const [artistName, setArtistName] = useState("Artist"); // Default name
+  // Removed artistName state
 
    // Redirect unauthenticated users
    useEffect(() => {
@@ -41,16 +40,6 @@ export default function DocumentsPage() {
         router.replace('/login');
     }
   }, [user, loading, router]);
-
-   // Update artist name from user context when available
-   useEffect(() => {
-       if (user?.displayName) {
-           setArtistName(user.displayName);
-       } else if (user?.email) {
-           setArtistName(user.email.split('@')[0]);
-       }
-       // TODO: Fetch from Firestore profile if needed
-   }, [user]);
 
   // Get the current header content based on activeTab
   const currentHeader = tabHeaders[activeTab] || tabHeaders.agreements; // Default to agreements
@@ -99,8 +88,8 @@ export default function DocumentsPage() {
                 {/* Display title and description for the active tab */}
                  {/* Center align text */}
                 <CardTitle className="text-xl sm:text-3xl font-bold tracking-tight text-primary text-center sm:text-left">
-                   {/* Display the artist's name and the current tab title */}
-                   {artistName} - {currentHeader.title}
+                   {/* Display only the current tab title, removed artist name */}
+                   {currentHeader.title}
                 </CardTitle>
                  {/* Center align text */}
                 <CardDescription className="text-muted-foreground text-xs sm:text-sm text-center sm:text-left">

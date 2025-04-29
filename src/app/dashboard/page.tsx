@@ -39,8 +39,7 @@ export default function DashboardPage() {
   const router = useRouter();
   // State to manage the active tab
   const [activeTab, setActiveTab] = useState<keyof typeof tabHeaders>("statistics");
-  // State for artist name, fetched asynchronously
-  const [artistName, setArtistName] = useState("Artist"); // Default name
+  // Removed artistName state as it's no longer used in the header
 
    // Redirect unauthenticated users
    useEffect(() => {
@@ -48,19 +47,6 @@ export default function DashboardPage() {
         router.replace('/login');
     }
   }, [user, loading, router]);
-
-  // Update artist name from user context when available
-  useEffect(() => {
-    if (user?.displayName) {
-      setArtistName(user.displayName);
-    } else if (user?.email) {
-       // Fallback to part of the email if display name isn't set
-       setArtistName(user.email.split('@')[0]);
-    }
-    // TODO: Ideally, fetch the name from the Firestore profile for accuracy
-    // This might require lifting state from UserProfile or a shared context
-  }, [user]);
-
 
   // Get the current header content based on activeTab
   const currentHeader = tabHeaders[activeTab] || tabHeaders.statistics; // Default to statistics
@@ -91,8 +77,8 @@ export default function DashboardPage() {
                 {/* Display title and description for the active tab */}
                  {/* Center align text */}
                 <CardTitle className="text-xl sm:text-3xl font-bold tracking-tight text-primary text-center sm:text-left">
-                   {/* Display the artist's name and the current tab title */}
-                   {artistName} - {currentHeader.title}
+                   {/* Display only the current tab title, removed artist name */}
+                   {currentHeader.title}
                 </CardTitle>
                 <CardDescription className="text-muted-foreground text-xs sm:text-sm text-center sm:text-left"> {/* Ensure alignment */}
                   {currentHeader.description}
