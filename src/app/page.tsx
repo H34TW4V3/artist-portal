@@ -5,9 +5,8 @@ import { EventsView } from "@/components/dashboard/events-view";
 import { UserProfile } from "@/components/common/user-profile"; // Import UserProfile
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Music, ListMusic, CalendarClock, BarChart3, Home } from "lucide-react"; // Added Home icon
-import Link from "next/link"; // Import Link
-import { Button } from "@/components/ui/button"; // Import Button
+import { Music, ListMusic, CalendarClock, BarChart3 } from "lucide-react"; // Removed Home icon import
+// Removed Link and Button imports as they are no longer needed for the Home icon here
 
 export default function DashboardPage() {
   // Placeholder user data (replace with actual data fetching later)
@@ -21,17 +20,12 @@ export default function DashboardPage() {
 
       {/* Content Area - Ensure z-10 is kept if needed, but layout handles layering */}
       <main className="relative z-10 flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
-         {/* Header Card - Updated to include UserProfile and Home Icon */}
+         {/* Header Card - Updated to include UserProfile and REMOVE Home Icon */}
          <Card className="mb-4 sm:mb-8 bg-card/80 dark:bg-card/70 backdrop-blur-md shadow-lg rounded-lg border-border/30">
              <CardHeader className="flex flex-row items-center justify-between gap-4">
                  <div className="flex items-center gap-4">
-                      {/* Home Icon Link */}
-                     <Link href="/" passHref legacyBehavior>
-                         <Button variant="ghost" size="icon" className="h-9 w-9 text-primary hover:bg-primary/10 active:bg-primary/20" aria-label="Go to Dashboard">
-                           <Home className="h-5 w-5" />
-                         </Button>
-                     </Link>
-                     <Music className="h-8 w-8 text-primary hidden sm:block" /> {/* Hide icon on small screens if profile is shown */}
+                     {/* Home Icon Link Removed */}
+                     <Music className="h-8 w-8 text-primary hidden sm:block" /> {/* Keep music icon */}
                      <div>
                         {/* Updated title to informal greeting */}
                         <CardTitle className="text-xl sm:text-3xl font-bold tracking-tight text-primary">Welcome back, {artistName}!</CardTitle>
@@ -80,3 +74,4 @@ export default function DashboardPage() {
     </div>
   );
 }
+

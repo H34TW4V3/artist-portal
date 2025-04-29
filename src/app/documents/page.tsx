@@ -37,10 +37,12 @@ export default function DocumentsPage() {
          <Card className="mb-4 sm:mb-8 bg-card/80 dark:bg-card/70 backdrop-blur-md shadow-lg rounded-lg border-border/30">
              <CardHeader className="flex flex-row items-center justify-between gap-4">
                  <div className="flex items-center gap-4">
-                      {/* Home Icon Link */}
+                      {/* Home Icon Link - Made larger */}
                      <Link href="/" passHref legacyBehavior>
-                          <Button variant="ghost" size="icon" className="h-9 w-9 text-primary hover:bg-primary/10 active:bg-primary/20" aria-label="Go to Dashboard">
-                             <Home className="h-5 w-5" />
+                          {/* Explicitly set h-10 w-10 for larger size (same as size="icon") */}
+                          <Button variant="ghost" size="icon" className="h-10 w-10 text-primary hover:bg-primary/10 active:bg-primary/20" aria-label="Go to Dashboard">
+                             {/* Use slightly larger icon inside the button */}
+                             <Home className="h-6 w-6" />
                           </Button>
                      </Link>
                      <FolderKanban className="h-8 w-8 text-primary hidden sm:block" />
