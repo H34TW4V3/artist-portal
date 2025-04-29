@@ -11,7 +11,7 @@ import { AuthProvider } from '@/context/auth-context'; // Import AuthProvider
 import { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation'; // Import usePathname
 
-// Default wallpaper URL
+// Default wallpaper URL (used for non-login pages)
 const DEFAULT_WALLPAPER_URL = "https://t4.ftcdn.net/jpg/08/62/54/35/360_F_862543518_D0LQEQDZqkbTNM8CMB6iuiauhfaj4wr6.jpg";
 const LOCAL_STORAGE_WALLPAPER_KEY = 'artistHubWallpaperUrl';
 const LOCAL_STORAGE_THEME_KEY = 'artistHubTheme';
@@ -92,11 +92,13 @@ export default function RootLayout({
       </head>
       <body className="font-sans antialiased bg-background text-foreground relative min-h-screen">
         <AuthProvider> {/* Wrap content with AuthProvider */}
-            {/* Global Background Image */}
-            <div
-                className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat opacity-[0.15] dark:opacity-[0.20] transition-all duration-500 ease-in-out" // Adjusted opacity
-                style={{ backgroundImage: `url('${wallpaperUrl}')` }}
-            />
+            {/* Global Background Image - Conditionally render based on path */}
+            {pathname !== '/login' && (
+                <div
+                    className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat opacity-[0.15] dark:opacity-[0.20] transition-all duration-500 ease-in-out" // Adjusted opacity
+                    style={{ backgroundImage: `url('${wallpaperUrl}')` }}
+                />
+            )}
 
             {/* Content wrapper */}
             <div className="relative z-10 min-h-screen flex flex-col">

@@ -9,6 +9,9 @@ import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { Loader2 } from 'lucide-react'; // Import Loader2 for loading animation
 
+// Placeholder URL for the GIF - replace with actual URL
+const LOGIN_BACKGROUND_GIF_URL = "https://i.pinimg.com/originals/c5/34/8b/c5348b195b53f3e5b7463394728ee83e.gif"; // Replace with actual GIF URL
+
 // Custom Login Icon based on the provided image
 const LoginIcon = () => (
     // Add subtle pulse animation to the icon
@@ -66,10 +69,16 @@ export default function LoginPage() {
 
     // If not loading and no user, show the login form
     return (
-        <div className="flex min-h-screen w-full items-center justify-center bg-transparent p-4 relative z-10">
-            {/* Add entrance animation to the card container */}
+        <div className="flex min-h-screen w-full items-center justify-center p-4 relative"> {/* Removed bg-transparent, z-10 */}
+             {/* Specific Background for Login Page */}
+             <div
+                 className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat"
+                 style={{ backgroundImage: `url('${LOGIN_BACKGROUND_GIF_URL}')` }}
+             />
+
+            {/* Card container - Ensure it sits above the background */}
             <div className={cn(
-                "w-full max-w-md rounded-xl border border-border/30 shadow-xl overflow-hidden animate-fade-in-up bg-card/20 dark:bg-card/10" // Added background opacity
+                "relative z-10 w-full max-w-md rounded-xl border border-border/30 shadow-xl overflow-hidden animate-fade-in-up bg-card/20 dark:bg-card/10" // Added background opacity, ensure relative and z-10
             )}>
                 {/* Card Header */}
                  <CardHeader className="items-center text-center p-6 border-b border-border/30"> {/* Removed background */}
