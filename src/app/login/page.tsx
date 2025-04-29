@@ -24,14 +24,15 @@ export default function LoginPage() {
     const router = useRouter();
 
     useEffect(() => {
+        // Redirect authenticated users away from login page
         if (!loading && user) {
-            // If logged in, redirect to the main app page (e.g., '/')
-            router.replace('/'); // Use replace to avoid login page in history
+            router.replace('/'); // Redirect to home page
         }
     }, [user, loading, router]);
 
 
-    // Show loading state while checking auth status
+    // Show loading state while checking auth status initially
+    // The AuthProvider handles the main loading indicator, but this prevents rendering the form prematurely
     if (loading) {
         return (
              <div className="flex min-h-screen w-full items-center justify-center bg-gradient-to-br from-background via-muted/20 to-background p-4">
@@ -40,7 +41,8 @@ export default function LoginPage() {
         )
     }
 
-     // If user is already determined and exists, null is returned to let useEffect handle redirect
+     // If user is already determined and exists, let useEffect handle redirect
+     // Render nothing while redirecting
      if (user) {
          return null;
      }
@@ -53,7 +55,7 @@ export default function LoginPage() {
                 "w-full max-w-md rounded-xl border border-border/30 bg-card/80 dark:bg-card/70 backdrop-blur-lg shadow-xl overflow-hidden" // No background, just blur and border
             )}>
                 {/* Card Header */}
-                <CardHeader className="items-center text-center p-6 border-b border-border/30">
+                 <CardHeader className="items-center text-center p-6 border-b border-border/30"> {/* Removed background */}
                     <LoginIcon /> {/* Make icon larger */}
                     <CardTitle className="text-2xl font-semibold tracking-tight text-primary">Artist Hub Login</CardTitle>
                     <CardDescription className="text-muted-foreground text-sm">

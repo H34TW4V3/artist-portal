@@ -6,7 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { Loader2 } from "lucide-react";
-import { useRouter } from "next/navigation"; // Use next/navigation for App Router
+import { useRouter } from "next/navigation"; // Keep useRouter if needed for redirect parameter handling
 
 import { Button } from "@/components/ui/button";
 import {
@@ -34,7 +34,7 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 export function LoginForm() {
   const { login } = useAuth(); // Get login function from context
   const { toast } = useToast();
-  const router = useRouter();
+  const router = useRouter(); // Keep for potential future use (e.g., reading redirect param)
   const [isLoading, setIsLoading] = useState(false);
   const [isForgotPasswordModalOpen, setIsForgotPasswordModalOpen] = useState(false);
 
@@ -58,8 +58,9 @@ export function LoginForm() {
         variant: "default",
          duration: 2000, // Show for 2 seconds
       });
-      // Redirect to the main application page on successful login
-      router.push("/"); // Redirect to home/dashboard page
+      // NO LONGER NEEDED: Redirect is handled by middleware/AuthProvider state change
+      // const redirectPath = router.query.redirect || '/'; // Get redirect path or default to home
+      // router.push(redirectPath); // Redirect after successful login
 
     } catch (error) {
       console.error("Login failed:", error);

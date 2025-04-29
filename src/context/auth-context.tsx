@@ -3,7 +3,8 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { User as FirebaseUser } from 'firebase/auth';
-import { onAuthStateChange, login as fbLogin, logout as fbLogout } from '@/services/auth'; // Import auth functions
+// Import specific functions needed: login, logout, onAuthStateChange
+import { onAuthStateChange, login as fbLogin, logout as fbLogout } from '@/services/auth';
 import { Loader2 } from 'lucide-react'; // Import Loader2
 
 interface AuthContextType {
@@ -24,54 +25,54 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [loading, setLoading] = useState(true); // Start loading initially
 
   useEffect(() => {
-    // Subscribe to Firebase auth state changes
+    // Subscribe using the updated onAuthStateChange from services/auth
+    // This function now handles cookie setting/removal internally
     const unsubscribe = onAuthStateChange((firebaseUser) => {
       setUser(firebaseUser);
       setLoading(false); // Set loading to false once the initial state is determined
-      console.log("AuthProvider: Auth state changed, user:", firebaseUser?.email);
+      console.log("AuthProvider: Auth state updated via listener, user:", firebaseUser?.email);
     });
 
     // Cleanup subscription on unmount
     return () => unsubscribe();
-  }, []);
+  }, []); // Empty dependency array ensures this runs only once on mount
 
+  // Login function remains the same, relies on service function which now sets cookie
   const login = async (email: string, password: string): Promise<FirebaseUser> => {
-    setLoading(true); // Set loading true during login attempt
+    // setLoading(true); // Optionally set loading during the attempt
     try {
       const loggedInUser = await fbLogin(email, password);
-      // State will update via onAuthStateChanged listener
+      // State update is handled by the onAuthStateChange listener
       return loggedInUser;
     } catch (error) {
-      setLoading(false); // Set loading false on login error
+      // setLoading(false); // Set loading false on error if you started it
       throw error; // Re-throw error to be caught by the caller
     }
-     // Loading state will be set to false by the onAuthStateChanged listener upon success
   };
 
+  // Logout function remains the same, relies on service function which now removes cookie
   const logout = async (): Promise<void> => {
-    setLoading(true); // Set loading true during logout attempt
+     // setLoading(true); // Optionally set loading during the attempt
     try {
       await fbLogout();
-      // State will update via onAuthStateChanged listener
+      // State update is handled by the onAuthStateChange listener
     } catch (error) {
-      setLoading(false); // Set loading false on logout error
+      // setLoading(false); // Set loading false on error if you started it
       throw error; // Re-throw error
     }
-     // Loading state will be set to false by the onAuthStateChanged listener upon success
   };
 
-  // Display loading indicator while checking auth state
+  // Display loading indicator only during the initial auth state check
   if (loading) {
     return (
       <div className="flex min-h-screen w-full items-center justify-center bg-background p-4">
         <Loader2 className="h-16 w-16 animate-spin text-primary" />
-        {/* Optional: Add a message */}
-        {/* <p className="mt-4 text-muted-foreground">Initializing...</p> */}
       </div>
     );
   }
 
 
+  // Once initial loading is done, render the context provider with children
   return (
     <AuthContext.Provider value={{ user, loading, login, logout }}>
       {children}

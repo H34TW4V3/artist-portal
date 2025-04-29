@@ -9,7 +9,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { app } from "@/services/firebase-config"; // Import your Firebase config
-import { useAuth } from "@/context/auth-context"; // Import useAuth to get the current user
+import { useAuth } from "@/context/auth-context"; // Import useAuth to get the current user and logout
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -42,13 +42,13 @@ const profileSchema = z.object({
 
 // Define the component as a default export
 export default function UserProfile() {
-  const { user, logout } = useAuth(); // Get user and logout function from context
+  const { user, logout, loading: authLoading } = useAuth(); // Get user, logout function, and auth loading state from context
   const { toast } = useToast();
   const db = getFirestore(app); // Get Firestore instance
   const storage = getStorage(app); // Get Storage instance
 
   const [profileData, setProfileData] = useState<ProfileFormValues | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isProfileLoading, setIsProfileLoading] = useState(true); // Separate loading state for profile data
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false); // For profile update loading state
@@ -57,12 +57,14 @@ export default function UserProfile() {
   // Fetch profile data from Firestore
   useEffect(() => {
     const fetchProfileData = async () => {
-      if (!user) {
-        setIsLoading(false);
-        return; // No user logged in
+      // Only fetch if the user exists and auth is not loading
+      if (authLoading || !user) {
+        setIsProfileLoading(false); // Stop loading if auth is loading or no user
+        if (!user) setProfileData(null); // Clear profile data if no user
+        return;
       }
 
-      setIsLoading(true);
+      setIsProfileLoading(true); // Start loading profile data
       try {
         const userDocRef = doc(db, "users", user.uid); // Use user's UID
         const docSnap = await getDoc(userDocRef);
@@ -112,19 +114,19 @@ export default function UserProfile() {
             phoneNumber: null,
         });
       } finally {
-        setIsLoading(false);
+        setIsProfileLoading(false); // Finish loading profile data
       }
     };
 
     fetchProfileData();
-  }, [user, db, toast]); // Re-fetch if user or db changes
+  }, [user, db, toast, authLoading]); // Include authLoading in dependency array
 
-  // Handle user logout
+  // Handle user logout using the function from context
   const handleLogout = async () => {
     try {
-      await logout();
-      toast({ title: "Logged Out", description: "You have been successfully logged out.", variant: "default" });
-      // No explicit redirect needed here, AuthProvider/middleware handles it
+      await logout(); // Call logout from context (handles cookie removal)
+      toast({ title: "Logged Out", description: "You have been successfully logged out.", variant: "default", duration: 2000 });
+      // No explicit redirect needed here, middleware/AuthProvider handles it
     } catch (error) {
       console.error("Logout failed:", error);
       toast({ title: "Logout Failed", description: "Could not log out. Please try again.", variant: "destructive" });
@@ -184,18 +186,34 @@ export default function UserProfile() {
     return name?.split(' ').map(n => n[0]).join('').toUpperCase() || 'U'; // Default to 'U'
   };
 
-  const displayName = profileData?.name || (user?.email ? user.email.split('@')[0] : 'User');
-  const displayImageUrl = profileData?.imageUrl || undefined;
+  // Combine auth loading and profile loading for the skeleton display
+  const isLoading = authLoading || isProfileLoading;
+
+  // Determine display name and image URL based on loaded data or user defaults
+  const displayName = profileData?.name || user?.displayName || (user?.email ? user.email.split('@')[0] : 'User');
+  const displayImageUrl = profileData?.imageUrl || user?.photoURL || undefined;
+
+
+  // Don't render anything if authentication is still loading and no user is known yet
+  // This prevents brief rendering of the component before potential redirection
+  if (authLoading && !user) {
+      return <Skeleton className="h-12 w-12 rounded-full" />; // Show skeleton during initial auth check
+  }
+
+  // If not loading and no user exists (e.g., after failed login or logout), render nothing or a placeholder
+  if (!authLoading && !user) {
+      return null; // Or a placeholder if preferred
+  }
 
 
   return (
     <div className="flex items-center gap-2">
       {isLoading ? (
-        <Skeleton className="h-10 w-10 rounded-full" />
+        <Skeleton className="h-12 w-12 rounded-full" /> // Increased size
       ) : (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="relative h-10 w-10 rounded-full p-0 border-2 border-primary/30 hover:border-primary/60 transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+            <Button variant="ghost" className="relative h-12 w-12 rounded-full p-0 border-2 border-primary/30 hover:border-primary/60 transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"> {/* Increased size */}
               <Avatar className="h-full w-full">
                 <AvatarImage src={displayImageUrl} alt={displayName} />
                 <AvatarFallback className="bg-muted text-muted-foreground font-semibold">
@@ -221,6 +239,10 @@ export default function UserProfile() {
                <KeyRound className="mr-2 h-4 w-4" />
               <span>Change Password</span>
             </DropdownMenuItem>
+             <DropdownMenuItem onClick={() => router.push('/documents')} className="cursor-pointer focus:bg-accent focus:text-accent-foreground">
+                <FileText className="mr-2 h-4 w-4" /> {/* Added Documents Link */}
+                <span>Key Documents</span>
+            </DropdownMenuItem>
             <DropdownMenuSeparator className="bg-border/50" />
             <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive focus:bg-destructive/10 cursor-pointer">
               <LogOut className="mr-2 h-4 w-4" />
@@ -240,7 +262,7 @@ export default function UserProfile() {
                    </DialogDescription>
                </DialogHeader>
                 {/* Pass profile data and update function to the form */}
-                {profileData && !isLoading && ( // Render form only when data is loaded
+                {profileData && !isProfileLoading && ( // Render form only when profile data is loaded
                     <ProfileForm
                         key={user?.uid || 'profile-form'} // Ensure remount on user change if needed
                         initialData={profileData}
@@ -253,7 +275,7 @@ export default function UserProfile() {
                     />
                 )}
                  {/* Show loading indicator inside modal while profile data loads initially */}
-                 {isLoading && (
+                 {isProfileLoading && ( // Use profile-specific loading state here
                      <div className="flex justify-center items-center p-10">
                         <Loader2 className="h-8 w-8 animate-spin text-primary" />
                      </div>

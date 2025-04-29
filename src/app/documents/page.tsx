@@ -1,5 +1,5 @@
 
-"use client"; // Add use client because we use state
+"use client"; // Add use client because we use state and hooks
 
 import { useState, useEffect } from "react"; // Import useEffect
 import { AgreementCard } from "@/components/documents/agreement-card";
@@ -10,6 +10,8 @@ import { FileText, FolderKanban, BookOpenText, Home } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/auth-context"; // Import useAuth
+import { useRouter } from 'next/navigation'; // Import useRouter
+import { Loader2 } from 'lucide-react'; // Import Loader2
 
 // Define content for each tab's header
 const tabHeaders = {
@@ -26,11 +28,19 @@ const tabHeaders = {
 };
 
 export default function DocumentsPage() {
-  const { user } = useAuth(); // Get user info
+  const { user, loading } = useAuth(); // Get user info and loading state
+  const router = useRouter();
   // State to manage the active tab
   const [activeTab, setActiveTab] = useState<keyof typeof tabHeaders>("agreements");
   // State for artist name
   const [artistName, setArtistName] = useState("Artist"); // Default name
+
+   // Redirect unauthenticated users
+   useEffect(() => {
+    if (!loading && !user) {
+        router.replace('/login');
+    }
+  }, [user, loading, router]);
 
    // Update artist name from user context when available
    useEffect(() => {
@@ -57,11 +67,22 @@ export default function DocumentsPage() {
     { title: "Artist Handbook", icon: <BookOpenText className="h-5 w-5 text-primary" /> },
   ];
 
+   // Show loading indicator while checking auth state or if user is not yet available
+   if (loading || !user) {
+    return (
+         <div className="flex min-h-screen w-full items-center justify-center bg-background p-4">
+             <Loader2 className="h-16 w-16 animate-spin text-primary" />
+        </div>
+    );
+  }
+
+
   return (
     <div className="flex min-h-screen w-full flex-col bg-transparent">
       <main className="relative z-10 flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
         {/* Header Card - Dynamically updates based on active tab */}
         <Card className="mb-4 sm:mb-8 bg-card/80 dark:bg-card/70 backdrop-blur-md shadow-lg rounded-lg border-border/30">
+           {/* Center align text */}
           <CardHeader className="flex flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-4">
               <Link href="/" passHref legacyBehavior>
@@ -73,13 +94,16 @@ export default function DocumentsPage() {
               {/* Display icon for the active tab */}
               {currentHeader.icon}
               {/* Added text-center sm:text-left */}
+               {/* Center align text */}
               <div className="text-center sm:text-left">
                 {/* Display title and description for the active tab */}
-                <CardTitle className="text-xl sm:text-3xl font-bold tracking-tight text-primary">
+                 {/* Center align text */}
+                <CardTitle className="text-xl sm:text-3xl font-bold tracking-tight text-primary text-center sm:text-left">
                    {/* Display the artist's name and the current tab title */}
                    {artistName} - {currentHeader.title}
                 </CardTitle>
-                <CardDescription className="text-muted-foreground text-xs sm:text-sm">
+                 {/* Center align text */}
+                <CardDescription className="text-muted-foreground text-xs sm:text-sm text-center sm:text-left">
                   {currentHeader.description}
                 </CardDescription>
               </div>

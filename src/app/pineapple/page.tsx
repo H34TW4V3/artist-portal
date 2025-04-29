@@ -11,6 +11,8 @@ import { CreatePostForm } from "@/components/pineapple/create-post-form";
 import { Home, MessageSquarePlus, Users } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/context/auth-context"; // Import useAuth
+import { useRouter } from 'next/navigation'; // Import useRouter
+import { Loader2 } from 'lucide-react'; // Import Loader2
 
 // Updated Pineapple SVG Icon based on the requested style (wired/gradient)
 const PineappleIcon = () => (
@@ -23,11 +25,20 @@ const PineappleIcon = () => (
 
 
 export default function PineapplePage() {
-    const { user } = useAuth(); // Get user info
+    const { user, loading } = useAuth(); // Get user info and loading state
+    const router = useRouter();
     // State for active tab
     const [activeTab, setActiveTab] = useState("forum"); // Default to forum tab
     // State for artist name
     const [artistName, setArtistName] = useState("Artist"); // Default name
+
+    // Redirect unauthenticated users
+    useEffect(() => {
+        if (!loading && !user) {
+            router.replace('/login');
+        }
+    }, [user, loading, router]);
+
 
     // Update artist name from user context when available
    useEffect(() => {
@@ -49,12 +60,22 @@ export default function PineapplePage() {
         }
     };
 
+    // Show loading indicator while checking auth state or if user is not yet available
+    if (loading || !user) {
+        return (
+             <div className="flex min-h-screen w-full items-center justify-center bg-background p-4">
+                 <Loader2 className="h-16 w-16 animate-spin text-primary" />
+            </div>
+        );
+    }
+
 
     return (
         <div className="flex min-h-screen w-full flex-col bg-transparent">
             <main className="relative z-10 flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
                 {/* Header Card */}
                 <Card className="mb-4 sm:mb-8 bg-card/80 dark:bg-card/70 backdrop-blur-md shadow-lg rounded-lg border-border/30">
+                    {/* Center align text */}
                     <CardHeader className="flex flex-row items-center justify-between gap-4">
                         <div className="flex items-center gap-4">
                             <Link href="/" passHref legacyBehavior>
@@ -63,12 +84,15 @@ export default function PineapplePage() {
                                 </Button>
                             </Link>
                              <PineappleIcon /> {/* Use the Pineapple Icon component */}
+                             {/* Center align text */}
                             <div className="text-center sm:text-left">
-                                <CardTitle className="text-xl sm:text-3xl font-bold tracking-tight text-primary">
+                                 {/* Center align text */}
+                                <CardTitle className="text-xl sm:text-3xl font-bold tracking-tight text-primary text-center sm:text-left">
                                      {/* Display the artist's name */}
                                     {artistName}'s Pineapple Corner
                                 </CardTitle>
-                                <CardDescription className="text-muted-foreground text-xs sm:text-sm">
+                                 {/* Center align text */}
+                                <CardDescription className="text-muted-foreground text-xs sm:text-sm text-center sm:text-left">
                                     Connect, collaborate, and share ideas with fellow artists.
                                 </CardDescription>
                             </div>

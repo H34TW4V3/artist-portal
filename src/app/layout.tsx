@@ -15,6 +15,12 @@ const DEFAULT_WALLPAPER_URL = "https://t4.ftcdn.net/jpg/08/62/54/35/360_F_862543
 const LOCAL_STORAGE_WALLPAPER_KEY = 'artistHubWallpaperUrl';
 const LOCAL_STORAGE_THEME_KEY = 'artistHubTheme';
 
+// Basic metadata structure - Note: 'use client' components cannot export metadata directly
+// export const metadata: Metadata = {
+//   title: 'Artist Hub',
+//   description: 'Manage your music releases and view streaming statistics.',
+// };
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -71,6 +77,7 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${GeistSans.variable} ${isMounted ? theme : 'dark'}`}>
       <head>
+         {/* Keep basic metadata for client components */}
          <title>Artist Hub</title>
          <meta name="description" content="Manage your music releases and view streaming statistics." />
       </head>
@@ -84,7 +91,7 @@ export default function RootLayout({
 
             {/* Content wrapper */}
             <div className="relative z-10 min-h-screen flex flex-col">
-                 {children}
+                 {children} {/* Render the page content */}
             </div>
 
             {/* Settings Menu and Wallpaper Modal - Render only when authenticated or needed */}

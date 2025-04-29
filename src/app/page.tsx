@@ -8,6 +8,9 @@ import { LayoutDashboard, ListMusic, CalendarClock, FileText, UserCog, Settings 
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/auth-context"; // Import useAuth
 import { Skeleton } from "@/components/ui/skeleton"; // Import Skeleton
+import { useRouter } from 'next/navigation'; // Import useRouter
+import { useEffect } from 'react'; // Import useEffect
+import { Loader2 } from 'lucide-react'; // Import Loader2 for checking auth state
 
 // Updated Pineapple SVG Icon based on the requested style (wired/gradient)
 const PineappleIcon = () => (
@@ -27,26 +30,30 @@ const navItems = [
 
 export default function HomePage() {
     const { user, loading } = useAuth(); // Use the auth context
+    const router = useRouter();
 
-    // Handle loading state
+    useEffect(() => {
+        // Redirect unauthenticated users to login page after loading is complete
+        if (!loading && !user) {
+            router.replace('/login');
+        }
+    }, [user, loading, router]);
+
+    // Handle loading state more explicitly on this page
     if (loading) {
          return (
-             <div className="flex min-h-screen w-full flex-col bg-transparent p-4 md:p-8 items-center justify-center">
-                 <Skeleton className="h-24 w-full max-w-4xl mb-8" />
-                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6 w-full max-w-4xl">
-                     {Array.from({ length: 3 }).map((_, index) => (
-                         <Skeleton key={index} className="h-48 w-full rounded-lg" />
-                     ))}
-                 </div>
+              <div className="flex min-h-screen w-full items-center justify-center bg-background p-4">
+                <Loader2 className="h-16 w-16 animate-spin text-primary" />
              </div>
          );
     }
 
-    // If not loading and no user, AuthProvider/middleware should handle redirect
-    // This component assumes user is authenticated if it renders past the loading state
-    // UserProfile component fetches its own data, no need to pass props here
+    // If not loading and no user, redirection is happening, render null or a minimal placeholder
+    if (!user) {
+        return null; // Or a minimal loading/redirecting indicator if preferred
+    }
 
-
+    // If user is logged in, render the main content
   return (
     <div className="flex min-h-screen w-full flex-col bg-transparent">
       <main className="relative z-10 flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
@@ -57,9 +64,10 @@ export default function HomePage() {
             <div className="flex items-center gap-4">
                {/* Placeholder Icon - could be a music note or app logo */}
                 <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="hsl(var(--primary))" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-8 w-8 hidden sm:block"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+                 {/* Center align text */}
                 <div className="text-center sm:text-left">
                     <CardTitle className="text-xl sm:text-3xl font-bold tracking-tight text-primary">
-                     Artist Hub
+                     Welcome, {user.displayName || user.email?.split('@')[0] || 'Artist'}! {/* Informal Greeting */}
                     </CardTitle>
                     <CardDescription className="text-muted-foreground text-xs sm:text-sm">
                     Your central place for management and insights.
