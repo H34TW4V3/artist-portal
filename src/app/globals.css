@@ -3,36 +3,47 @@
 @tailwind utilities;
 
 body {
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif; /* Use Geist Sans */
 }
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 0 0% 3.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 0 0% 3.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 3.9%;
-    --primary: 0 0% 9%;
-    --primary-foreground: 0 0% 98%;
-    --secondary: 0 0% 96.1%;
-    --secondary-foreground: 0 0% 9%;
-    --muted: 0 0% 96.1%;
-    --muted-foreground: 0 0% 45.1%;
-    --accent: 0 0% 96.1%;
-    --accent-foreground: 0 0% 9%;
-    --destructive: 0 84.2% 60.2%;
+    --background: 0 0% 100%; /* White background */
+    --foreground: 240 10% 3.9%; /* Darker Gray text */
+
+    --card: 0 0% 100%; /* White card background */
+    --card-foreground: 240 10% 3.9%; /* Darker Gray text on card */
+
+    --popover: 0 0% 100%; /* White popover background */
+    --popover-foreground: 240 10% 3.9%; /* Darker Gray text on popover */
+
+    --primary: 235 63% 30%; /* Dark Blue (#1A237E) */
+    --primary-foreground: 0 0% 98%; /* White text on primary */
+
+    --secondary: 0 0% 94%; /* Lighter Gray for subtle backgrounds/borders (#EFEFEF - slightly lighter than E0E0E0) */
+    --secondary-foreground: 240 5% 25%; /* Dark text on secondary */
+
+    --muted: 0 0% 94%; /* Lighter Gray for muted elements */
+    --muted-foreground: 240 4% 46%; /* Gray text on muted */
+
+    --accent: 187 100% 42%; /* Teal (#00BCD4) */
+    --accent-foreground: 0 0% 98%; /* White text on accent */
+
+    --destructive: 0 84.2% 60.2%; /* Default Red */
     --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 89.8%;
-    --input: 0 0% 89.8%;
-    --ring: 0 0% 3.9%;
+
+    --border: 0 0% 88%; /* Light Gray (#E0E0E0) border */
+    --input: 0 0% 88%; /* Light Gray (#E0E0E0) input border */
+    --ring: 187 100% 42%; /* Teal for focus rings */
+
+    --radius: 0.5rem;
+
     --chart-1: 12 76% 61%;
     --chart-2: 173 58% 39%;
     --chart-3: 197 37% 24%;
     --chart-4: 43 74% 66%;
     --chart-5: 27 87% 67%;
-    --radius: 0.5rem;
+
     --sidebar-background: 0 0% 98%;
     --sidebar-foreground: 240 5.3% 26.1%;
     --sidebar-primary: 240 5.9% 10%;
@@ -42,31 +53,45 @@ body {
     --sidebar-border: 220 13% 91%;
     --sidebar-ring: 217.2 91.2% 59.8%;
   }
+
   .dark {
-    --background: 0 0% 3.9%;
-    --foreground: 0 0% 98%;
-    --card: 0 0% 3.9%;
-    --card-foreground: 0 0% 98%;
-    --popover: 0 0% 3.9%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 0 0% 98%;
-    --primary-foreground: 0 0% 9%;
-    --secondary: 0 0% 14.9%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 0 0% 14.9%;
-    --muted-foreground: 0 0% 63.9%;
-    --accent: 0 0% 14.9%;
-    --accent-foreground: 0 0% 98%;
-    --destructive: 0 62.8% 30.6%;
+    /* Define dark mode colors if needed, otherwise fallback or adjust */
+    --background: 235 30% 15%; /* Darker Blue background */
+    --foreground: 0 0% 95%; /* Light text */
+
+    --card: 235 25% 20%; /* Slightly lighter dark blue card */
+    --card-foreground: 0 0% 95%; /* Light text on card */
+
+    --popover: 235 25% 20%; /* Slightly lighter dark blue popover */
+    --popover-foreground: 0 0% 95%; /* Light text on popover */
+
+    --primary: 235 63% 60%; /* Lighter Dark Blue for dark mode */
+    --primary-foreground: 0 0% 98%; /* White text on primary */
+
+    --secondary: 235 20% 25%; /* Darker Gray for secondary */
+    --secondary-foreground: 0 0% 95%; /* Light text on secondary */
+
+    --muted: 235 20% 25%; /* Darker Gray for muted */
+    --muted-foreground: 0 0% 63.9%; /* Lighter gray text on muted */
+
+    --accent: 187 100% 50%; /* Brighter Teal for dark mode */
+    --accent-foreground: 240 10% 3.9%; /* Dark text on accent */
+
+    --destructive: 0 62.8% 50.6%; /* Adjusted destructive */
     --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 14.9%;
-    --input: 0 0% 14.9%;
-    --ring: 0 0% 83.1%;
+
+    --border: 235 20% 30%; /* Darker border */
+    --input: 235 20% 30%; /* Darker input border */
+    --ring: 187 100% 50%; /* Brighter Teal ring */
+
+    --radius: 0.5rem;
+
     --chart-1: 220 70% 50%;
     --chart-2: 160 60% 45%;
     --chart-3: 30 80% 55%;
     --chart-4: 280 65% 60%;
     --chart-5: 340 75% 55%;
+
     --sidebar-background: 240 5.9% 10%;
     --sidebar-foreground: 240 4.8% 95.9%;
     --sidebar-primary: 224.3 76.3% 48%;
@@ -83,6 +108,15 @@ body {
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-secondary text-foreground; /* Use light gray as base background */
+    /* Apply subtle transition */
+    @apply transition-colors duration-200;
+  }
+}
+
+/* Add subtle animations */
+@layer utilities {
+  .transition-subtle {
+    @apply transition-all duration-200 ease-in-out;
   }
 }
