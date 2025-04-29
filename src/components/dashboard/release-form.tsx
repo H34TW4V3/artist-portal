@@ -1,3 +1,4 @@
+
 "use client"
 
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -52,9 +53,10 @@ interface ReleaseFormProps {
   releaseId?: string; // If provided, we are in edit mode
   initialData?: ReleaseMetadata & { id: string }; // Initial data for editing
   onSuccess?: () => void; // Optional callback after successful submission
+  className?: string; // Allow passing custom classes
 }
 
-export function ReleaseForm({ releaseId, initialData, onSuccess }: ReleaseFormProps) {
+export function ReleaseForm({ releaseId, initialData, onSuccess, className }: ReleaseFormProps) {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [artworkPreview, setArtworkPreview] = useState<string | null>(initialData?.artworkUrl || null);
@@ -81,6 +83,30 @@ export function ReleaseForm({ releaseId, initialData, onSuccess }: ReleaseFormPr
     },
   });
 
+   // Reset form state if initialData changes (e.g., when opening edit dialog for different items)
+    useEffect(() => {
+        if (initialData) {
+            form.reset({
+                ...initialData,
+                releaseDate: initialData.releaseDate ? new Date(initialData.releaseDate) : new Date(),
+                artwork: undefined,
+                audioFile: undefined,
+            });
+            setArtworkPreview(initialData.artworkUrl || null);
+            setAudioFileName(null); // Reset audio file name on edit
+        } else {
+             form.reset({ // Reset to empty for upload form
+                 title: "",
+                 artist: "",
+                 releaseDate: new Date(),
+                 artwork: undefined,
+                 audioFile: undefined,
+             });
+             setArtworkPreview(null);
+             setAudioFileName(null);
+        }
+    }, [initialData, form]); // Depend on initialData and form instance
+
    // Register file inputs explicitly
    useEffect(() => {
      form.register('artwork');
@@ -90,8 +116,9 @@ export function ReleaseForm({ releaseId, initialData, onSuccess }: ReleaseFormPr
 
   async function onSubmit(values: ReleaseFormValues) {
      setIsSubmitting(true);
-     setArtworkPreview(null); // Clear preview during submission
-     setAudioFileName(null);
+     // Keep preview for edit mode until success/failure
+     // setArtworkPreview(null);
+     // setAudioFileName(null);
 
      const metadata: ReleaseMetadata = {
       title: values.title,
@@ -103,18 +130,25 @@ export function ReleaseForm({ releaseId, initialData, onSuccess }: ReleaseFormPr
     try {
       if (isEditMode && releaseId && initialData) {
         console.log("Updating release:", releaseId, metadata);
-        // 1. Update Metadata
-        await updateReleaseMetadata(releaseId, metadata);
+        let newArtworkUrl: string | undefined = undefined;
 
-        // 2. Handle optional artwork update (if a new file was selected)
+        // 1. Handle optional artwork update (if a new file was selected)
         if (values.artwork instanceof File) {
           console.log("Updating artwork for release:", releaseId);
           // TODO: Implement actual artwork upload/update logic here
-          // const newArtworkUrl = await uploadArtworkForRelease(releaseId, values.artwork);
-          // metadata.artworkUrl = newArtworkUrl; // Update metadata if needed, or refetch
+          // const newArtworkUrlResult = await uploadArtworkForRelease(releaseId, values.artwork);
+          // newArtworkUrl = newArtworkUrlResult; // Store the new URL
            await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate upload
-           console.log("Simulated artwork update successful");
+           newArtworkUrl = `https://picsum.photos/seed/${releaseId}/${Date.now()}/200/200`; // Simulate new URL
+           console.log("Simulated artwork update successful, new URL:", newArtworkUrl);
         }
+
+        // 2. Update Metadata (potentially with the new artwork URL)
+        await updateReleaseMetadata(releaseId, {
+             ...metadata,
+             artworkUrl: newArtworkUrl ?? metadata.artworkUrl // Use new URL if available, otherwise keep old one
+        });
+
 
         toast({
           title: "Release Updated",
@@ -125,15 +159,20 @@ export function ReleaseForm({ releaseId, initialData, onSuccess }: ReleaseFormPr
 
       } else if (!isEditMode && values.audioFile instanceof File && values.artwork instanceof File) {
          console.log("Uploading new release:", metadata);
-        // 1. Upload Release (Metadata + Audio)
+        // 1. Upload Release (Metadata + Audio) - Assume this handles initial artwork URL placeholder
         const newReleaseId = await uploadRelease(metadata, values.audioFile);
 
-        // 2. Upload Artwork (could be part of uploadRelease or separate)
+        // 2. Upload Artwork (Could be separate step after getting ID)
+        // In this mock, uploadRelease sets a placeholder, we might need to "update" it here if needed
         console.log("Uploading artwork for new release:", newReleaseId);
-         // TODO: Implement actual artwork upload logic here
+        // TODO: Implement actual artwork upload logic here
         // const artworkUrl = await uploadArtworkForRelease(newReleaseId, values.artwork);
-         await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate upload
-         console.log("Simulated artwork upload successful");
+        // If uploadRelease doesn't handle artwork, update metadata here:
+        // await updateReleaseMetadata(newReleaseId, { ...metadata, artworkUrl });
+         await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate artwork upload
+         const finalArtworkUrl = `https://picsum.photos/seed/${newReleaseId}/200/200`; // URL set by uploadRelease in mock
+         console.log("Simulated artwork upload successful, URL:", finalArtworkUrl);
+
 
         toast({
           title: "Release Uploaded",
@@ -149,6 +188,12 @@ export function ReleaseForm({ releaseId, initialData, onSuccess }: ReleaseFormPr
         });
         setArtworkPreview(null);
         setAudioFileName(null);
+        // Clear file input visual state
+         const artworkInput = document.getElementById('artwork') as HTMLInputElement | null;
+         if (artworkInput) artworkInput.value = '';
+         const audioInput = document.getElementById('audioFile') as HTMLInputElement | null;
+         if (audioInput) audioInput.value = '';
+
         onSuccess?.(); // Call callback on success
       } else {
          // This case should ideally be prevented by validation, but handle defensively
@@ -161,9 +206,13 @@ export function ReleaseForm({ releaseId, initialData, onSuccess }: ReleaseFormPr
         description: error instanceof Error ? error.message : "An unexpected error occurred.",
         variant: "destructive",
       });
-       // Restore preview if submission fails and it was an edit
+       // Restore original preview if submission fails during edit
        if (isEditMode && initialData?.artworkUrl) {
            setArtworkPreview(initialData.artworkUrl);
+       } else {
+           // Clear potentially broken preview on new upload fail
+           setArtworkPreview(null);
+           setAudioFileName(null);
        }
     } finally {
        setIsSubmitting(false);
@@ -194,8 +243,7 @@ export function ReleaseForm({ releaseId, initialData, onSuccess }: ReleaseFormPr
              setAudioFileName(null);
         }
     }
-     // Clear the other file input value visually if needed, though react-hook-form handles the state
-     // event.target.value = ''; // Be cautious with this, might interfere
+     // Don't manually clear event.target.value here, let react-hook-form manage state
   };
 
    // Function to clear a file input and its preview
@@ -207,15 +255,15 @@ export function ReleaseForm({ releaseId, initialData, onSuccess }: ReleaseFormPr
       } else {
           setAudioFileName(null);
       }
-       // Also clear the underlying input element's value if possible
+       // Also clear the underlying input element's value
       const inputElement = document.getElementById(fieldName) as HTMLInputElement | null;
       if (inputElement) {
-        inputElement.value = "";
+        inputElement.value = ""; // Clear the native input
       }
   }
 
   return (
-     <Card className="bg-card shadow-md rounded-lg transition-subtle">
+     <Card className={cn("bg-card shadow-md rounded-lg transition-subtle", className)}>
        <CardHeader>
         <CardTitle className="text-xl font-semibold text-primary">{isEditMode ? "Edit Release" : "Upload New Release"}</CardTitle>
         <CardDescription className="text-muted-foreground">
@@ -233,7 +281,7 @@ export function ReleaseForm({ releaseId, initialData, onSuccess }: ReleaseFormPr
                     <FormItem>
                       <FormLabel>Title</FormLabel>
                       <FormControl>
-                        <Input placeholder="Enter release title" {...field} className="bg-background border-input focus:ring-accent" />
+                        <Input placeholder="Enter release title" {...field} className="bg-background/80 border-input focus:ring-accent" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -247,7 +295,7 @@ export function ReleaseForm({ releaseId, initialData, onSuccess }: ReleaseFormPr
                     <FormItem>
                       <FormLabel>Artist</FormLabel>
                       <FormControl>
-                        <Input placeholder="Enter artist name" {...field} className="bg-background border-input focus:ring-accent" />
+                        <Input placeholder="Enter artist name" {...field} className="bg-background/80 border-input focus:ring-accent" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -260,15 +308,43 @@ export function ReleaseForm({ releaseId, initialData, onSuccess }: ReleaseFormPr
                   render={({ field }) => (
                     <FormItem className="flex flex-col">
                       <FormLabel>Release Date</FormLabel>
-                      <DatePicker
-                        date={field.value}
-                        setDate={(date) => field.onChange(date)}
-                        className="bg-background border-input focus:ring-accent [&>button]:text-left [&>button]:font-normal"
-                       />
+                       <Popover>
+                         <PopoverTrigger asChild>
+                           <FormControl>
+                             <Button
+                               variant={"outline"}
+                               className={cn(
+                                 "w-full pl-3 text-left font-normal bg-background/80 border-input focus:ring-accent",
+                                 !field.value && "text-muted-foreground"
+                               )}
+                             >
+                               {field.value ? (
+                                 format(field.value, "PPP")
+                               ) : (
+                                 <span>Pick a date</span>
+                               )}
+                               <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                             </Button>
+                           </FormControl>
+                         </PopoverTrigger>
+                         <PopoverContent className="w-auto p-0" align="start">
+                           <Calendar
+                             mode="single"
+                             selected={field.value}
+                             onSelect={field.onChange}
+                             disabled={(date) =>
+                               date > new Date() || date < new Date("1900-01-01")
+                             }
+                             initialFocus
+                           />
+                         </PopoverContent>
+                       </Popover>
+
                       <FormMessage />
                     </FormItem>
                   )}
                 />
+
 
                 {/* Artwork Upload */}
                  <FormField
@@ -279,7 +355,7 @@ export function ReleaseForm({ releaseId, initialData, onSuccess }: ReleaseFormPr
                         <FormLabel>Artwork Image</FormLabel>
                         <FormControl>
                              <div className={cn(
-                                 "mt-1 flex justify-center rounded-md border-2 border-dashed px-6 pb-6 pt-5",
+                                 "mt-1 flex justify-center rounded-md border-2 border-dashed px-6 pb-6 pt-5 bg-background/30", // Slightly transparent background
                                  fieldState.error ? "border-destructive" : "border-input hover:border-accent",
                                  artworkPreview ? "border-solid p-2" : "" // Adjust padding when preview is shown
                              )}>
@@ -291,20 +367,21 @@ export function ReleaseForm({ releaseId, initialData, onSuccess }: ReleaseFormPr
                                                 alt="Artwork preview"
                                                 width={200}
                                                 height={200}
-                                                className="mx-auto h-auto w-full max-h-48 rounded-md object-contain"
+                                                className="mx-auto h-auto w-full max-h-48 rounded-md object-contain border border-border/50" // Added border
                                             />
                                             <Button
                                                 type="button"
                                                 variant="destructive"
                                                 size="icon"
-                                                className="absolute -right-2 -top-2 h-6 w-6 opacity-80 group-hover:opacity-100 transition-opacity"
+                                                className="absolute -right-2 -top-2 h-6 w-6 opacity-80 group-hover:opacity-100 transition-opacity rounded-full shadow-md" // Made round
                                                 onClick={() => clearFile("artwork")}
                                                 aria-label="Remove artwork"
                                             >
                                                 <X className="h-4 w-4" />
                                             </Button>
-                                            <label htmlFor="artwork" className="absolute inset-0 cursor-pointer rounded-md focus-within:outline-none focus-within:ring-2 focus-within:ring-accent focus-within:ring-offset-2 group-hover:bg-black/30 transition-colors flex items-center justify-center">
-                                                <span className="text-sm font-medium text-white opacity-0 group-hover:opacity-100 transition-opacity">Change Artwork</span>
+                                             {/* Hidden label for changing artwork */}
+                                             <label htmlFor="artwork" className="absolute inset-0 cursor-pointer rounded-md focus-within:outline-none focus-within:ring-2 focus-within:ring-accent focus-within:ring-offset-2 group-hover:bg-black/50 transition-colors flex items-center justify-center">
+                                                <span className="text-sm font-medium text-white opacity-0 group-hover:opacity-100 transition-opacity">Change</span>
                                                 <input id="artwork" name="artwork" type="file" className="sr-only" accept="image/jpeg, image/png, image/gif" onChange={(e) => handleFileChange(e, "artwork")} />
                                             </label>
                                         </div>
@@ -314,7 +391,7 @@ export function ReleaseForm({ releaseId, initialData, onSuccess }: ReleaseFormPr
                                             <div className="flex text-sm text-muted-foreground justify-center">
                                                 <label
                                                     htmlFor="artwork"
-                                                    className="relative cursor-pointer rounded-md bg-background font-medium text-primary hover:text-primary/90 focus-within:outline-none focus-within:ring-2 focus-within:ring-accent focus-within:ring-offset-2"
+                                                    className="relative cursor-pointer rounded-md bg-background/80 px-2 py-1 font-medium text-primary hover:text-primary/90 focus-within:outline-none focus-within:ring-2 focus-within:ring-accent focus-within:ring-offset-2"
                                                 >
                                                     <span>Upload artwork</span>
                                                     <input id="artwork" name="artwork" type="file" className="sr-only" accept="image/jpeg, image/png, image/gif" onChange={(e) => handleFileChange(e, "artwork")} />
@@ -327,7 +404,7 @@ export function ReleaseForm({ releaseId, initialData, onSuccess }: ReleaseFormPr
                                 </div>
                             </div>
                         </FormControl>
-                         <FormDescription>
+                         <FormDescription className="text-xs">
                            {isEditMode ? "Upload a new image to replace the current one (optional)." : "Image file for the release cover."}
                          </FormDescription>
                         <FormMessage />
@@ -345,7 +422,7 @@ export function ReleaseForm({ releaseId, initialData, onSuccess }: ReleaseFormPr
                             <FormLabel>Audio File</FormLabel>
                             <FormControl>
                                  <div className={cn(
-                                     "mt-1 flex justify-center rounded-md border-2 border-dashed px-6 pb-6 pt-5",
+                                     "mt-1 flex justify-center rounded-md border-2 border-dashed px-6 pb-6 pt-5 bg-background/30", // Slightly transparent background
                                      fieldState.error ? "border-destructive" : "border-input hover:border-accent",
                                      audioFileName ? "border-solid p-4 items-center" : "" // Adjust when file selected
                                  )}>
@@ -356,7 +433,7 @@ export function ReleaseForm({ releaseId, initialData, onSuccess }: ReleaseFormPr
                                                 type="button"
                                                 variant="ghost"
                                                 size="icon"
-                                                className="h-6 w-6 text-muted-foreground hover:text-destructive"
+                                                className="h-6 w-6 text-muted-foreground hover:text-destructive rounded-full" // Made round
                                                 onClick={() => clearFile("audioFile")}
                                                 aria-label="Remove audio file"
                                             >
@@ -369,7 +446,7 @@ export function ReleaseForm({ releaseId, initialData, onSuccess }: ReleaseFormPr
                                             <div className="flex text-sm text-muted-foreground justify-center">
                                                 <label
                                                     htmlFor="audioFile"
-                                                    className="relative cursor-pointer rounded-md bg-background font-medium text-primary hover:text-primary/90 focus-within:outline-none focus-within:ring-2 focus-within:ring-accent focus-within:ring-offset-2"
+                                                     className="relative cursor-pointer rounded-md bg-background/80 px-2 py-1 font-medium text-primary hover:text-primary/90 focus-within:outline-none focus-within:ring-2 focus-within:ring-accent focus-within:ring-offset-2"
                                                 >
                                                     <span>Upload audio file</span>
                                                      <input id="audioFile" name="audioFile" type="file" className="sr-only" accept="audio/mpeg, audio/wav, audio/flac" onChange={(e) => handleFileChange(e, "audioFile")} />
@@ -381,7 +458,7 @@ export function ReleaseForm({ releaseId, initialData, onSuccess }: ReleaseFormPr
                                     )}
                                 </div>
                             </FormControl>
-                             <FormDescription>The main audio track for the release.</FormDescription>
+                             <FormDescription className="text-xs">The main audio track for the release.</FormDescription>
                             <FormMessage />
                           </FormItem>
                         )}
@@ -389,7 +466,7 @@ export function ReleaseForm({ releaseId, initialData, onSuccess }: ReleaseFormPr
                 )}
 
                 {/* Submit Button */}
-                <Button type="submit" disabled={isSubmitting || !form.formState.isDirty} className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-primary-foreground">
+                <Button type="submit" disabled={isSubmitting || (!form.formState.isDirty && isEditMode)} className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-primary-foreground shadow-md disabled:shadow-none">
                  {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                  {isSubmitting ? 'Submitting...' : (isEditMode ? 'Update Release' : 'Upload Release')}
                 </Button>
@@ -399,3 +476,9 @@ export function ReleaseForm({ releaseId, initialData, onSuccess }: ReleaseFormPr
      </Card>
   )
 }
+
+
+// Dummy components needed for rendering DatePicker inside the form (already imported)
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { CalendarIcon } from "lucide-react";

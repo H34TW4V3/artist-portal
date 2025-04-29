@@ -1,3 +1,4 @@
+
 /**
  * MOCK IMPLEMENTATION: Replace with actual API calls to your backend/Firebase.
  */
@@ -69,7 +70,7 @@ export async function getReleases(): Promise<ReleaseWithId[]> {
      console.log("Mock API: Fetching releases...");
      await new Promise(resolve => setTimeout(resolve, 800)); // Simulate network delay
      // Return a copy to prevent direct modification of the mock store
-     return [...mockReleases].sort((a, b) => new Date(b.releaseDate).getTime() - new Date(a.releaseDate).getTime());
+     return [...mockReleases].sort((a, b) => new Date(b.releaseDate as string).getTime() - new Date(a.releaseDate as string).getTime());
 }
 
 
@@ -88,7 +89,8 @@ export async function uploadRelease(metadata: ReleaseMetadata, _audioFile: File)
         ...metadata,
         id: newReleaseId,
         // Use a placeholder or generate a predictable URL for the mock artwork
-        artworkUrl: `https://picsum.photos/seed/${newReleaseId}/200/200`,
+        artworkUrl: `https://picsum.photos/seed/${newReleaseId}/200/200`, // Simulate initial artwork URL
+        releaseDate: metadata.releaseDate instanceof Date ? metadata.releaseDate.toISOString().split('T')[0] : metadata.releaseDate, // Ensure date is string
     };
 
     mockReleases.unshift(newRelease); // Add to the beginning of the array
@@ -99,7 +101,7 @@ export async function uploadRelease(metadata: ReleaseMetadata, _audioFile: File)
 /**
  * Simulates updating the metadata for an existing release.
  * @param releaseId - The ID of the release to update.
- * @param metadata - The new metadata. artworkUrl might be updated separately.
+ * @param metadata - The new metadata. Should include potentially updated artworkUrl.
  * @returns A promise resolving when the update is complete.
  */
 export async function updateReleaseMetadata(releaseId: string, metadata: ReleaseMetadata): Promise<void> {
@@ -108,14 +110,13 @@ export async function updateReleaseMetadata(releaseId: string, metadata: Release
 
     const releaseIndex = mockReleases.findIndex(r => r.id === releaseId);
     if (releaseIndex !== -1) {
-        // Only update metadata fields provided (excluding artworkUrl unless specifically handled)
+        // Update all provided metadata fields, including artworkUrl
         mockReleases[releaseIndex] = {
-            ...mockReleases[releaseIndex], // Keep existing fields like ID and potentially artworkUrl
+            ...mockReleases[releaseIndex], // Keep existing ID
             title: metadata.title,
             artist: metadata.artist,
-            releaseDate: metadata.releaseDate,
-             // If artworkUrl is part of metadata update:
-             // artworkUrl: metadata.artworkUrl
+            releaseDate: metadata.releaseDate instanceof Date ? metadata.releaseDate.toISOString().split('T')[0] : metadata.releaseDate, // Ensure date is string
+            artworkUrl: metadata.artworkUrl // Update artwork URL from the provided metadata
         };
         console.log("Mock API: Metadata updated for release:", releaseId);
     } else {
@@ -124,18 +125,14 @@ export async function updateReleaseMetadata(releaseId: string, metadata: Release
     }
 }
 
-// Example function placeholder for separate artwork upload/update
+// Example function placeholder for separate artwork upload/update (if needed)
+// This is now less necessary if updateReleaseMetadata handles the URL update
 // export async function uploadArtworkForRelease(releaseId: string, artworkFile: File): Promise<string> {
 //   console.log(`Mock API: Uploading new artwork for release ${releaseId}...`);
 //   await new Promise(resolve => setTimeout(resolve, 1200));
 //   const newArtworkUrl = `https://picsum.photos/seed/${releaseId}/${Date.now()}/200/200`; // Simulate new URL
-//    // Find release and update its artworkUrl in the mock store
-//    const releaseIndex = mockReleases.findIndex(r => r.id === releaseId);
-//    if (releaseIndex !== -1) {
-//        mockReleases[releaseIndex].artworkUrl = newArtworkUrl;
-//    }
-//   console.log("Mock API: Artwork updated. New URL:", newArtworkUrl);
-//   return newArtworkUrl;
+//   console.log("Mock API: Artwork uploaded. New URL:", newArtworkUrl);
+//   return newArtworkUrl; // Return the URL to be saved in metadata
 // }
 
 
