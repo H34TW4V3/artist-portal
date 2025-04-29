@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -92,7 +93,8 @@ export function ForumFeed({ className }: ForumFeedProps) {
 
 
     return (
-        <div className={cn("space-y-6", className)}>
+        // Added max-w-3xl and mx-auto to center and constrain width
+        <div className={cn("space-y-6 max-w-3xl mx-auto", className)}>
             {isLoading ? (
                 // Skeleton Loading State - More refined skeleton
                 Array.from({ length: 3 }).map((_, index) => (
