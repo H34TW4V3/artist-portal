@@ -3,7 +3,7 @@
 
 import { useState } from "react"; // Import useState
 import { AgreementCard } from "@/components/documents/agreement-card";
-import { UserProfile } from "@/components/common/user-profile";
+import UserProfile from "@/components/common/user-profile"; // Changed to default import
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FileText, FolderKanban, BookOpenText, Home } from "lucide-react";
@@ -25,10 +25,6 @@ const tabHeaders = {
 };
 
 export default function DocumentsPage() {
-  // Placeholder user data (replace with actual data fetching later)
-  const artistName = "Artist Name";
-  const artistLogoUrl = "https://picsum.photos/seed/artistlogo/40/40"; // Placeholder logo
-
   // State to manage the active tab
   const [activeTab, setActiveTab] = useState<keyof typeof tabHeaders>("agreements");
 
@@ -73,7 +69,7 @@ export default function DocumentsPage() {
                 </CardDescription>
               </div>
             </div>
-            <UserProfile name={artistName} imageUrl={artistLogoUrl} />
+            <UserProfile />
           </CardHeader>
         </Card>
 
@@ -85,10 +81,10 @@ export default function DocumentsPage() {
             className="w-full"
         >
           <TabsList className="grid w-full grid-cols-2 gap-2 mb-6 h-auto bg-card/70 dark:bg-card/60 backdrop-blur-sm border border-border/20 shadow-sm rounded-lg p-1 max-w-md">
-            <TabsTrigger value="agreements" className="py-2 data-[state=active]:shadow-md transition-subtle rounded-md flex items-center justify-center gap-2">
+            <TabsTrigger value="agreements" className="py-2 data-[state=active]:shadow-md transition-subtle rounded-md flex items-center justify-center gap-2 data-[state=active]:hover-glow data-[state=active]:focus-glow">
               <FileText className="h-4 w-4" /> My Agreements
             </TabsTrigger>
-            <TabsTrigger value="handbooks" className="py-2 data-[state=active]:shadow-md transition-subtle rounded-md flex items-center justify-center gap-2">
+            <TabsTrigger value="handbooks" className="py-2 data-[state=active]:shadow-md transition-subtle rounded-md flex items-center justify-center gap-2 data-[state=active]:hover-glow data-[state=active]:focus-glow">
               <BookOpenText className="h-4 w-4" /> Handbooks
             </TabsTrigger>
           </TabsList>

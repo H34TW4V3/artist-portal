@@ -2,7 +2,7 @@
 "use client";
 
 import Link from "next/link";
-import { UserProfile } from "@/components/common/user-profile";
+import UserProfile from "@/components/common/user-profile"; // Changed to default import
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { LayoutDashboard, ListMusic, CalendarClock, FileText, UserCog, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -44,9 +44,7 @@ export default function HomePage() {
 
     // If not loading and no user, AuthProvider/middleware should handle redirect
     // This component assumes user is authenticated if it renders past the loading state
-    const artistName = user?.displayName || user?.email || "Artist Name"; // Use user info
-     // Use a default or derive image if user has none; adjust as needed
-    const artistLogoUrl = user?.photoURL || `https://picsum.photos/seed/${user?.uid || 'default'}/40/40`;
+    // UserProfile component fetches its own data, no need to pass props here
 
 
   return (
@@ -68,8 +66,8 @@ export default function HomePage() {
                     </CardDescription>
                 </div>
             </div>
-             {/* Pass potentially updated user info to UserProfile */}
-            <UserProfile name={artistName} imageUrl={artistLogoUrl} />
+             {/* Render UserProfile component */}
+            <UserProfile />
           </CardHeader>
         </Card>
 

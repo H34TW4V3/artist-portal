@@ -5,7 +5,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { UserProfile } from "@/components/common/user-profile";
+import UserProfile from "@/components/common/user-profile"; // Changed to default import
 import { ForumFeed } from "@/components/pineapple/forum-feed";
 import { CreatePostForm } from "@/components/pineapple/create-post-form";
 import { Home, MessageSquarePlus, Users } from "lucide-react";
@@ -22,9 +22,7 @@ const PineappleIcon = () => (
 
 
 export default function PineapplePage() {
-    // Placeholder user data (replace with actual data fetching later)
-    const artistName = "Artist Name";
-    const artistLogoUrl = "https://picsum.photos/seed/artistlogo/40/40"; // Placeholder logo
+    // State for active tab
     const [activeTab, setActiveTab] = useState("forum"); // Default to forum tab
 
     // Handler for successful post creation
@@ -60,17 +58,17 @@ export default function PineapplePage() {
                                 </CardDescription>
                             </div>
                         </div>
-                        <UserProfile name={artistName} imageUrl={artistLogoUrl} />
+                        <UserProfile />
                     </CardHeader>
                 </Card>
 
                  {/* Tabbed Content for Forum and Create Post */}
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                      <TabsList className="grid w-full grid-cols-2 gap-2 mb-6 h-auto bg-card/70 dark:bg-card/60 backdrop-blur-sm border border-border/20 shadow-sm rounded-lg p-1 max-w-md">
-                        <TabsTrigger value="forum" className="py-2 data-[state=active]:shadow-md transition-subtle rounded-md flex items-center justify-center gap-2">
+                        <TabsTrigger value="forum" className="py-2 data-[state=active]:shadow-md transition-subtle rounded-md flex items-center justify-center gap-2 data-[state=active]:hover-glow data-[state=active]:focus-glow">
                             <Users className="h-4 w-4" /> Forum Feed
                         </TabsTrigger>
-                        <TabsTrigger value="create" className="py-2 data-[state=active]:shadow-md transition-subtle rounded-md flex items-center justify-center gap-2">
+                        <TabsTrigger value="create" className="py-2 data-[state=active]:shadow-md transition-subtle rounded-md flex items-center justify-center gap-2 data-[state=active]:hover-glow data-[state=active]:focus-glow">
                             <MessageSquarePlus className="h-4 w-4" /> Create Post
                         </TabsTrigger>
                      </TabsList>

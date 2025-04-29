@@ -1,16 +1,17 @@
 
 "use client"; // Add use client because we use state
 
-import { useState } from "react"; // Import useState
+import { useState, useEffect } from "react"; // Import useEffect
 import { StatisticsView } from "@/components/dashboard/statistics-view";
 import { ReleaseList } from "@/components/dashboard/release-list";
 import { EventsView } from "@/components/dashboard/events-view";
-import { UserProfile } from "@/components/common/user-profile";
+import UserProfile from "@/components/common/user-profile"; // Changed to default import
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ListMusic, CalendarClock, BarChart3, Home } from "lucide-react"; // Import Home icon
 import Link from "next/link"; // Import Link
 import { Button } from "@/components/ui/button"; // Import Button
+import { useAuth } from "@/context/auth-context"; // Import useAuth
 
 // Define content for each tab's header
 const tabHeaders = {
@@ -32,12 +33,22 @@ const tabHeaders = {
 };
 
 export default function DashboardPage() {
-  // Placeholder user data (replace with actual data fetching later)
-  const artistName = "Artist Name";
-  const artistLogoUrl = "https://picsum.photos/seed/artistlogo/40/40"; // Placeholder logo
-
+  const { user } = useAuth(); // Get user info
   // State to manage the active tab
   const [activeTab, setActiveTab] = useState<keyof typeof tabHeaders>("statistics");
+  // State for artist name, fetched asynchronously
+  const [artistName, setArtistName] = useState("Artist"); // Default name
+
+  // Update artist name from user context when available
+  useEffect(() => {
+    if (user?.displayName) {
+      setArtistName(user.displayName);
+    } else if (user?.email) {
+       // Fallback to part of the email if display name isn't set
+       setArtistName(user.email.split('@')[0]);
+    }
+  }, [user]);
+
 
   // Get the current header content based on activeTab
   const currentHeader = tabHeaders[activeTab] || tabHeaders.statistics; // Default to statistics
@@ -64,7 +75,7 @@ export default function DashboardPage() {
                 </CardDescription>
               </div>
             </div>
-            <UserProfile name={artistName} imageUrl={artistLogoUrl} />
+            <UserProfile />
           </CardHeader>
         </Card>
 
@@ -76,13 +87,13 @@ export default function DashboardPage() {
             className="w-full"
         >
           <TabsList className="grid w-full grid-cols-1 sm:grid-cols-3 gap-2 mb-6 h-auto bg-card/70 dark:bg-card/60 backdrop-blur-sm border border-border/20 shadow-sm rounded-lg p-1">
-            <TabsTrigger value="statistics" className="py-2 data-[state=active]:shadow-md transition-subtle rounded-md flex items-center justify-center gap-2">
+            <TabsTrigger value="statistics" className="py-2 data-[state=active]:shadow-md transition-subtle rounded-md flex items-center justify-center gap-2 data-[state=active]:hover-glow data-[state=active]:focus-glow">
               <BarChart3 className="h-4 w-4" /> Statistics
             </TabsTrigger>
-            <TabsTrigger value="releases" className="py-2 data-[state=active]:shadow-md transition-subtle rounded-md flex items-center justify-center gap-2">
+            <TabsTrigger value="releases" className="py-2 data-[state=active]:shadow-md transition-subtle rounded-md flex items-center justify-center gap-2 data-[state=active]:hover-glow data-[state=active]:focus-glow">
               <ListMusic className="h-4 w-4" /> Releases
             </TabsTrigger>
-            <TabsTrigger value="events" className="py-2 data-[state=active]:shadow-md transition-subtle rounded-md flex items-center justify-center gap-2">
+            <TabsTrigger value="events" className="py-2 data-[state=active]:shadow-md transition-subtle rounded-md flex items-center justify-center gap-2 data-[state=active]:hover-glow data-[state=active]:focus-glow">
               <CalendarClock className="h-4 w-4" /> Events
             </TabsTrigger>
           </TabsList>

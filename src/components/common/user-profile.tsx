@@ -1,10 +1,17 @@
 
 "use client";
 
-import { useState, useEffect } from 'react';
-import Image from 'next/image';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation'; // Import useRouter
+import { useState, useEffect } from "react";
+import { getAuth } from "firebase/auth";
+import { getFirestore, doc, getDoc, setDoc, updateDoc } from "firebase/firestore"; // Import updateDoc
+import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage"; // Import storage functions
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+import { app } from "@/services/firebase-config"; // Import your Firebase config
+import { useAuth } from "@/context/auth-context"; // Import useAuth to get the current user
+import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -14,313 +21,263 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Button } from "@/components/ui/button";
-import { User, LogOut, Settings, FileText, LockKeyhole } from 'lucide-react'; // Added LockKeyhole
-import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
-    DialogDescription,
-} from "@/components/ui/dialog";
-import { ProfileForm, type ProfileFormValues } from "@/components/profile/profile-form";
-import { PasswordUpdateForm } from "@/components/profile/password-update-form"; // Import PasswordUpdateForm
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogClose } from "@/components/ui/dialog"; // Import Dialog components
+import { PasswordUpdateForm } from "@/components/profile/password-update-form"; // Import Password Update Form
+import { ProfileForm, type ProfileFormValues } from "@/components/profile/profile-form"; // Import Profile Form and its type
+import { useToast } from "@/hooks/use-toast";
+import { LogOut, UserCog, KeyRound, Loader2 } from "lucide-react"; // Import icons
 import { cn } from "@/lib/utils";
-import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/context/auth-context'; // Import useAuth
-import type { User as FirebaseUser } from 'firebase/auth'; // Type for Firebase user
-import { Skeleton } from '@/components/ui/skeleton'; // Import Skeleton
 
+// --- Zod Schema for User Profile Data (Matches ProfileForm) ---
+const profileSchema = z.object({
+  name: z.string().min(2, "Name must be at least 2 characters.").max(50, "Name must be 50 characters or less."),
+  email: z.string().email("Invalid email address."),
+  bio: z.string().max(300, "Bio must be 300 characters or less.").optional().nullable(),
+  phoneNumber: z.string().optional().nullable()
+      .refine(val => !val || /^[+]*[(]{0,1}[0-9]{1,4}[)]{0,1}[-\s\./0-9]*$/.test(val), {
+          message: "Invalid phone number format.",
+       }),
+  imageUrl: z.string().url("Invalid URL.").optional().nullable(),
+});
 
-// Mock function to fetch profile data (replace with actual API call using authenticated user ID)
-// Function signature now includes the user object
-const fetchProfileData = async (user: FirebaseUser | null): Promise<ProfileFormValues> => {
-  if (!user) throw new Error("User not authenticated to fetch profile data.");
-  console.log(`Mock API: Fetching profile data for user ${user.uid}...`);
-  await new Promise(resolve => setTimeout(resolve, 500)); // Simulate network delay
-  // Return mock data - in real app, fetch based on user.uid from Firestore
-  // Use displayName from Auth as default if Firestore doesn't have 'name' yet
-  // Use photoURL from Auth as default if Firestore doesn't have 'imageUrl' yet
-  return {
-    name: user.displayName || "Artist Name", // Simulate fetching name, fallback to Auth displayName
-    email: user.email || "artist@example.com", // Email comes from Auth
-    bio: "Passionate musician creating unique soundscapes. Exploring the boundaries of electronic music.", // Simulate fetching bio
-    phoneNumber: "+1 123-456-7890", // Simulate fetching phone
-    imageUrl: user.photoURL || `https://picsum.photos/seed/${user.uid}/100/100`, // Simulate fetching imageUrl, fallback to Auth photoURL
-  };
-};
-
-// Mock function to update profile data (replace with actual API call using authenticated user ID)
-// Function signature now includes the user object
-const updateProfileData = async (user: FirebaseUser | null, data: ProfileFormValues, newImageFile?: File): Promise<{ updatedData: ProfileFormValues }> => {
-    if (!user) throw new Error("User not authenticated to update profile data.");
-    console.log(`Mock API: Updating profile data for user ${user.uid}...`, data);
-
-    let finalImageUrl = data.imageUrl; // Start with potentially existing URL
-
-    // Simulate Image Upload if new file provided
-    if (newImageFile) {
-        console.log("Mock API: Simulating upload for image:", newImageFile.name);
-        await new Promise(resolve => setTimeout(resolve, 1500));
-        // Simulate getting a new URL after upload
-        finalImageUrl = `https://picsum.photos/seed/${user.uid}-${Date.now()}/100/100`; // New simulated URL
-        console.log("Mock API: Simulated upload complete. New URL:", finalImageUrl);
-        // In a real Firebase app, you'd update the user's auth profile photoURL:
-        // try { await updateProfile(user, { photoURL: finalImageUrl }); } catch (e) { console.error("Failed to update auth photoURL", e); }
-    }
-
-    // Simulate updating Firestore data (name, bio, phone) and maybe imageUrl if changed
-    await new Promise(resolve => setTimeout(resolve, 600));
-    // In a real Firebase app, you might update auth displayName:
-    // if (data.name !== user.displayName) {
-    //     try { await updateProfile(user, { displayName: data.name }); } catch (e) { console.error("Failed to update auth displayName", e); }
-    // }
-    // You would update the Firestore document for the user with { name: data.name, bio: data.bio, phoneNumber: data.phoneNumber, imageUrl: finalImageUrl }
-
-    if (Math.random() < 0.1) {
-      throw new Error("Failed to update profile. Please try again.");
-    }
-    console.log("Mock API: Profile updated successfully.");
-    // Return the data that *would* be in the database, including the potentially new image URL
-    return { updatedData: { ...data, imageUrl: finalImageUrl } };
-};
-
-
-interface UserProfileProps {
-  // Props like name and imageUrl might become redundant if we always fetch from context,
-  // but keep them for potential initial display before context is fully loaded.
-  name?: string;
-  imageUrl?: string;
-  className?: string;
-}
-
-export function UserProfile({ name: initialNameProp, imageUrl: initialImageUrlProp, className }: UserProfileProps) {
-  const { user, logout, loading } = useAuth(); // Get user and logout from context
+// Define the component as a default export
+export default function UserProfile() {
+  const { user, logout } = useAuth(); // Get user and logout function from context
   const { toast } = useToast();
-  const router = useRouter();
+  const db = getFirestore(app); // Get Firestore instance
+  const storage = getStorage(app); // Get Storage instance
+
+  const [profileData, setProfileData] = useState<ProfileFormValues | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
-  const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false); // State for password modal
-  const [profileData, setProfileData] = useState<ProfileFormValues | undefined>(undefined);
-  const [isLoadingProfile, setIsLoadingProfile] = useState(false); // Loading state specific to profile modal fetch
-
-  // State derived from context or props for display
-  // These will be updated by fetched profileData later if available
-  const [displayName, setDisplayName] = useState("Loading...");
-  const [displayImageUrl, setDisplayImageUrl] = useState<string | undefined>(undefined);
-  const [displayEmail, setDisplayEmail] = useState("");
-
-   // Initialize display state from auth context or props
-   useEffect(() => {
-       if (!loading && user) {
-            // Set initial display based on Auth, will be overwritten by fetchProfileData if successful
-            setDisplayName(user.displayName || user.email || "Artist");
-            setDisplayImageUrl(user.photoURL || initialImageUrlProp || `https://picsum.photos/seed/${user.uid}/40/40`);
-            setDisplayEmail(user.email || "");
-       } else if (!loading && !user) {
-           // Handle logged out state
-           setDisplayName("Not Logged In");
-           setDisplayImageUrl(undefined);
-           setDisplayEmail("");
-       } else {
-           // Still loading auth state
-           setDisplayName("Loading...");
-            // Use prop image if available during initial load
-           setDisplayImageUrl(initialImageUrlProp || undefined);
-           setDisplayEmail("");
-       }
-   }, [user, loading, initialImageUrlProp]); // Rerun when auth state changes
+  const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false); // For profile update loading state
 
 
-  const initials = displayName
-    .split(' ')
-    .map((n) => n[0])
-    .join('')
-    .toUpperCase() || '?'; // Fallback for empty name
+  // Fetch profile data from Firestore
+  useEffect(() => {
+    const fetchProfileData = async () => {
+      if (!user) {
+        setIsLoading(false);
+        return; // No user logged in
+      }
 
+      setIsLoading(true);
+      try {
+        const userDocRef = doc(db, "users", user.uid); // Use user's UID
+        const docSnap = await getDoc(userDocRef);
+
+        if (docSnap.exists()) {
+           // Validate fetched data against schema (optional but good practice)
+           const result = profileSchema.safeParse(docSnap.data());
+           if (result.success) {
+               setProfileData(result.data);
+           } else {
+               console.warn("Firestore data validation failed:", result.error);
+               // Handle potentially incomplete/invalid data, maybe set defaults
+               setProfileData({
+                   name: user.displayName || user.email?.split('@')[0] || "User",
+                   email: user.email || "",
+                   imageUrl: user.photoURL || null,
+                   bio: null,
+                   phoneNumber: null,
+               });
+           }
+        } else {
+          // No profile document exists yet, create one with defaults
+          console.log("No profile found for user, creating default...");
+          const defaultData: ProfileFormValues = {
+            name: user.displayName || user.email?.split('@')[0] || "User", // Use display name or email part
+            email: user.email || "", // Get email from auth user
+            imageUrl: user.photoURL || null, // Get photo URL from auth user if available
+            bio: null,
+            phoneNumber: null,
+          };
+          await setDoc(userDocRef, defaultData); // Create the document
+          setProfileData(defaultData);
+        }
+      } catch (error) {
+        console.error("Error fetching/creating user profile:", error);
+        toast({
+          title: "Error Loading Profile",
+          description: "Could not load your profile data.",
+          variant: "destructive",
+        });
+        // Set some default state even on error?
+        setProfileData({
+            name: "Error",
+            email: user.email || "unknown",
+            imageUrl: null,
+            bio: null,
+            phoneNumber: null,
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchProfileData();
+  }, [user, db, toast]); // Re-fetch if user or db changes
+
+  // Handle user logout
   const handleLogout = async () => {
     try {
-        await logout();
-        toast({ title: "Logged Out", description: "You have been successfully logged out." });
-        router.push('/login'); // Redirect to login page after logout
+      await logout();
+      toast({ title: "Logged Out", description: "You have been successfully logged out.", variant: "default" });
+      // No explicit redirect needed here, AuthProvider/middleware handles it
     } catch (error) {
-        console.error("Logout failed:", error);
-        toast({ title: "Logout Failed", description: "Could not log out. Please try again.", variant: "destructive" });
+      console.error("Logout failed:", error);
+      toast({ title: "Logout Failed", description: "Could not log out. Please try again.", variant: "destructive" });
     }
   };
 
-  const handleOpenProfileModal = async () => {
-    if (!user) {
-      toast({ title: "Not Authenticated", description: "Please log in to manage your profile.", variant: "destructive" });
-      return;
-    }
-    setIsLoadingProfile(true); // Start loading profile data
-    setIsProfileModalOpen(true);
-    try {
-        const data = await fetchProfileData(user); // Fetch profile data using authenticated user
-        setProfileData(data); // Store fetched data for the form
-        // Update display state with fetched data
-        setDisplayName(data.name);
-        setDisplayImageUrl(data.imageUrl ?? undefined); // Use fetched image URL
-        setDisplayEmail(data.email); // Usually email doesn't change, but sync anyway
-    } catch (error) {
-        console.error("Error fetching profile data for modal:", error);
-        toast({
-            title: "Error",
-            description: "Could not load profile details. Please try again.",
-            variant: "destructive",
-        });
-        setIsProfileModalOpen(false); // Close modal on fetch error
-    } finally {
-        setIsLoadingProfile(false); // Stop loading profile data
-    }
+  // Function to handle profile updates (passed to ProfileForm)
+  const handleUpdateProfile = async (
+      data: ProfileFormValues,
+      newImageFile?: File
+  ): Promise<{ updatedData: ProfileFormValues }> => {
+      if (!user) throw new Error("User not authenticated.");
+      setIsUpdating(true);
+
+      let newImageUrl = profileData?.imageUrl || null; // Start with current URL
+
+      try {
+          // 1. Handle Image Upload (if newImageFile exists)
+          if (newImageFile) {
+              console.log("Uploading new profile image...");
+              const imageRef = ref(storage, `profileImages/${user.uid}/${newImageFile.name}`);
+              const snapshot = await uploadBytes(imageRef, newImageFile);
+              newImageUrl = await getDownloadURL(snapshot.ref);
+              console.log("Image uploaded, URL:", newImageUrl);
+          }
+
+          // 2. Prepare data for Firestore update
+          const dataToSave: ProfileFormValues = {
+              ...data, // Include updated name, bio, phone
+              email: user.email || data.email, // Ensure email is correct
+              imageUrl: newImageUrl, // Use the potentially new image URL
+          };
+
+          // 3. Update Firestore Document
+          const userDocRef = doc(db, "users", user.uid);
+          await updateDoc(userDocRef, dataToSave); // Use updateDoc to only change provided fields
+
+          // 4. Update local state immediately for better UX
+          setProfileData(dataToSave);
+
+          console.log("Profile updated successfully in Firestore.");
+          setIsProfileModalOpen(false); // Close modal on success
+          return { updatedData: dataToSave };
+
+      } catch (error) {
+          console.error("Error updating profile:", error);
+          // Throw the error so ProfileForm can catch it and show a toast
+          throw new Error(error instanceof Error ? error.message : "Failed to update profile.");
+      } finally {
+          setIsUpdating(false);
+      }
   };
 
-  // Called by ProfileForm on successful submission
-  const handleProfileUpdateSuccess = (updatedData: ProfileFormValues) => {
-    setIsProfileModalOpen(false);
-    setProfileData(updatedData); // Store the latest data
-    // Update display state immediately based on the data returned from updateProfileData
-    setDisplayName(updatedData.name);
-    setDisplayImageUrl(updatedData.imageUrl ?? undefined);
-    setDisplayEmail(updatedData.email);
-     toast({
-        title: "Profile Updated",
-        description: "Your profile information has been saved.",
-        variant: "default",
-         duration: 2000,
-    });
-    // Note: The `user` object from `useAuth` might take a moment to reflect
-    // displayName/photoURL changes from Firebase Auth if they were updated in updateProfileData.
+
+  // Function to get initials from name
+  const getInitials = (name: string | undefined) => {
+    return name?.split(' ').map(n => n[0]).join('').toUpperCase() || 'U'; // Default to 'U'
   };
 
-  const handleOpenPasswordModal = () => {
-     if (!user) {
-        toast({ title: "Not Authenticated", description: "Please log in to change your password.", variant: "destructive" });
-        return;
-     }
-     setIsPasswordModalOpen(true);
-  };
+  const displayName = profileData?.name || (user?.email ? user.email.split('@')[0] : 'User');
+  const displayImageUrl = profileData?.imageUrl || undefined;
 
 
   return (
-    <>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-           {/* Button content now uses `displayName` and `displayImageUrl` state */}
-          <Button variant="ghost" className={cn("flex items-center space-x-3 p-1.5 rounded-full h-auto focus-visible:ring-1 focus-visible:ring-ring", className)} disabled={loading}>
-              <Avatar className="h-10 w-10 sm:h-12 sm:w-12 border-2 border-primary/40">
-                {displayImageUrl ? (
-                  <AvatarImage src={displayImageUrl} alt={`${displayName}'s profile picture`} />
-                ) : null}
-                <AvatarFallback className={cn("bg-muted text-muted-foreground font-semibold text-base sm:text-lg", loading && "animate-pulse")}>
-                   {loading ? '' : initials}
+    <div className="flex items-center gap-2">
+      {isLoading ? (
+        <Skeleton className="h-10 w-10 rounded-full" />
+      ) : (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" className="relative h-10 w-10 rounded-full p-0 border-2 border-primary/30 hover:border-primary/60 transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+              <Avatar className="h-full w-full">
+                <AvatarImage src={displayImageUrl} alt={displayName} />
+                <AvatarFallback className="bg-muted text-muted-foreground font-semibold">
+                  {getInitials(displayName)}
                 </AvatarFallback>
               </Avatar>
-              <div className="hidden sm:block text-left">
-                <p className="text-sm sm:text-base font-medium leading-none text-foreground">{loading ? <Skeleton className="h-4 w-24" /> : displayName}</p>
-                <p className="text-xs sm:text-sm leading-none text-muted-foreground">{loading ? <Skeleton className="h-3 w-16" /> : 'Artist'}</p>
+              <span className="sr-only">Toggle user menu</span>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-56 bg-popover border-border shadow-lg">
+            <DropdownMenuLabel className="font-normal">
+              <div className="flex flex-col space-y-1">
+                <p className="text-sm font-medium leading-none text-foreground">{displayName}</p>
+                <p className="text-xs leading-none text-muted-foreground">{user?.email}</p>
               </div>
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-56 bg-popover border-border shadow-lg">
-          <DropdownMenuLabel className="font-normal">
-            {/* Dropdown label also uses display state */}
-            <div className="flex flex-col space-y-1">
-              <p className="text-sm font-medium leading-none">{displayName}</p>
-              <p className="text-xs leading-none text-muted-foreground">
-                {displayEmail}
-              </p>
-            </div>
-          </DropdownMenuLabel>
-          <DropdownMenuSeparator className="bg-border/50" />
-          <DropdownMenuItem asChild className="cursor-pointer focus:bg-accent focus:text-accent-foreground">
-              <Link href="/documents">
-                  <FileText className="mr-2 h-4 w-4" />
-                  <span>Key Documents</span>
-              </Link>
-          </DropdownMenuItem>
-           {/* Opens profile modal, triggers data fetch */}
-           <DropdownMenuItem onSelect={handleOpenProfileModal} className="cursor-pointer focus:bg-accent focus:text-accent-foreground">
-                <Settings className="mr-2 h-4 w-4" />
-                <span>Manage Profile</span>
+            </DropdownMenuLabel>
+            <DropdownMenuSeparator className="bg-border/50" />
+            <DropdownMenuItem onClick={() => setIsProfileModalOpen(true)} className="cursor-pointer focus:bg-accent focus:text-accent-foreground">
+              <UserCog className="mr-2 h-4 w-4" />
+              <span>Manage Profile</span>
             </DropdownMenuItem>
-             {/* Update Password Item */}
-             <DropdownMenuItem onSelect={handleOpenPasswordModal} className="cursor-pointer focus:bg-accent focus:text-accent-foreground">
-                <LockKeyhole className="mr-2 h-4 w-4" />
-                <span>Update Password</span>
+            <DropdownMenuItem onClick={() => setIsPasswordModalOpen(true)} className="cursor-pointer focus:bg-accent focus:text-accent-foreground">
+               <KeyRound className="mr-2 h-4 w-4" />
+              <span>Change Password</span>
             </DropdownMenuItem>
-          <DropdownMenuSeparator className="bg-border/50" />
-          <DropdownMenuItem onClick={handleLogout} className="cursor-pointer text-destructive focus:text-destructive focus:bg-destructive/10">
-            <LogOut className="mr-2 h-4 w-4" />
-            <span>Log out</span>
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+            <DropdownMenuSeparator className="bg-border/50" />
+            <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive focus:bg-destructive/10 cursor-pointer">
+              <LogOut className="mr-2 h-4 w-4" />
+              <span>Log out</span>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )}
 
       {/* Profile Edit Modal */}
        <Dialog open={isProfileModalOpen} onOpenChange={setIsProfileModalOpen}>
            <DialogContent className="sm:max-w-md md:max-w-lg lg:max-w-xl bg-card/95 dark:bg-card/80 backdrop-blur-sm border-border/50">
                <DialogHeader>
                   <DialogTitle className="text-primary">Manage Your Profile</DialogTitle>
-                  <DialogDescription className="text-muted-foreground">
-                     Update your personal information and profile picture.
-                  </DialogDescription>
+                   <DialogDescription className="text-muted-foreground">
+                       Update your personal details and profile picture.
+                   </DialogDescription>
                </DialogHeader>
-               {/* Conditional rendering based on modal open state */}
-                {isProfileModalOpen && (
-                    isLoadingProfile ? (
-                        // Show loading skeleton inside modal while fetching profile
-                        <div className="space-y-6 p-6">
-                            <div className="flex items-center space-x-4">
-                                <Skeleton className="h-24 w-24 rounded-full" />
-                                <div className="space-y-2">
-                                    <Skeleton className="h-4 w-[150px]" />
-                                    <Skeleton className="h-4 w-[100px]" />
-                                </div>
-                            </div>
-                            <Skeleton className="h-10 w-full" />
-                            <Skeleton className="h-10 w-full" />
-                            <Skeleton className="h-10 w-full" />
-                            <Skeleton className="h-24 w-full" />
-                            <Skeleton className="h-10 w-24 ml-auto" />
-                        </div>
-                    ) : (
-                         // Pass fetched/current data to the form
-                        <ProfileForm
-                            key={user?.uid} // Re-render form if user changes
-                            initialData={profileData} // Use fetched data
-                            // Pass update function that uses the authenticated user
-                            updateFunction={async (data, file) => updateProfileData(user, data, file)}
-                            onSuccess={handleProfileUpdateSuccess} // Callback to update display state
-                            onCancel={() => setIsProfileModalOpen(false)}
-                            className="mt-4"
-                        />
-                    )
+                {/* Pass profile data and update function to the form */}
+                {profileData && !isLoading && ( // Render form only when data is loaded
+                    <ProfileForm
+                        key={user?.uid || 'profile-form'} // Ensure remount on user change if needed
+                        initialData={profileData}
+                        updateFunction={handleUpdateProfile}
+                        onCancel={() => setIsProfileModalOpen(false)} // Close modal on cancel
+                         onSuccess={() => {
+                            setIsProfileModalOpen(false); // Close modal on success handled by handleUpdateProfile
+                         }}
+                         className="bg-transparent shadow-none border-0 p-0 mt-2" // Adjust styles for modal
+                    />
                 )}
+                 {/* Show loading indicator inside modal while profile data loads initially */}
+                 {isLoading && (
+                     <div className="flex justify-center items-center p-10">
+                        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                     </div>
+                 )}
            </DialogContent>
        </Dialog>
 
-       {/* Password Update Modal */}
+
+      {/* Change Password Modal */}
       <Dialog open={isPasswordModalOpen} onOpenChange={setIsPasswordModalOpen}>
-          <DialogContent className="sm:max-w-md bg-card/95 dark:bg-card/80 backdrop-blur-sm border-border/50">
-              <DialogHeader>
-                 <DialogTitle className="text-primary">Update Password</DialogTitle>
-                 <DialogDescription className="text-muted-foreground">
-                    Enter your current password and choose a new one.
-                 </DialogDescription>
-              </DialogHeader>
-              {isPasswordModalOpen && ( // Render form only when modal is open
-                <PasswordUpdateForm
-                    onSuccess={() => {
-                        setIsPasswordModalOpen(false); // Close modal on success
-                        toast({ title: "Password Updated", description: "Your password has been changed successfully.", duration: 2000 });
-                    }}
-                    onCancel={() => setIsPasswordModalOpen(false)}
-                    className="mt-4"
-                />
-              )}
-          </DialogContent>
+        <DialogContent className="sm:max-w-md bg-card/95 dark:bg-card/80 backdrop-blur-sm border-border/50">
+          <DialogHeader>
+            <DialogTitle className="text-primary">Change Password</DialogTitle>
+            <DialogDescription className="text-muted-foreground">
+              Enter and confirm your new password.
+            </DialogDescription>
+          </DialogHeader>
+           <PasswordUpdateForm
+                onSuccess={() => setIsPasswordModalOpen(false)} // Close modal on success
+                onCancel={() => setIsPasswordModalOpen(false)} // Close modal on cancel
+                className="pt-4"
+            />
+        </DialogContent>
       </Dialog>
-    </>
+    </div>
   );
 }
