@@ -5,7 +5,7 @@ import Link from "next/link";
 import UserProfile from "@/components/common/user-profile"; // Keep UserProfile
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 // Import relevant icons
-import { LayoutDashboard, FileText, Home, ListMusic } from "lucide-react"; // Import ListMusic
+import { LayoutDashboard, FileText, Home, ListMusic, CalendarClock } from "lucide-react"; // Import ListMusic and CalendarClock
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/auth-context"; // Import useAuth
 import { Skeleton } from "@/components/ui/skeleton"; // Import Skeleton
@@ -29,9 +29,10 @@ const PineappleIcon = () => (
 // Define the navigation items for the home screen launchpad
 const navItems = [
   { title: "Dashboard", href: "/dashboard", icon: <LayoutDashboard className="h-10 w-10" />, description: "View your latest stats" }, // Updated description
-  { title: "Documents", href: "/documents", icon: <FileText className="h-10 w-10" />, description: "Access your agreements & handbooks" },
-  { title: "Pineapple", href: "/pineapple", icon: <PineappleIcon />, description: "Connect & Collaborate with your fellow artists" },
   { title: "My Releases", href: "/releases", icon: <ListMusic className="h-10 w-10" />, description: "Manage your music" },
+  { title: "Events", href: "/events", icon: <CalendarClock className="h-10 w-10" />, description: "Manage your events" }, // Added Events link
+  { title: "Documents", href: "/documents", icon: <FileText className="h-10 w-10" />, description: "Access agreements & handbooks" }, // Shortened description
+  { title: "Pineapple", href: "/pineapple", icon: <PineappleIcon />, description: "Connect & Collaborate" }, // Shortened description
 ];
 
 // List of informal greeting templates
@@ -156,8 +157,8 @@ export default function HomePage() {
                 </Card>
 
                 {/* Navigation Grid - App Screen Style */}
-                 {/* Keep grid columns as is, it will wrap nicely */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+                 {/* Updated grid to accommodate 5 items - might need adjustment for very large screens */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-4 md:gap-6"> {/* Adjusted lg/xl columns */}
                 {navItems.map((item) => (
                     <Link href={item.href} key={item.href} passHref legacyBehavior>
                     <a className="block group"> {/* Use anchor tag for legacyBehavior */}
