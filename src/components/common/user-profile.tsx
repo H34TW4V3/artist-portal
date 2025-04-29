@@ -225,30 +225,25 @@ export default function UserProfile() {
               <span className="sr-only">Toggle user menu</span>
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56 bg-popover border-border shadow-lg">
-            <DropdownMenuLabel className="font-normal">
+          <DropdownMenuContent align="end" className="w-60 bg-popover border-border shadow-lg"> {/* Increased width */}
+            <DropdownMenuLabel className="font-normal px-3 py-2"> {/* Adjusted padding */}
               <div className="flex flex-col space-y-1">
-                <p className="text-sm font-medium leading-none text-foreground">{displayName}</p>
-                <p className="text-xs leading-none text-muted-foreground">{user?.email}</p>
+                <p className="text-base font-medium leading-none text-foreground">{displayName}</p> {/* Increased size to text-base */}
+                <p className="text-sm leading-none text-muted-foreground">{user?.email}</p> {/* Increased size to text-sm */}
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator className="bg-border/50" />
-            <DropdownMenuItem onClick={() => setIsProfileModalOpen(true)} className="cursor-pointer focus:bg-accent focus:text-accent-foreground">
-              <UserCog className="mr-2 h-4 w-4" />
+            <DropdownMenuItem onClick={() => setIsProfileModalOpen(true)} className="cursor-pointer focus:bg-accent focus:text-accent-foreground text-base py-2 px-3"> {/* Increased size, padding */}
+              <UserCog className="mr-2 h-5 w-5" /> {/* Increased icon size */}
               <span>Manage Profile</span>
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setIsPasswordModalOpen(true)} className="cursor-pointer focus:bg-accent focus:text-accent-foreground">
-               <KeyRound className="mr-2 h-4 w-4" />
+            <DropdownMenuItem onClick={() => setIsPasswordModalOpen(true)} className="cursor-pointer focus:bg-accent focus:text-accent-foreground text-base py-2 px-3"> {/* Increased size, padding */}
+               <KeyRound className="mr-2 h-5 w-5" /> {/* Increased icon size */}
               <span>Change Password</span>
             </DropdownMenuItem>
-            {/* Removed Key Documents link */}
-            {/* <DropdownMenuItem onClick={() => router.push('/documents')} className="cursor-pointer focus:bg-accent focus:text-accent-foreground">
-                <FileText className="mr-2 h-4 w-4" />
-                <span>Key Documents</span>
-            </DropdownMenuItem> */}
             <DropdownMenuSeparator className="bg-border/50" />
-            <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive focus:bg-destructive/10 cursor-pointer">
-              <LogOut className="mr-2 h-4 w-4" />
+            <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive focus:bg-destructive/10 cursor-pointer text-base py-2 px-3"> {/* Increased size, padding */}
+              <LogOut className="mr-2 h-5 w-5" /> {/* Increased icon size */}
               <span>Log out</span>
             </DropdownMenuItem>
           </DropdownMenuContent>
