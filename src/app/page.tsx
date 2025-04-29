@@ -28,8 +28,8 @@ const navItems = [
   { title: "Dashboard", href: "/dashboard", icon: <LayoutDashboard className="h-10 w-10" />, description: "View stats, releases & events" }, // Updated description
   { title: "Documents", href: "/documents", icon: <FileText className="h-10 w-10" />, description: "Access agreements & handbooks" },
   { title: "Pineapple", href: "/pineapple", icon: <PineappleIcon />, description: "Connect & Collaborate" },
-  // Removed dedicated Release Management link
-  // { title: "Release Mgmt", href: "/releases", icon: <ListMusic className="h-10 w-10" />, description: "Manage your music" },
+  // Add Release Management link pointing to the dedicated page
+  { title: "Release Mgmt", href: "/releases", icon: <ListMusic className="h-10 w-10" />, description: "Manage your music" },
 ];
 
 export default function HomePage() {
@@ -88,7 +88,7 @@ export default function HomePage() {
                 </Card>
 
                 {/* Navigation Grid - App Screen Style */}
-                 {/* Updated grid columns */}
+                 {/* Keep grid columns as is, it will wrap nicely */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
                 {navItems.map((item) => (
                     <Link href={item.href} key={item.href} passHref legacyBehavior>
