@@ -25,8 +25,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { PasswordUpdateForm } from "@/components/profile/password-update-form"; // Import Password Update Form
 import { ProfileForm, type ProfileFormValues } from "@/components/profile/profile-form"; // Import Profile Form and its type
 import { useToast } from "@/hooks/use-toast";
-import { LogOut, UserCog, KeyRound, Loader2 } from "lucide-react"; // Import icons
+import { LogOut, UserCog, KeyRound, Loader2, FileText } from "lucide-react"; // Import icons
 import { cn } from "@/lib/utils";
+import router from "next/router";
 
 // --- Zod Schema for User Profile Data (Matches ProfileForm) ---
 const profileSchema = z.object({

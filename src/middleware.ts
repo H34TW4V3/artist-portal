@@ -17,12 +17,7 @@ export async function middleware(request: NextRequest) {
     if (isPublicPath) {
         // If accessing a public path (like login) with a valid token, redirect to dashboard
         if (sessionToken) {
-            // Basic check: If token exists, assume valid for now.
-            // Ideally, verify token validity here if using Edge functions with Firebase Admin SDK or a backend endpoint.
-            // Since direct Admin SDK usage isn't trivial in Edge Middleware without workarounds,
-            // we'll rely on the client-side checks for now.
             console.log(`Middleware: Public path (${pathname}), but token exists. Redirecting to /dashboard`);
-            // *** CHANGE: Redirect to /dashboard instead of / ***
             return NextResponse.redirect(new URL('/dashboard', request.url));
         }
         // Allow access to public paths if no token
@@ -30,13 +25,12 @@ export async function middleware(request: NextRequest) {
         return NextResponse.next();
     }
 
-    // --- Protected Routes ---
-    // If accessing a protected route without a valid token, redirect to login
+    // --- Protected Routes (including root) ---
+    // If accessing a protected route (or root) without a valid token, redirect to login
     if (!sessionToken) {
-        console.log(`Middleware: Protected path (${pathname}), no token. Redirecting to /login`);
+        console.log(`Middleware: Protected/Root path (${pathname}), no token. Redirecting to /login`);
         // Preserve the intended destination for redirection after login
         const loginUrl = new URL('/login', request.url);
-        // Don't set redirect param if the original destination was home, just go to dashboard after login
         // Preserve redirect only if it's not the root path itself
         if (pathname !== '/') {
              loginUrl.searchParams.set('redirect', pathname);
@@ -44,7 +38,7 @@ export async function middleware(request: NextRequest) {
         return NextResponse.redirect(loginUrl);
     }
 
-    // --- Handle root path for authenticated users ---
+    // --- Handle root path specifically for authenticated users ---
     // If the user is authenticated and tries to access the root path ('/'), redirect them to the dashboard.
     if (sessionToken && pathname === '/') {
         console.log(`Middleware: Authenticated user accessing root path. Redirecting to /dashboard`);
@@ -53,32 +47,9 @@ export async function middleware(request: NextRequest) {
 
 
     // If token exists for a protected route (and not root), allow access
-    // Again, ideal verification would happen here or on the client-side components
     console.log(`Middleware: Protected path (${pathname}), token exists. Allowing access.`);
     return NextResponse.next();
 
-    // --- Token Verification (Advanced - Example using a hypothetical backend) ---
-    /*
-    try {
-        const verificationResponse = await fetch('/api/auth/verify', {
-            headers: { Authorization: `Bearer ${sessionToken}` }
-        });
-        if (!verificationResponse.ok) {
-             console.log(`Middleware: Token verification failed for path ${pathname}. Redirecting to /login`);
-             request.cookies.delete('firebaseIdToken'); // Clear invalid cookie
-             const loginUrl = new URL('/login', request.url);
-             return NextResponse.redirect(loginUrl);
-        }
-        // Token is valid, allow access
-        console.log(`Middleware: Protected path (${pathname}), token verified. Allowing access.`);
-        return NextResponse.next();
-    } catch (error) {
-        console.error('Middleware: Error during token verification:', error);
-        // Redirect to login on verification error
-        const loginUrl = new URL('/login', request.url);
-        return NextResponse.redirect(loginUrl);
-    }
-    */
 }
 
 // Configure the middleware to run on specific paths
@@ -86,4 +57,3 @@ export const config = {
     // Match all paths except for static assets, API routes, and Next.js internals
     matcher: ['/((?!api|_next/static|_next/image|favicon.ico).*)'],
 };
-
