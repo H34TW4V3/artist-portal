@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { LayoutDashboard, ListMusic, CalendarClock, FileText, UserCog, Settings } from "lucide-react"; // Import relevant icons
 import { cn } from "@/lib/utils";
 
-// Pineapple SVG Icon
+// Pineapple SVG Icon - Reverted to previous themeable version
 const PineappleIcon = () => (
     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-10 w-10">
         <defs>
