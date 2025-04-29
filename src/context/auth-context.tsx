@@ -39,30 +39,31 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   // Login function remains the same, relies on service function which now sets cookie
   const login = async (email: string, password: string): Promise<FirebaseUser> => {
-    // setLoading(true); // Optionally set loading during the attempt
+    setLoading(true); // Set loading true when login process starts
     try {
       const loggedInUser = await fbLogin(email, password);
-      // State update is handled by the onAuthStateChange listener
+      // State update (user, loading=false) is handled by the onAuthStateChange listener upon successful login
       return loggedInUser;
     } catch (error) {
-      // setLoading(false); // Set loading false on error if you started it
+      setLoading(false); // Set loading false on login error
       throw error; // Re-throw error to be caught by the caller
     }
   };
 
   // Logout function remains the same, relies on service function which now removes cookie
   const logout = async (): Promise<void> => {
-     // setLoading(true); // Optionally set loading during the attempt
+     setLoading(true); // Set loading true when logout process starts
     try {
       await fbLogout();
-      // State update is handled by the onAuthStateChange listener
+      // State update (user=null, loading=false) is handled by the onAuthStateChange listener upon successful logout
     } catch (error) {
-      // setLoading(false); // Set loading false on error if you started it
+      setLoading(false); // Set loading false on logout error
       throw error; // Re-throw error
     }
   };
 
-  // Display loading indicator only during the initial auth state check
+  // Display loading indicator whenever the loading state is true.
+  // This covers initial auth check and the transition period during login/logout attempts.
   if (loading) {
     return (
       <div className="flex min-h-screen w-full items-center justify-center bg-background p-4">
@@ -72,7 +73,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }
 
 
-  // Once initial loading is done, render the context provider with children
+  // Once loading is false, render the context provider with children
   return (
     <AuthContext.Provider value={{ user, loading, login, logout }}>
       {children}
@@ -88,3 +89,4 @@ export const useAuth = (): AuthContextType => {
   }
   return context;
 };
+

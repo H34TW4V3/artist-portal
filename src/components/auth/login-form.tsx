@@ -32,10 +32,11 @@ const loginSchema = z.object({
 type LoginFormValues = z.infer<typeof loginSchema>;
 
 export function LoginForm() {
-  const { login } = useAuth(); // Get login function from context
+  const { login, loading: authLoading } = useAuth(); // Get login function and loading state from context
   const { toast } = useToast();
   const router = useRouter(); // Keep for potential future use (e.g., reading redirect param)
-  const [isLoading, setIsLoading] = useState(false);
+  // Removed local isLoading state, use authLoading from context instead
+  // const [isLoading, setIsLoading] = useState(false);
   const [isForgotPasswordModalOpen, setIsForgotPasswordModalOpen] = useState(false);
 
   const form = useForm<LoginFormValues>({
@@ -48,7 +49,8 @@ export function LoginForm() {
   });
 
   async function onSubmit(values: LoginFormValues) {
-    setIsLoading(true);
+    // No need to set local isLoading true, AuthProvider handles it
+    // setIsLoading(true);
     try {
       // Use the login function from the auth context
       await login(values.artistId, values.password);
@@ -58,9 +60,7 @@ export function LoginForm() {
         variant: "default",
          duration: 2000, // Show for 2 seconds
       });
-      // NO LONGER NEEDED: Redirect is handled by middleware/AuthProvider state change
-      // const redirectPath = router.query.redirect || '/'; // Get redirect path or default to home
-      // router.push(redirectPath); // Redirect after successful login
+      // Redirect is handled by middleware/AuthProvider state change
 
     } catch (error) {
       console.error("Login failed:", error);
@@ -69,9 +69,11 @@ export function LoginForm() {
         description: error instanceof Error ? error.message : "An unexpected error occurred.",
         variant: "destructive",
       });
-    } finally {
-      setIsLoading(false);
     }
+    // No need to set local isLoading false, AuthProvider handles it
+    // finally {
+    //   setIsLoading(false);
+    // }
   }
 
   return (
@@ -90,7 +92,7 @@ export function LoginForm() {
                     type="email" // Keep type as email for validation
                     placeholder="your.email@example.com"
                     {...field}
-                    disabled={isLoading}
+                    disabled={authLoading} // Disable based on auth context loading state
                     autoComplete="email"
                     className="bg-background/50 dark:bg-background/30 border-input focus:ring-accent" // Adjusted opacity
                   />
@@ -112,7 +114,7 @@ export function LoginForm() {
                     type="password"
                     placeholder="••••••••"
                     {...field}
-                    disabled={isLoading}
+                    disabled={authLoading} // Disable based on auth context loading state
                     autoComplete="current-password"
                     className="bg-background/50 dark:bg-background/30 border-input focus:ring-accent" // Adjusted opacity
                   />
@@ -129,16 +131,16 @@ export function LoginForm() {
                 variant="link"
                 className="text-sm font-medium text-primary hover:underline p-0 h-auto" // Link styling
                 onClick={() => setIsForgotPasswordModalOpen(true)}
-                disabled={isLoading}
+                disabled={authLoading} // Disable based on auth context loading state
               >
                 Forgot Password?
               </Button>
           </div>
 
           {/* Submit Button */}
-          <Button type="submit" disabled={isLoading || !form.formState.isValid} className="w-full bg-primary hover:bg-primary/90 text-primary-foreground shadow-md disabled:shadow-none disabled:bg-muted disabled:text-muted-foreground">
-            {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {isLoading ? 'Logging In...' : 'Login'}
+          <Button type="submit" disabled={authLoading || !form.formState.isValid} className="w-full bg-primary hover:bg-primary/90 text-primary-foreground shadow-md disabled:shadow-none disabled:bg-muted disabled:text-muted-foreground">
+            {authLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            {authLoading ? 'Logging In...' : 'Login'}
           </Button>
         </form>
       </Form>
