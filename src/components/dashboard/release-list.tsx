@@ -191,7 +191,7 @@ export function ReleaseList({ className }: ReleaseListProps) {
                         Artwork
                     </TableHead>
                     <TableHead className="p-2">Title</TableHead>
-                    <TableHead className="p-2">Artist</TableHead>
+                    {/* Removed Artist Header */}
                     <TableHead className="hidden md:table-cell p-2">Release Date</TableHead>
                     <TableHead className="text-right p-2">
                         Actions
@@ -207,7 +207,7 @@ export function ReleaseList({ className }: ReleaseListProps) {
                                     <Skeleton className="h-12 w-12 rounded-md bg-muted/50" />
                                 </TableCell>
                                 <TableCell className="p-2"><Skeleton className="h-4 w-3/4 bg-muted/50" /></TableCell>
-                                <TableCell className="p-2"><Skeleton className="h-4 w-1/2 bg-muted/50" /></TableCell>
+                                {/* Removed Artist Skeleton */}
                                 <TableCell className="hidden md:table-cell p-2"><Skeleton className="h-4 w-20 bg-muted/50" /></TableCell>
                                 <TableCell className="text-right p-2">
                                     <Skeleton className="h-8 w-8 rounded-md ml-auto bg-muted/50" />
@@ -217,7 +217,8 @@ export function ReleaseList({ className }: ReleaseListProps) {
                     ) : releases.length === 0 ? (
                         // No releases message
                         <TableRow>
-                            <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
+                            {/* Adjusted colspan */}
+                            <TableCell colSpan={4} className="h-24 text-center text-muted-foreground">
                                 No releases found yet. Click "Upload New Release" to add your first one!
                             </TableCell>
                         </TableRow>
@@ -243,7 +244,7 @@ export function ReleaseList({ className }: ReleaseListProps) {
                                     />
                                 </TableCell>
                                 <TableCell className="font-medium text-foreground p-2 align-middle">{release.title}</TableCell>
-                                <TableCell className="text-muted-foreground p-2 align-middle">{release.artist}</TableCell>
+                                {/* Removed Artist Cell */}
                                 <TableCell className="hidden md:table-cell text-muted-foreground p-2 align-middle">
                                   {formatDate(release.releaseDate)}
                                 </TableCell>
