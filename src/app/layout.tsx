@@ -27,6 +27,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   const [wallpaperUrl, setWallpaperUrl] = useState(DEFAULT_WALLPAPER_URL);
+  // Set initial state to 'dark'
   const [theme, setTheme] = useState<'light' | 'dark'>('dark');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
@@ -37,12 +38,14 @@ export default function RootLayout({
     if (savedWallpaperUrl) {
       setWallpaperUrl(savedWallpaperUrl);
     }
+    // Check local storage for theme preference
     const savedTheme = localStorage.getItem(LOCAL_STORAGE_THEME_KEY);
     if (savedTheme === 'light' || savedTheme === 'dark') {
       setTheme(savedTheme);
     } else {
-       const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-       setTheme(prefersDark ? 'dark' : 'light');
+       // If no saved theme, default to dark (already set in initial state)
+       // No need to check prefers-color-scheme unless you want it to override default
+       setTheme('dark'); // Explicitly set dark as fallback if needed
     }
   }, []);
 
@@ -72,8 +75,7 @@ export default function RootLayout({
     setTheme((prevTheme) => (prevTheme === 'dark' ? 'light' : 'dark'));
   };
 
-  // Ensure GeistSans variable is applied correctly
-  // Remove whitespace between <html> tags
+  // Apply 'dark' class by default before mounting
   return (
     <html lang="en" className={`${GeistSans.variable} ${isMounted ? theme : 'dark'}`}>
       <head>
