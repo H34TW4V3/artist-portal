@@ -5,7 +5,7 @@ import Link from "next/link";
 import UserProfile from "@/components/common/user-profile"; // Keep UserProfile
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 // Import relevant icons
-import { LayoutDashboard, FileText, Home } from "lucide-react";
+import { LayoutDashboard, FileText, Home, ListMusic } from "lucide-react"; // Import ListMusic
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/auth-context"; // Import useAuth
 import { Skeleton } from "@/components/ui/skeleton"; // Import Skeleton
@@ -25,10 +25,11 @@ const PineappleIcon = () => (
 
 // Define the navigation items for the home screen launchpad
 const navItems = [
-  { title: "Dashboard", href: "/dashboard", icon: <LayoutDashboard className="h-10 w-10" />, description: "View stats & insights" },
+  { title: "Dashboard", href: "/dashboard", icon: <LayoutDashboard className="h-10 w-10" />, description: "View stats, releases & events" }, // Updated description
   { title: "Documents", href: "/documents", icon: <FileText className="h-10 w-10" />, description: "Access agreements & handbooks" },
   { title: "Pineapple", href: "/pineapple", icon: <PineappleIcon />, description: "Connect & Collaborate" },
-  // Add Release Management link later if a dedicated page is created
+  // Removed dedicated Release Management link
+  // { title: "Release Mgmt", href: "/releases", icon: <ListMusic className="h-10 w-10" />, description: "Manage your music" },
 ];
 
 export default function HomePage() {
@@ -40,10 +41,6 @@ export default function HomePage() {
         if (!loading && !user) {
             router.replace('/login');
         }
-        // NO LONGER REDIRECT authenticated users away from home
-        // if (!loading && user) {
-        //     router.replace('/dashboard'); // REMOVED
-        // }
     }, [user, loading, router]);
 
     // Show loading indicator while checking auth state
@@ -91,7 +88,8 @@ export default function HomePage() {
                 </Card>
 
                 {/* Navigation Grid - App Screen Style */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
+                 {/* Updated grid columns */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
                 {navItems.map((item) => (
                     <Link href={item.href} key={item.href} passHref legacyBehavior>
                     <a className="block group"> {/* Use anchor tag for legacyBehavior */}
