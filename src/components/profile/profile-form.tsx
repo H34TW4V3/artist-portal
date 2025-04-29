@@ -29,7 +29,7 @@ import { cn } from "@/lib/utils";
 // Define the schema for profile data, including new fields
 const profileSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters.").max(50, "Name must be 50 characters or less."),
-  email: z.string().email("Invalid email address."),
+  email: z.string().email("Invalid email address."), // Email usually comes from auth, but keep for display/form structure
   bio: z.string().max(300, "Bio must be 300 characters or less.").optional().nullable(), // Allow null for reset
   phoneNumber: z.string().optional().nullable() // Basic validation, make optional
       .refine(val => !val || /^[+]*[(]{0,1}[0-9]{1,4}[)]{0,1}[-\s\./0-9]*$/.test(val), {
@@ -40,57 +40,21 @@ const profileSchema = z.object({
 
 export type ProfileFormValues = z.infer<typeof profileSchema>;
 
-// Mock function to fetch profile data (replace with actual API call)
-// In a real app, this might live in a service file
-const fetchProfileData = async (): Promise<ProfileFormValues> => {
-  console.log("Mock API: Fetching profile data...");
-  await new Promise(resolve => setTimeout(resolve, 800)); // Simulate network delay
-  // Return mock data including new fields
-  return {
-    name: "Artist Name", // Replace with actual fetched name
-    email: "artist@example.com", // Replace with actual fetched email
-    bio: "Passionate musician creating unique soundscapes. Exploring the boundaries of electronic music.", // Example bio
-    phoneNumber: "+1 123-456-7890", // Example phone
-    imageUrl: "https://picsum.photos/seed/artistlogo/100/100", // Use a larger placeholder for profile page
-  };
-};
-
-// Mock function to update profile data (replace with actual API call)
-// Updated to handle image upload simulation
-// In a real app, this might live in a service file
-const updateProfileData = async (data: ProfileFormValues, newImageFile?: File): Promise<{ updatedData: ProfileFormValues }> => {
-  console.log("Mock API: Updating profile data...", data);
-  if (newImageFile) {
-      console.log("Mock API: Simulating upload for image:", newImageFile.name);
-      // In a real app, upload the file and get the new URL
-      await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate upload delay
-      // Simulate getting a new URL - use a new seed for picsum or a data URL
-      // For simplicity, just use a new placeholder URL based on timestamp
-      data.imageUrl = `https://picsum.photos/seed/${Date.now()}/100/100`;
-      console.log("Mock API: Simulated upload complete. New URL:", data.imageUrl);
-  } else {
-     await new Promise(resolve => setTimeout(resolve, 600)); // Simulate shorter delay if no image upload
-  }
-
-  // Simulate success/failure
-  if (Math.random() < 0.1) { // Simulate occasional failure
-    throw new Error("Failed to update profile. Please try again.");
-  }
-  console.log("Mock API: Profile updated successfully.");
-  return { updatedData: data }; // Return the potentially updated data (with new imageUrl)
-};
+// Removed mock functions fetchProfileData and updateProfileData
+// They will be passed in or handled by the parent component (UserProfile)
 
 
 interface ProfileFormProps {
-    initialData?: ProfileFormValues; // Optional initial data
+    initialData?: ProfileFormValues; // Make initial data optional, parent handles fetching
+    updateFunction: (data: ProfileFormValues, newImageFile?: File) => Promise<{ updatedData: ProfileFormValues }>; // Function to call on submit
     onSuccess?: (updatedData: ProfileFormValues) => void; // Callback on successful update
     onCancel?: () => void; // Callback for cancel action (optional)
     className?: string;
 }
 
-export function ProfileForm({ initialData, onSuccess, onCancel, className }: ProfileFormProps) {
+export function ProfileForm({ initialData, updateFunction, onSuccess, onCancel, className }: ProfileFormProps) {
     const { toast } = useToast();
-    const [isLoading, setIsLoading] = useState(!initialData); // Load if no initial data provided
+    // Removed isLoading state, parent manages loading indicator
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [currentImageUrl, setCurrentImageUrl] = useState<string | undefined>(initialData?.imageUrl ?? undefined); // State for current image display
     const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null); // State for image preview
@@ -100,7 +64,7 @@ export function ProfileForm({ initialData, onSuccess, onCancel, className }: Pro
 
     const form = useForm<ProfileFormValues>({
         resolver: zodResolver(profileSchema),
-        defaultValues: initialData || {
+        defaultValues: initialData || { // Use initialData if provided
             name: "",
             email: "",
             bio: "",
@@ -110,42 +74,23 @@ export function ProfileForm({ initialData, onSuccess, onCancel, className }: Pro
         mode: "onChange",
     });
 
-    // Fetch existing profile data on mount if not provided
+    // Reset form state if initialData changes (e.g., fetched by parent)
     useEffect(() => {
-        if (!initialData) {
-            const loadData = async () => {
-                setIsLoading(true);
-                try {
-                    const data = await fetchProfileData();
-                    form.reset(data); // Populate form with fetched data
-                    setCurrentImageUrl(data.imageUrl ?? undefined); // Set current image for display
-                    setFormInitialName(data.name);
-                } catch (error) {
-                    console.error("Error fetching profile data:", error);
-                    toast({
-                        title: "Error Loading Profile",
-                        description: "Could not load your profile data. Please try again later.",
-                        variant: "destructive",
-                    });
-                } finally {
-                    setIsLoading(false);
-                }
-            };
-            loadData();
-        } else {
-             // If initialData IS provided, set the image URL and name from it
-             setCurrentImageUrl(initialData.imageUrl ?? undefined);
-             setFormInitialName(initialData.name);
+        if (initialData) {
+            form.reset(initialData);
+            setCurrentImageUrl(initialData.imageUrl ?? undefined);
+            setFormInitialName(initialData.name);
+            // Reset upload state when new initial data comes in
+            setSelectedImageFile(undefined);
+            setImagePreviewUrl(null);
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [initialData]); // Depend on initialData prop
+    }, [initialData, form]);
 
 
     // Handle file selection
     const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
         if (file) {
-            // Basic validation (optional: add more specific checks)
             if (file.size > 5 * 1024 * 1024) { // Limit size (e.g., 5MB)
                 toast({ title: "Image Too Large", description: "Please select an image smaller than 5MB.", variant: "destructive" });
                 return;
@@ -156,13 +101,12 @@ export function ProfileForm({ initialData, onSuccess, onCancel, className }: Pro
             }
 
             setSelectedImageFile(file);
-            // Create a preview URL
             const reader = new FileReader();
             reader.onloadend = () => {
                 setImagePreviewUrl(reader.result as string);
             };
             reader.readAsDataURL(file);
-            form.setValue('imageUrl', '', { shouldDirty: true }); // Mark form as dirty, clear any existing URL value
+            form.setValue('imageUrl', '', { shouldDirty: true }); // Mark form as dirty
         }
     };
 
@@ -171,36 +115,36 @@ export function ProfileForm({ initialData, onSuccess, onCancel, className }: Pro
         fileInputRef.current?.click();
     };
 
-    // Handle form submission
+    // Handle form submission - Calls the passed updateFunction
     async function onSubmit(values: ProfileFormValues) {
         setIsSubmitting(true);
-        const isImageChanged = !!selectedImageFile; // Check if a new image was selected
+        const isImageChanged = !!selectedImageFile;
 
-        // Use a temporary variable to avoid modifying the original 'values' directly if not needed
+        // Prepare data, potentially excluding imageUrl if a new file is uploaded
+        // (The updateFunction should handle assigning the *new* URL)
         let dataToSubmit = { ...values };
-        // Remove imageUrl from submission data if we are uploading a new file,
-        // as the backend will generate the new URL. Keep it if no new file is selected.
-        if (isImageChanged) {
-            // The updateProfileData function will handle adding the new URL
-            // Ensure the potentially stale imageUrl from the form isn't sent if a file is being uploaded
-            dataToSubmit = { ...values, imageUrl: currentImageUrl }; // Pass current URL to backend for context if needed, or it can be ignored
-        }
+         if (isImageChanged) {
+            // Let the updateFunction handle the imageUrl based on the upload result
+             dataToSubmit.imageUrl = null; // Or keep currentImageUrl if backend needs it for deletion context
+         }
+
 
         try {
-            const { updatedData } = await updateProfileData(dataToSubmit, selectedImageFile);
+            // Call the injected update function
+            const { updatedData } = await updateFunction(dataToSubmit, selectedImageFile);
 
             toast({
                 title: "Profile Updated",
                 description: "Your profile information has been saved successfully.",
                 variant: "default",
+                 duration: 2000,
             });
-            setFormInitialName(updatedData.name); // Update local name state
-            setCurrentImageUrl(updatedData.imageUrl ?? undefined); // Update displayed image URL
-            setSelectedImageFile(undefined); // Clear selected file state
-            setImagePreviewUrl(null); // Clear preview
-            // Reset form with updated data, keeping server state
-            form.reset(updatedData, { keepValues: false, keepDirty: false, keepDefaultValues: false });
-            onSuccess?.(updatedData); // Call the success callback
+            setFormInitialName(updatedData.name);
+            setCurrentImageUrl(updatedData.imageUrl ?? undefined);
+            setSelectedImageFile(undefined);
+            setImagePreviewUrl(null);
+            form.reset(updatedData, { keepValues: false, keepDirty: false, keepDefaultValues: false }); // Reset with new data
+            onSuccess?.(updatedData); // Call the parent's success callback
 
         } catch (error) {
             console.error("Error updating profile:", error);
@@ -215,26 +159,10 @@ export function ProfileForm({ initialData, onSuccess, onCancel, className }: Pro
     }
 
     const formIsDirty = form.formState.isDirty || !!selectedImageFile;
-    const formIsValid = form.formState.isValid; // Schema validation status
+    const formIsValid = form.formState.isValid;
 
-    if (isLoading) {
-        return (
-             <div className={cn("space-y-6 p-6", className)}> {/* Added padding */}
-                <div className="flex items-center space-x-4">
-                    <Skeleton className="h-24 w-24 rounded-full" />
-                    <div className="space-y-2">
-                        <Skeleton className="h-4 w-[150px]" />
-                        <Skeleton className="h-4 w-[100px]" />
-                    </div>
-                </div>
-                <Skeleton className="h-10 w-full" />
-                <Skeleton className="h-10 w-full" />
-                <Skeleton className="h-10 w-full" />
-                <Skeleton className="h-24 w-full" />
-                <Skeleton className="h-10 w-24" />
-            </div>
-        );
-    }
+    // Removed the loading skeleton render, parent component handles this
+
 
     return (
         <Form {...form}>
@@ -246,7 +174,8 @@ export function ProfileForm({ initialData, onSuccess, onCancel, className }: Pro
                     <FormLabel>Profile Picture</FormLabel>
                     <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
                         <Avatar className="h-20 w-20 sm:h-24 sm:w-24 cursor-pointer border-2 border-primary/30 hover:border-primary/60 transition-colors" onClick={handleAvatarClick}>
-                            <AvatarImage src={imagePreviewUrl || currentImageUrl} alt={formInitialName} />
+                           {/* Show preview if available, otherwise current image */}
+                           <AvatarImage src={imagePreviewUrl || currentImageUrl} alt={formInitialName} />
                             <AvatarFallback className="text-2xl sm:text-3xl bg-muted text-muted-foreground">
                                 {formInitialName?.split(' ').map(n => n[0]).join('').toUpperCase()}
                             </AvatarFallback>
@@ -267,12 +196,9 @@ export function ProfileForm({ initialData, onSuccess, onCancel, className }: Pro
                                 />
                             </FormControl>
                             <FormDescription className="text-xs">Click avatar or button to upload (JPG, PNG, GIF, max 5MB).</FormDescription>
-                            {/* Image URL is not directly editable, managed via upload */}
-                            <FormField
-                                control={form.control}
-                                name="imageUrl" // Keep for schema validation if URL is part of it
-                                render={() => <FormMessage />} // Display any URL format errors if needed
-                            />
+                             {/* We don't need a form field for the URL itself as it's managed by upload */}
+                             {/* But you might want a message area if the schema validates URL */}
+                             {/* <FormMessage /> */}
                         </div>
                     </div>
                      {/* Reduced margin top */}
@@ -280,7 +206,7 @@ export function ProfileForm({ initialData, onSuccess, onCancel, className }: Pro
                         <AlertCircle className="h-4 w-4" />
                         <AlertTitle className="font-medium text-accent text-sm">Platform Sync Notice</AlertTitle>
                         <AlertDescription className="text-xs text-accent/90">
-                            Updating your profile image here will also update it across your connected streaming platforms and public profiles associated with this hub.
+                            Updating your profile image here may also update it across connected streaming platforms and public profiles associated with this hub.
                         </AlertDescription>
                     </Alert>
                 </FormItem>
@@ -299,18 +225,19 @@ export function ProfileForm({ initialData, onSuccess, onCancel, className }: Pro
                         </FormItem>
                     )}
                 />
-                {/* Email */}
+                {/* Email (Read-only as it comes from Auth) */}
                 <FormField
                     control={form.control}
                     name="email"
                     render={({ field }) => (
                         <FormItem>
-                            <FormLabel>Contact Email</FormLabel>
+                            <FormLabel>Account Email</FormLabel>
                             <FormControl>
-                                <Input type="email" placeholder="your.email@example.com" {...field} disabled={isSubmitting} />
+                                {/* Make email input read-only */}
+                                <Input type="email" placeholder="your.email@example.com" {...field} disabled={true} readOnly className="bg-muted/50 cursor-not-allowed"/>
                             </FormControl>
                             <FormDescription className="text-xs">
-                                Used for account management and communication.
+                                Email associated with your login account (cannot be changed here).
                             </FormDescription>
                             <FormMessage />
                         </FormItem>
@@ -360,7 +287,6 @@ export function ProfileForm({ initialData, onSuccess, onCancel, className }: Pro
                 />
 
                  {/* Form Actions (Save/Cancel) */}
-                 {/* Add flex container for buttons */}
                 <div className="flex justify-end gap-2 pt-4">
                      {onCancel && ( // Conditionally render Cancel button
                          <Button type="button" variant="outline" onClick={onCancel} disabled={isSubmitting}>
@@ -373,7 +299,7 @@ export function ProfileForm({ initialData, onSuccess, onCancel, className }: Pro
                         className="min-w-[80px]" // Ensure minimum width
                     >
                         {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                        {isSubmitting ? 'Saving...' : 'Save'}
+                        {isSubmitting ? 'Saving...' : 'Save Changes'}
                     </Button>
                 </div>
             </form>
