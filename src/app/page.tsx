@@ -28,10 +28,9 @@ const PineappleIcon = () => (
 
 // Define the navigation items for the home screen launchpad
 const navItems = [
-  { title: "Dashboard", href: "/dashboard", icon: <LayoutDashboard className="h-10 w-10" />, description: "View stats, releases & events" }, // Updated description
-  { title: "Documents", href: "/documents", icon: <FileText className="h-10 w-10" />, description: "Access agreements & handbooks" },
-  { title: "Pineapple", href: "/pineapple", icon: <PineappleIcon />, description: "Connect & Collaborate" },
-  // Add Release Management link pointing to the dedicated page
+  { title: "Dashboard", href: "/dashboard", icon: <LayoutDashboard className="h-10 w-10" />, description: "View your latest stats" }, // Updated description
+  { title: "Documents", href: "/documents", icon: <FileText className="h-10 w-10" />, description: "Access your agreements & handbooks" },
+  { title: "Pineapple", href: "/pineapple", icon: <PineappleIcon />, description: "Connect & Collaborate with your fellow artists" },
   { title: "My Releases", href: "/releases", icon: <ListMusic className="h-10 w-10" />, description: "Manage your music" },
 ];
 
