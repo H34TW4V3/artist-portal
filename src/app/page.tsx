@@ -2,30 +2,33 @@
 "use client";
 
 import Link from "next/link";
-import UserProfile from "@/components/common/user-profile"; // Changed to default import
+import UserProfile from "@/components/common/user-profile"; // Keep UserProfile
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { LayoutDashboard, ListMusic, CalendarClock, FileText, UserCog, Settings } from "lucide-react";
+// Import relevant icons
+import { LayoutDashboard, FileText, Home } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/auth-context"; // Import useAuth
 import { Skeleton } from "@/components/ui/skeleton"; // Import Skeleton
 import { useRouter } from 'next/navigation'; // Import useRouter
 import { useEffect } from 'react'; // Import useEffect
 import { Loader2 } from 'lucide-react'; // Import Loader2 for loading animation
+import { Button } from "@/components/ui/button"; // Keep button for potential future use or structure
 
-// Updated Pineapple SVG Icon based on the requested style (wired/gradient)
+// Pineapple Icon Component (retained from previous state)
 const PineappleIcon = () => (
   <img
       src="https://media.lordicon.com/icons/wired/gradient/1843-pineapple.svg"
       alt="Pineapple Icon"
-      className="h-10 w-10"
+      className="h-10 w-10" // Standard icon size for the cards
   />
 );
 
-// Define the navigation items
+// Define the navigation items for the home screen launchpad
 const navItems = [
-  { title: "Dashboard", href: "/dashboard", icon: <LayoutDashboard className="h-10 w-10" />, description: "View stats & releases" },
+  { title: "Dashboard", href: "/dashboard", icon: <LayoutDashboard className="h-10 w-10" />, description: "View stats & insights" },
   { title: "Documents", href: "/documents", icon: <FileText className="h-10 w-10" />, description: "Access agreements & handbooks" },
-  { title: "Pineapple", href: "/pineapple", icon: <PineappleIcon />, description: "A tropical surprise!" },
+  { title: "Pineapple", href: "/pineapple", icon: <PineappleIcon />, description: "Connect & Collaborate" },
+  // Add Release Management link later if a dedicated page is created
 ];
 
 export default function HomePage() {
@@ -37,18 +40,14 @@ export default function HomePage() {
         if (!loading && !user) {
             router.replace('/login');
         }
-        // Redirect authenticated users to dashboard if they land on the root page
-        if (!loading && user) {
-            router.replace('/dashboard');
-        }
+        // NO LONGER REDIRECT authenticated users away from home
+        // if (!loading && user) {
+        //     router.replace('/dashboard'); // REMOVED
+        // }
     }, [user, loading, router]);
 
-    // Show loading indicator while checking auth state or redirecting
-    // This covers:
-    // 1. Initial auth check (loading === true)
-    // 2. Redirecting unauthenticated user to /login (!loading && !user)
-    // 3. Redirecting authenticated user to /dashboard (!loading && user)
-    if (loading || !user) {
+    // Show loading indicator while checking auth state
+    if (loading) {
          return (
               <div className="flex min-h-screen w-full items-center justify-center bg-background p-4">
                 <Loader2 className="h-16 w-16 animate-spin text-primary" />
@@ -56,52 +55,52 @@ export default function HomePage() {
          );
     }
 
-    // If authenticated user reaches here before redirect, show loader
-     return (
-          <div className="flex min-h-screen w-full items-center justify-center bg-background p-4">
-            <Loader2 className="h-16 w-16 animate-spin text-primary" />
-         </div>
-     );
+    // If not loading and no user, let useEffect handle redirect (or show loader briefly)
+     if (!user) {
+         return (
+              <div className="flex min-h-screen w-full items-center justify-center bg-background p-4">
+                 <Loader2 className="h-16 w-16 animate-spin text-primary" />
+             </div>
+         );
+     }
 
-    // The original content below is effectively unreachable due to the redirects
-    /*
+    // Render the Home/Landing page for authenticated users
     return (
         <div className="flex min-h-screen w-full flex-col bg-transparent">
             <main className="relative z-10 flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
-                // Header Card
+                {/* Header Card */}
                 <Card className="mb-4 sm:mb-8 bg-card/80 dark:bg-card/70 backdrop-blur-md shadow-lg rounded-lg border-border/30">
                 <CardHeader className="flex flex-row items-center justify-between gap-4">
-                    // App Title
+                    {/* App Title/Greeting */}
                     <div className="flex items-center gap-4">
-                    // Placeholder Icon - could be a music note or app logo
+                    {/* Placeholder Icon - could be a music note or app logo */}
                         <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="hsl(var(--primary))" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-8 w-8 hidden sm:block"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
-                        // Center align text
-                        <div className="text-center sm:text-left">
+                        <div className="text-center sm:text-left"> {/* Center align text */}
                             <CardTitle className="text-xl sm:text-3xl font-bold tracking-tight text-primary">
-                            // Removed informal greeting: {user.displayName || user.email?.split('@')[0] || 'Artist'}!
-                            Artist Hub // Changed back to static title or remove altogether if not needed
+                            {/* Informal greeting using display name or email part */}
+                            Welcome, {user.displayName || user.email?.split('@')[0] || 'Artist'}!
                             </CardTitle>
                             <CardDescription className="text-muted-foreground text-xs sm:text-sm">
-                            Your central place for management and insights.
+                            Your central hub for management and insights.
                             </CardDescription>
                         </div>
                     </div>
-                    // Render UserProfile component
+                    {/* Render UserProfile component */}
                     <UserProfile />
                 </CardHeader>
                 </Card>
 
-                // Navigation Grid
+                {/* Navigation Grid - App Screen Style */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
                 {navItems.map((item) => (
                     <Link href={item.href} key={item.href} passHref legacyBehavior>
-                    <a className="block group">
+                    <a className="block group"> {/* Use anchor tag for legacyBehavior */}
                         <Card className={cn(
                             "bg-card/70 dark:bg-card/60 backdrop-blur-sm border border-border/30 shadow-md rounded-lg transition-all duration-200 ease-in-out cursor-pointer text-center h-full flex flex-col justify-center items-center p-6",
-                            "hover:shadow-lg hover:border-primary/50 hover:-translate-y-1 hover-glow"
+                            "hover:shadow-lg hover:border-primary/50 hover:-translate-y-1 hover-glow" // Hover effects
                         )}>
                         <CardContent className="flex flex-col items-center justify-center space-y-3 p-0">
-                            <div className="p-3 rounded-full bg-primary/10 text-primary transition-colors group-hover:bg-primary/20">
+                            <div className="p-3 rounded-full bg-primary/10 text-primary transition-colors group-hover:bg-primary/20 mb-2">
                                 {item.icon}
                             </div>
                             <CardTitle className="text-lg font-semibold text-foreground">{item.title}</CardTitle>
@@ -115,5 +114,4 @@ export default function HomePage() {
             </main>
         </div>
     );
-    */
 }

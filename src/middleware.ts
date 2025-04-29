@@ -15,10 +15,10 @@ export async function middleware(request: NextRequest) {
     const isPublicPath = PUBLIC_PATHS.some(path => pathname.startsWith(path));
 
     if (isPublicPath) {
-        // If accessing a public path (like login) with a valid token, redirect to dashboard
+        // If accessing a public path (like login) with a valid token, redirect to HOME ('/')
         if (sessionToken) {
-            console.log(`Middleware: Public path (${pathname}), but token exists. Redirecting to /dashboard`);
-            return NextResponse.redirect(new URL('/dashboard', request.url));
+            console.log(`Middleware: Public path (${pathname}), but token exists. Redirecting to /`);
+            return NextResponse.redirect(new URL('/', request.url));
         }
         // Allow access to public paths if no token
         console.log(`Middleware: Public path (${pathname}), no token. Allowing access.`);
@@ -32,6 +32,7 @@ export async function middleware(request: NextRequest) {
         // Preserve the intended destination for redirection after login
         const loginUrl = new URL('/login', request.url);
         // Preserve redirect only if it's not the root path itself
+        // If the target was root, don't add redirect, just go to login.
         if (pathname !== '/') {
              loginUrl.searchParams.set('redirect', pathname);
         }
@@ -39,14 +40,14 @@ export async function middleware(request: NextRequest) {
     }
 
     // --- Handle root path specifically for authenticated users ---
-    // If the user is authenticated and tries to access the root path ('/'), redirect them to the dashboard.
-    if (sessionToken && pathname === '/') {
-        console.log(`Middleware: Authenticated user accessing root path. Redirecting to /dashboard`);
-        return NextResponse.redirect(new URL('/dashboard', request.url));
+    // Authenticated users are allowed to access the root path ('/')
+    if (pathname === '/') {
+        console.log(`Middleware: Authenticated user accessing root path. Allowing access.`);
+        return NextResponse.next();
     }
 
 
-    // If token exists for a protected route (and not root), allow access
+    // If token exists for a protected route (other than root), allow access
     console.log(`Middleware: Protected path (${pathname}), token exists. Allowing access.`);
     return NextResponse.next();
 
@@ -57,3 +58,4 @@ export const config = {
     // Match all paths except for static assets, API routes, and Next.js internals
     matcher: ['/((?!api|_next/static|_next/image|favicon.ico).*)'],
 };
+
