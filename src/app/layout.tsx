@@ -1,15 +1,13 @@
 import type { Metadata } from 'next';
 import { GeistSans } from 'geist/font/sans'; // Use Geist Sans
-// Removed GeistMono import as it's not found/needed currently
+// GeistMono removed in previous step as it wasn't found
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster'; // Import Toaster
 
-const geistSans = GeistSans({
-  variable: '--font-geist-sans',
-  // subsets: ['latin'], // Subsets are often inferred
-});
-
-// Removed geistMono variable
+// Removed the function call as GeistSans is an object with properties like .variable
+// const geistSans = GeistSans({
+//   variable: '--font-geist-sans',
+// });
 
 export const metadata: Metadata = {
   title: 'Artist Hub', // Updated App Name
@@ -23,7 +21,8 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${geistSans.variable} font-sans antialiased`}> {/* Apply only sans-serif font variable */}
+      {/* Apply the font variable directly from the imported object */}
+      <body className={`${GeistSans.variable} font-sans antialiased`}>
         {children}
         <Toaster /> {/* Add Toaster component here */}
       </body>
