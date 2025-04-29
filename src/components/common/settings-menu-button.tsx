@@ -5,8 +5,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
+  // Removed DropdownMenuLabel and DropdownMenuSeparator imports
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
@@ -42,8 +41,9 @@ export function SettingsMenuButton({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" side="top" className="w-56 bg-popover border-border shadow-lg mb-2">
-        <DropdownMenuLabel>Settings</DropdownMenuLabel>
-        <DropdownMenuSeparator className="bg-border/50" />
+        {/* Removed Settings Label and Separator */}
+        {/* <DropdownMenuLabel>Settings</DropdownMenuLabel>
+        <DropdownMenuSeparator className="bg-border/50" /> */}
         <DropdownMenuItem onClick={onOpenWallpaperModal} className="cursor-pointer focus:bg-accent focus:text-accent-foreground">
           <ImageIcon className="mr-2 h-4 w-4" />
           <span>Change Wallpaper</span>

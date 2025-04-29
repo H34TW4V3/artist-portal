@@ -12,8 +12,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Label } from "@/components/ui/label"; // Keep Label if needed for Upload section
 import { useToast } from "@/hooks/use-toast";
 import { RotateCcw, Upload, Image as ImageIcon, X } from "lucide-react"; // Import necessary icons
 import { ScrollArea } from "@/components/ui/scroll-area"; // Import ScrollArea
@@ -43,7 +42,7 @@ export function WallpaperCustomizerModal({
   onReset,
   defaultUrl,
 }: WallpaperCustomizerModalProps) {
-  const [inputUrl, setInputUrl] = useState("");
+  // Removed inputUrl state
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewDataUrl, setPreviewDataUrl] = useState<string | null>(null); // For uploaded image preview
   const [selectedPredefined, setSelectedPredefined] = useState<string | null>(null);
@@ -57,13 +56,13 @@ export function WallpaperCustomizerModal({
         const isDataUri = currentUrl.startsWith('data:image');
         const isPredefined = predefinedWallpapers.includes(currentUrl);
 
-        setInputUrl(isDataUri || isPredefined ? "" : currentUrl); // Only show URL if it's a custom URL input
+        // Don't set inputUrl anymore
         setSelectedFile(null);
         setPreviewDataUrl(isDataUri ? currentUrl : null); // Show preview if current is data URI
         setSelectedPredefined(isPredefined ? currentUrl : null);
     } else {
-        // Clear everything on close to avoid stale previews/selections
-        setInputUrl("");
+        // Clear everything on close
+        // No inputUrl to clear
         setSelectedFile(null);
         setPreviewDataUrl(null);
         setSelectedPredefined(null);
@@ -84,7 +83,7 @@ export function WallpaperCustomizerModal({
       }
 
       setSelectedFile(file);
-      setInputUrl(""); // Clear URL input when file is selected
+      // Removed clearing inputUrl
       setSelectedPredefined(null); // Clear predefined selection
 
       const reader = new FileReader();
@@ -102,20 +101,15 @@ export function WallpaperCustomizerModal({
       finalUrlOrDataUri = previewDataUrl;
     } else if (selectedPredefined) {
         finalUrlOrDataUri = selectedPredefined;
-    } else if (inputUrl) {
-      if (!inputUrl.startsWith('http://') && !inputUrl.startsWith('https://')) {
-        toast({ title: "Invalid URL", description: "URL must start with http:// or https://.", variant: "destructive" });
-        return;
-      }
-      finalUrlOrDataUri = inputUrl;
     }
-    // If nothing selected/input, finalUrlOrDataUri remains empty, onApply will handle it (use default)
+    // Removed inputUrl check
+    // If nothing selected, finalUrlOrDataUri remains empty, onApply will handle it (use default)
     onApply(finalUrlOrDataUri);
   };
 
   const handlePredefinedClick = (url: string) => {
     setSelectedPredefined(url);
-    setInputUrl(""); // Clear other inputs
+    // Removed clearing inputUrl
     setSelectedFile(null);
     setPreviewDataUrl(null);
   };
@@ -138,7 +132,7 @@ export function WallpaperCustomizerModal({
         <DialogHeader>
           <DialogTitle className="text-primary">Customize Background</DialogTitle>
           <DialogDescription>
-            Choose a preset image, upload your own, or enter an image URL.
+            Choose a preset image or upload your own. {/* Updated description */}
           </DialogDescription>
         </DialogHeader>
 
@@ -217,25 +211,8 @@ export function WallpaperCustomizerModal({
                 </div>
             </div>
 
+            {/* URL Input Section REMOVED */}
 
-            {/* URL Input Section */}
-            <div>
-                <Label htmlFor="wallpaper-url" className="text-muted-foreground text-sm font-medium">Image URL</Label>
-                <Input
-                  id="wallpaper-url"
-                  type="url"
-                  placeholder="https://example.com/image.jpg"
-                  value={inputUrl}
-                  onChange={(e) => {
-                      setInputUrl(e.target.value);
-                      setSelectedFile(null); // Clear file/preview if URL is typed
-                      setPreviewDataUrl(null);
-                      setSelectedPredefined(null); // Clear predefined selection
-                  }}
-                  className="mt-2 focus:ring-accent"
-                  disabled={!!selectedFile || !!selectedPredefined} // Disable if file or preset is selected
-                />
-            </div>
           </div>
         </ScrollArea>
 
