@@ -1,14 +1,15 @@
+
 import * as React from "react"
 import { cva, type VariantProps } from "class-variance-authority"
 
 import { cn } from "@/lib/utils"
 
 const alertVariants = cva(
-  "relative w-full rounded-lg border p-4 [&>svg~*]:pl-7 [&>svg+div]:translate-y-[-3px] [&>svg]:absolute [&>svg]:left-4 [&>svg]:top-4 [&>svg]:text-foreground",
+  "relative w-full rounded-lg border p-4 [&>svg]:absolute [&>svg]:left-4 [&>svg]:top-4 [&>svg~*]:pl-7 [&>svg+div]:translate-y-[-3px]", // Removed svg text color from base
   {
     variants: {
       variant: {
-        default: "bg-background text-foreground border-border", // Ensure default uses border color
+        default: "bg-background text-foreground border-border [&>svg]:text-foreground", // Default uses foreground for icon
         destructive:
           "border-destructive/50 text-destructive dark:border-destructive [&>svg]:text-destructive",
       },
@@ -36,6 +37,7 @@ const AlertTitle = React.forwardRef<
   HTMLParagraphElement,
   React.HTMLAttributes<HTMLHeadingElement>
 >(({ className, ...props }, ref) => (
+  // Ensure title color inherits correctly or is explicitly set if needed
   <h5
     ref={ref}
     className={cn("mb-1 font-medium leading-none tracking-tight", className)}
@@ -48,12 +50,15 @@ const AlertDescription = React.forwardRef<
   HTMLParagraphElement,
   React.HTMLAttributes<HTMLParagraphElement>
 >(({ className, ...props }, ref) => (
+  // Ensure description color inherits correctly or use muted-foreground
   <div
     ref={ref}
-    className={cn("text-sm text-muted-foreground [&_p]:leading-relaxed", className)} // Use muted-foreground
+    className={cn("text-sm [&_p]:leading-relaxed", className)} // Let color inherit or use text-muted-foreground if preferred
     {...props}
   />
 ))
 AlertDescription.displayName = "AlertDescription"
 
 export { Alert, AlertTitle, AlertDescription }
+
+    
