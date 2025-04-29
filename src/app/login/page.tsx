@@ -9,12 +9,29 @@ import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
 
-// Login Icon (similar to macOS login)
+// Custom Login Icon based on the provided image
 const LoginIcon = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="hsl(var(--primary))" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="h-20 w-20 mb-4 text-primary">
-        <circle cx="12" cy="12" r="10" />
-        <circle cx="12" cy="10" r="3" />
-        <path d="M7 20.662V19a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v1.662" />
+    <svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 100 100" className="h-24 w-24 mb-6 text-primary"> {/* Increased size */}
+      <defs>
+        <linearGradient id="oxygenGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" style={{stopColor: 'hsl(180, 100%, 70%)', stopOpacity: 1}} /> {/* Cyan-ish */}
+          <stop offset="50%" style={{stopColor: 'hsl(300, 100%, 80%)', stopOpacity: 1}} /> {/* Magenta-ish */}
+          <stop offset="100%" style={{stopColor: 'hsl(35, 100%, 75%)', stopOpacity: 1}} /> {/* Orange-ish */}
+        </linearGradient>
+      </defs>
+      {/* Outer circle with gradient stroke */}
+      <circle cx="50" cy="50" r="45" fill="none" stroke="url(#oxygenGradient)" strokeWidth="3" />
+      {/* Stylized 'X' with gradient fill */}
+      <path
+        d="M30 30 L70 70 M70 30 L30 70"
+        stroke="url(#oxygenGradient)"
+        strokeWidth="10" // Adjust thickness as needed
+        strokeLinecap="round"
+        fill="none" // Use stroke instead of fill for the X lines if preferred
+      />
+        {/* If fill is desired for the X:
+         <path d="M30 30 L50 50 L70 30 L50 50 L70 70 L50 50 L30 70 L50 50 Z" fill="url(#oxygenGradient)" />
+        */}
     </svg>
 );
 
@@ -32,7 +49,6 @@ export default function LoginPage() {
 
 
     // Show loading state while checking auth status initially
-    // The AuthProvider handles the main loading indicator, but this prevents rendering the form prematurely
     if (loading) {
         return (
              <div className="flex min-h-screen w-full items-center justify-center bg-gradient-to-br from-background via-muted/20 to-background p-4">
@@ -42,7 +58,6 @@ export default function LoginPage() {
     }
 
      // If user is already determined and exists, let useEffect handle redirect
-     // Render nothing while redirecting
      if (user) {
          return null;
      }
@@ -52,11 +67,11 @@ export default function LoginPage() {
     return (
         <div className="flex min-h-screen w-full items-center justify-center bg-transparent p-4 relative z-10">
             <div className={cn(
-                "w-full max-w-md rounded-xl border border-border/30 bg-card/80 dark:bg-card/70 backdrop-blur-lg shadow-xl overflow-hidden" // No background, just blur and border
+                "w-full max-w-md rounded-xl border border-border/30 shadow-xl overflow-hidden" // Removed background/blur classes
             )}>
                 {/* Card Header */}
                  <CardHeader className="items-center text-center p-6 border-b border-border/30"> {/* Removed background */}
-                    <LoginIcon /> {/* Make icon larger */}
+                    <LoginIcon /> {/* Use custom icon */}
                     <CardTitle className="text-2xl font-semibold tracking-tight text-primary">Artist Hub Login</CardTitle>
                     <CardDescription className="text-muted-foreground text-sm">
                        Enter your credentials to access your dashboard.
