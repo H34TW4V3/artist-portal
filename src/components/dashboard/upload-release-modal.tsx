@@ -6,7 +6,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { format } from "date-fns";
-import { Loader2, UploadCloud, X, CalendarIcon, FileArchive } from "lucide-react";
+import { Loader2, UploadCloud, X, CalendarIcon, FileArchive, HelpCircle } from "lucide-react"; // Added HelpCircle
 
 import { Button } from "@/components/ui/button";
 import {
@@ -17,6 +17,7 @@ import {
   DialogDescription,
   DialogFooter,
   DialogClose,
+  DialogTrigger // Added DialogTrigger
 } from "@/components/ui/dialog";
 import {
   Form,
@@ -33,6 +34,8 @@ import { Calendar } from "@/components/ui/calendar";
 import { useToast } from "@/hooks/use-toast";
 import { uploadReleaseZip } from "@/services/music-platform"; // Use the new service function
 import { cn } from "@/lib/utils";
+import { ScrollArea } from "@/components/ui/scroll-area"; // Added ScrollArea for guidelines
+
 
 // Schema for the upload modal
 const uploadSchema = z.object({
@@ -226,7 +229,62 @@ export function UploadReleaseModal({ isOpen, onClose, onSuccess }: UploadRelease
                 name="releaseZip"
                 render={({ fieldState }) => (
                   <FormItem>
-                    <FormLabel>Release Package (ZIP)</FormLabel>
+                    <div className="flex justify-between items-center mb-1"> {/* Container for label and help icon */}
+                        <FormLabel>Release Package (ZIP)</FormLabel>
+                        {/* Help Icon Dialog Trigger */}
+                        <Dialog>
+                            <DialogTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-primary p-0">
+                                    <HelpCircle className="h-4 w-4" />
+                                    <span className="sr-only">View Release File Guidelines</span>
+                                </Button>
+                            </DialogTrigger>
+                            {/* Release Guidelines Dialog */}
+                            <DialogContent className="max-w-lg bg-card border-border">
+                                <DialogHeader>
+                                    <DialogTitle className="text-primary">Release File Guidelines</DialogTitle>
+                                </DialogHeader>
+                                <ScrollArea className="max-h-[60vh] pr-4">
+                                    <div className="text-sm text-foreground space-y-4">
+                                        <p>
+                                            To speed up the release process and allow you to release via the artist app,
+                                            we have created ‘release files’ to help us get all the necessary information
+                                            we need to create your release.
+                                        </p>
+                                        <p>Here is a guide on how to structure a release file:</p>
+                                        <ol className="list-decimal list-inside space-y-3 pl-2">
+                                            <li>
+                                                <strong>Each track should be in its OWN folder</strong> (named after the track). The folder should contain the following files:
+                                                <ul className="list-disc list-inside space-y-1 pl-4 mt-2">
+                                                    <li>If you have an explicit version of your track, place that in a separate folder with <code className="bg-muted px-1 rounded">(Expl)</code> added to the folder name.</li>
+                                                    <li>Track file (<strong>24 Bit .WAV</strong> format).</li>
+                                                    <li>A short 1 to 8 second video for Spotify Canvas (if applicable).</li>
+                                                    <li>Brief text file (<code className="bg-muted px-1 rounded">.txt</code>) containing a description: BPM, Track Length, explicit status, and other relevant info.</li>
+                                                    <li>A document (<code className="bg-muted px-1 rounded">.txt</code>) containing the lyrics (if your track has lyrics).</li>
+                                                </ul>
+                                            </li>
+                                            <li>
+                                                <strong>Place the track folders into a single main folder</strong> (use your release name as the main folder name).
+                                                Place the <strong>album/release artwork</strong> directly inside this main folder:
+                                                <ul className="list-disc list-inside space-y-1 pl-4 mt-2">
+                                                    <li>Artwork must be <strong>3000×3000 pixels</strong> (JPG or PNG).</li>
+                                                    <li>Artwork must <strong>not</strong> contain social media/brand logos, social media handles, borders, or text other than your artist name or the album/track title.</li>
+                                                </ul>
+                                            </li>
+                                            <li>
+                                                Finally, <strong>compress this main folder into a single ZIP file</strong> for upload.
+                                            </li>
+                                        </ol>
+                                    </div>
+                                </ScrollArea>
+                                <DialogFooter className="mt-4">
+                                     <DialogClose asChild>
+                                         <Button type="button" variant="outline">Close</Button>
+                                     </DialogClose>
+                                </DialogFooter>
+                            </DialogContent>
+                        </Dialog>
+                    </div>
                     <FormControl>
                         <div className={cn(
                              "mt-1 flex justify-center rounded-md border-2 border-dashed px-6 pb-6 pt-5 bg-muted/20",
@@ -269,7 +327,7 @@ export function UploadReleaseModal({ isOpen, onClose, onSuccess }: UploadRelease
                         </div>
                     </FormControl>
                     <FormDescription className="text-xs">
-                        Must be a ZIP file containing audio (WAV, FLAC, or MP3) and artwork (JPG, PNG). See guidelines.
+                        Must be a ZIP file containing audio & artwork structured according to the guidelines (click <HelpCircle className="inline h-3 w-3 align-text-bottom" /> icon above).
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
@@ -298,3 +356,5 @@ export function UploadReleaseModal({ isOpen, onClose, onSuccess }: UploadRelease
     </Dialog>
   );
 }
+
+    
