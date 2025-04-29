@@ -55,8 +55,9 @@ export default function RootLayout({
     }
   }, [theme, isMounted]); // Run when theme or isMounted changes
 
-  const handleApplyWallpaper = (newUrl: string) => {
-    const urlToSet = newUrl.trim() || DEFAULT_WALLPAPER_URL; // Use default if empty
+  // Handles applying URL or Data URI
+  const handleApplyWallpaper = (newUrlOrDataUri: string) => {
+    const urlToSet = newUrlOrDataUri.trim() || DEFAULT_WALLPAPER_URL; // Use default if empty
     setWallpaperUrl(urlToSet);
     localStorage.setItem(LOCAL_STORAGE_WALLPAPER_KEY, urlToSet);
     setIsModalOpen(false);
@@ -87,7 +88,8 @@ export default function RootLayout({
         {/* Global Background Image - Uses dynamic URL state */}
         <div
             className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat opacity-[0.08] dark:opacity-[0.10] transition-all duration-500 ease-in-out"
-            style={{ backgroundImage: `url('${wallpaperUrl}')` }} // Use state variable
+            // Style works with both standard URLs and data URIs
+            style={{ backgroundImage: `url('${wallpaperUrl}')` }}
         />
 
         {/* Content wrapper */}
@@ -107,7 +109,8 @@ export default function RootLayout({
             <WallpaperCustomizerModal
               isOpen={isModalOpen}
               onClose={() => setIsModalOpen(false)}
-              currentUrl={wallpaperUrl === DEFAULT_WALLPAPER_URL ? '' : wallpaperUrl} // Show empty if default
+              // Pass the current URL or data URI (used for reset and initial input state)
+              currentUrl={wallpaperUrl === DEFAULT_WALLPAPER_URL ? '' : wallpaperUrl}
               onApply={handleApplyWallpaper}
               onReset={handleResetWallpaper}
               defaultUrl={DEFAULT_WALLPAPER_URL}
