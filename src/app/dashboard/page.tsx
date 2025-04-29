@@ -4,38 +4,30 @@
 import { useState, useEffect } from "react"; // Import useEffect
 import Link from "next/link"; // Import Link
 import { StatisticsView } from "@/components/dashboard/statistics-view";
-import { ReleaseList } from "@/components/dashboard/release-list"; // Import ReleaseList
-import { EventsView } from "@/components/dashboard/events-view";
+// import { ReleaseList } from "@/components/dashboard/release-list"; // Commented out ReleaseList import
+// import { EventsView } from "@/components/dashboard/events-view"; // Commented out EventsView import
 import UserProfile from "@/components/common/user-profile"; // Changed to default import
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ListMusic, CalendarClock, BarChart3, Home } from "lucide-react"; // Import ListMusic icon and Home icon
+// Commented out ListMusic and CalendarClock icons
+import { BarChart3, Home } from "lucide-react"; // Keep BarChart3 and Home icon
 import { Button } from "@/components/ui/button"; // Import Button
 import { useAuth } from "@/context/auth-context"; // Import useAuth
 import { useRouter } from 'next/navigation'; // Import useRouter
 import { Loader2 } from 'lucide-react'; // Import Loader2 for loading animation
 
-// Define content for each tab's header
+// Define content for each tab's header - Only Statistics needed now
 const tabHeaders = {
   statistics: {
     title: "Streaming Statistics",
     description: "Your latest performance overview.",
     icon: <BarChart3 className="h-8 w-8 text-primary hidden sm:block" />,
   },
-  releases: { // Add Releases tab header info
-    title: "Manage Releases",
-    description: "View, upload, edit, or remove your existing releases.",
-    icon: <ListMusic className="h-8 w-8 text-primary hidden sm:block" />,
-  },
-  events: {
-    title: "Event Management",
-    description: "Manage your upcoming events and view past ones.",
-    icon: <CalendarClock className="h-8 w-8 text-primary hidden sm:block" />,
-  },
+  // Removed Releases and Events tab header info
 };
 
-// Define the keys for the tabs
-type DashboardTab = "statistics" | "releases" | "events"; // Add "releases" back
+// Define the keys for the tabs - Only Statistics needed now
+type DashboardTab = "statistics"; // Removed "releases" and "events"
 
 export default function DashboardPage() {
   const { user, loading } = useAuth(); // Get user info and loading state
@@ -95,33 +87,25 @@ export default function DashboardPage() {
         {/* Control the Tabs component with state */}
         <Tabs
             value={activeTab}
-            onValueChange={(value) => setActiveTab(value as DashboardTab)} // Update state on change
+            // onValueChange no longer needed if only one tab
+            // onValueChange={(value) => setActiveTab(value as DashboardTab)}
             className="w-full"
         >
-           {/* Updated grid-cols to reflect added tab */}
-          <TabsList className="grid w-full grid-cols-1 sm:grid-cols-3 gap-2 mb-6 h-auto bg-card/70 dark:bg-card/60 backdrop-blur-sm border border-border/20 shadow-sm rounded-lg p-1">
+           {/* Updated grid-cols to reflect only one tab */}
+           {/* Optional: Hide TabsList if only one tab */}
+          {/* <TabsList className="grid w-full grid-cols-1 gap-2 mb-6 h-auto bg-card/70 dark:bg-card/60 backdrop-blur-sm border border-border/20 shadow-sm rounded-lg p-1 max-w-xs mx-auto">
             <TabsTrigger value="statistics" className="py-2 data-[state=active]:shadow-md transition-subtle rounded-md flex items-center justify-center gap-2 data-[state=active]:hover-glow data-[state=active]:focus-glow">
               <BarChart3 className="h-4 w-4" /> Statistics
             </TabsTrigger>
-             {/* Add Releases Tab Trigger back */}
-             <TabsTrigger value="releases" className="py-2 data-[state=active]:shadow-md transition-subtle rounded-md flex items-center justify-center gap-2 data-[state=active]:hover-glow data-[state=active]:focus-glow">
-               <ListMusic className="h-4 w-4" /> Releases
-             </TabsTrigger>
-            <TabsTrigger value="events" className="py-2 data-[state=active]:shadow-md transition-subtle rounded-md flex items-center justify-center gap-2 data-[state=active]:hover-glow data-[state=active]:focus-glow">
-              <CalendarClock className="h-4 w-4" /> Events
-            </TabsTrigger>
-          </TabsList>
+             {/* Removed Releases Tab Trigger */}
+             {/* Removed Events Tab Trigger */}
+          {/* </TabsList> */}
 
-          <TabsContent value="statistics">
-            <StatisticsView className="bg-card/80 dark:bg-card/70 backdrop-blur-md border-border/30" />
-          </TabsContent>
-           {/* Add Releases Tab Content back */}
-           <TabsContent value="releases" className="space-y-6">
-             <ReleaseList className="bg-card/80 dark:bg-card/70 backdrop-blur-md border-border/30" />
-           </TabsContent>
-          <TabsContent value="events">
-            <EventsView className="bg-card/80 dark:bg-card/70 backdrop-blur-md border-border/30" />
-          </TabsContent>
+          {/* Display StatisticsView directly without TabsContent if preferred when only one tab */}
+          <StatisticsView className="bg-card/80 dark:bg-card/70 backdrop-blur-md border-border/30" />
+
+          {/* Removed Releases Tab Content */}
+          {/* Removed Events Tab Content */}
         </Tabs>
       </main>
     </div>
