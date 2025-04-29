@@ -13,6 +13,9 @@ import { useRouter } from 'next/navigation'; // Import useRouter
 import { useEffect, useState } from 'react'; // Import useEffect and useState
 import { Loader2 } from 'lucide-react'; // Import Loader2 for loading animation
 import { Button } from "@/components/ui/button"; // Keep button for potential future use or structure
+import { getFirestore, doc, getDoc } from "firebase/firestore"; // Import Firestore functions
+import { app } from "@/services/firebase-config"; // Import Firebase app config
+import type { ProfileFormValues } from "@/components/profile/profile-form"; // Import profile type
 
 // Pineapple Icon Component (retained from previous state)
 const PineappleIcon = () => (
@@ -51,23 +54,67 @@ const getRandomGreeting = (name: string) => {
 
 
 export default function HomePage() {
-    const { user, loading } = useAuth(); // Use the auth context
+    const { user, loading: authLoading } = useAuth(); // Use the auth context
     const router = useRouter();
+    const db = getFirestore(app);
     const [greeting, setGreeting] = useState(""); // State for the greeting
+    const [profileData, setProfileData] = useState<ProfileFormValues | null>(null);
+    const [profileLoading, setProfileLoading] = useState(true); // State for profile data loading
+
+    // Fetch profile data from Firestore
+    useEffect(() => {
+        const fetchProfileData = async () => {
+            if (authLoading || !user) {
+                setProfileLoading(false); // Stop loading if auth is loading or no user
+                if (!user) setProfileData(null);
+                return;
+            }
+
+            setProfileLoading(true);
+            try {
+                const userDocRef = doc(db, "users", user.uid);
+                const docSnap = await getDoc(userDocRef);
+                if (docSnap.exists()) {
+                    setProfileData(docSnap.data() as ProfileFormValues);
+                } else {
+                    // Handle case where profile might not exist yet, use defaults
+                    console.log("User profile not found in Firestore for greeting.");
+                    setProfileData(null); // Or set default placeholder data if needed
+                }
+            } catch (error) {
+                console.error("Error fetching user profile for greeting:", error);
+                setProfileData(null); // Clear on error
+            } finally {
+                setProfileLoading(false);
+            }
+        };
+
+        fetchProfileData();
+    }, [user, db, authLoading]);
 
     useEffect(() => {
-        // Redirect unauthenticated users to login page after loading is complete
-        if (!loading && !user) {
+        // Redirect unauthenticated users
+        if (!authLoading && !user) {
             router.replace('/login');
-        } else if (user) {
-            // Set the greeting once the user is loaded
-            const userName = user.displayName || user.email?.split('@')[0] || 'Artist';
-            setGreeting(getRandomGreeting(userName));
         }
-    }, [user, loading, router]);
 
-    // Show loading indicator while checking auth state
-    if (loading) {
+        // Set greeting after both auth and profile data are loaded
+        if (!authLoading && !profileLoading && user) {
+            // Prioritize profileData.name, then displayName, then email, then 'Artist'
+            const nameFromProfile = profileData?.name;
+            const nameFromAuth = user.displayName;
+            const nameFromEmail = user.email?.split('@')[0];
+            const finalName = nameFromProfile || nameFromAuth || nameFromEmail || 'Artist';
+            setGreeting(getRandomGreeting(finalName));
+        }
+    }, [user, authLoading, profileLoading, profileData, router]); // Depend on profileData and profileLoading
+
+
+    // Combined loading state
+    const isLoading = authLoading || profileLoading;
+
+    // Show loading indicator while checking auth state or fetching profile
+    if (isLoading) {
          return (
               <div className="flex min-h-screen w-full items-center justify-center bg-background p-4">
                 <Loader2 className="h-16 w-16 animate-spin text-primary" />
@@ -75,7 +122,7 @@ export default function HomePage() {
          );
     }
 
-    // If not loading and no user, let useEffect handle redirect (or show loader briefly)
+    // If not loading and no user, let useEffect handle redirect
      if (!user) {
          return (
               <div className="flex min-h-screen w-full items-center justify-center bg-background p-4">
@@ -97,7 +144,7 @@ export default function HomePage() {
                         <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="hsl(var(--primary))" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-8 w-8 hidden sm:block"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
                         <div className="text-center sm:text-left"> {/* Center align text */}
                             <CardTitle className="text-xl sm:text-3xl font-bold tracking-tight text-primary">
-                                {greeting || `Welcome, ${user.displayName || user.email?.split('@')[0] || 'Artist'}!`} {/* Display the generated greeting */}
+                                {greeting} {/* Display the generated greeting */}
                             </CardTitle>
                             <CardDescription className="text-muted-foreground text-xs sm:text-sm">
                                 Your central hub for management and insights.
