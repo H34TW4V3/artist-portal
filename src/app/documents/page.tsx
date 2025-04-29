@@ -46,7 +46,8 @@ export default function DocumentsPage() {
                           </Button>
                      </Link>
                      <FolderKanban className="h-8 w-8 text-primary hidden sm:block" />
-                     <div>
+                     {/* Added text-center to center the title and description */}
+                     <div className="text-center sm:text-left">
                         <CardTitle className="text-xl sm:text-3xl font-bold tracking-tight text-primary">Key Documents</CardTitle>
                         <CardDescription className="text-muted-foreground text-xs sm:text-sm">Access your important agreements and documents.</CardDescription>
                      </div>

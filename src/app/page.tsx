@@ -26,7 +26,8 @@ export default function DashboardPage() {
                  <div className="flex items-center gap-4">
                      {/* Home Icon Link Removed */}
                      <Music className="h-8 w-8 text-primary hidden sm:block" /> {/* Keep music icon */}
-                     <div>
+                     {/* Added text-center to center the title and description */}
+                     <div className="text-center sm:text-left">
                         {/* Updated title to informal greeting */}
                         <CardTitle className="text-xl sm:text-3xl font-bold tracking-tight text-primary">Welcome back, {artistName}!</CardTitle>
                         <CardDescription className="text-muted-foreground text-xs sm:text-sm">Manage your music and events.</CardDescription>
