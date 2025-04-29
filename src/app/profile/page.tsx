@@ -216,8 +216,9 @@ export default function ProfilePage() {
              <CardHeader className="flex flex-row items-center justify-between gap-4">
                  <div className="flex items-center gap-4">
                      <Link href="/" passHref legacyBehavior>
-                          <Button variant="ghost" size="icon" className="h-10 w-10 text-primary hover:bg-primary/10 active:bg-primary/20" aria-label="Go to Dashboard">
-                             <Home className="h-6 w-6" />
+                          {/* Increased size */}
+                          <Button variant="ghost" size="lg" className="h-12 w-12 text-primary hover:bg-primary/10 active:bg-primary/20 p-0" aria-label="Go to Home">
+                             <Home className="h-7 w-7" />
                           </Button>
                      </Link>
                      <UserCog className="h-8 w-8 text-primary hidden sm:block" />
