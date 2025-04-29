@@ -128,7 +128,7 @@ export function WallpaperCustomizerModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-lg md:max-w-2xl bg-card/95 dark:bg-card/80 backdrop-blur-sm border-border/50">
+      <DialogContent className="sm:max-w-lg md:max-w-2xl bg-card/95 dark:bg-card/80 border-border/50"> {/* Removed backdrop-blur-sm */}
         <DialogHeader>
           <DialogTitle className="text-primary">Customize Background</DialogTitle>
           <DialogDescription>
@@ -241,4 +241,3 @@ export function WallpaperCustomizerModal({
     </Dialog>
   );
 }
-

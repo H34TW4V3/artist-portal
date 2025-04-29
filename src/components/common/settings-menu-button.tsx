@@ -32,7 +32,7 @@ export function SettingsMenuButton({
           variant="secondary" // Use secondary for less emphasis than primary
           size="icon"
           className={cn(
-            "fixed bottom-4 right-4 z-50 h-12 w-12 rounded-full shadow-lg bg-card/80 dark:bg-card/70 backdrop-blur-md border border-border/30 text-primary hover:bg-primary/10 hover:text-primary active:bg-primary/20 hover-glow focus-glow",
+            "fixed bottom-4 right-4 z-50 h-12 w-12 rounded-full shadow-lg bg-card/80 dark:bg-card/70 border border-border/30 text-primary hover:bg-primary/10 hover:text-primary active:bg-primary/20 hover-glow focus-glow", // Removed backdrop-blur-md
             className
           )}
           aria-label="Open Settings Menu"

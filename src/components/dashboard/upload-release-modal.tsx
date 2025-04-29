@@ -156,7 +156,7 @@ export function UploadReleaseModal({ isOpen, onClose, onSuccess }: UploadRelease
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-md md:max-w-lg bg-card/95 dark:bg-card/80 backdrop-blur-sm border-border/50">
+      <DialogContent className="sm:max-w-md md:max-w-lg bg-card/95 dark:bg-card/80 border-border/50"> {/* Removed backdrop-blur-sm */}
         <DialogHeader>
           <DialogTitle className="text-primary">Upload New Release</DialogTitle>
           <DialogDescription className="text-muted-foreground">
@@ -244,7 +244,7 @@ export function UploadReleaseModal({ isOpen, onClose, onSuccess }: UploadRelease
                                 </Button>
                             </DialogTrigger>
                             {/* Release Guidelines Dialog */}
-                            <DialogContent className="max-w-lg bg-card border-border">
+                            <DialogContent className="max-w-lg bg-card border-border"> {/* Removed backdrop-blur */}
                                 <DialogHeader>
                                     <DialogTitle className="text-primary">Release File Guidelines</DialogTitle>
                                 </DialogHeader>

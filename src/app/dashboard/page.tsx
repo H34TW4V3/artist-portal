@@ -59,7 +59,7 @@ export default function DashboardPage() {
     <div className="flex min-h-screen w-full flex-col bg-transparent">
       <main className="relative z-10 flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
         {/* Header Card - Dynamically updates based on active tab */}
-        <Card className="mb-4 sm:mb-8 bg-card/80 dark:bg-card/70 backdrop-blur-md shadow-lg rounded-lg border-border/30">
+        <Card className="mb-4 sm:mb-8 bg-card/80 dark:bg-card/70 shadow-lg rounded-lg border-border/30"> {/* Removed backdrop-blur-md */}
           <CardHeader className="flex flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-4">
               {/* Add Home Button */}
@@ -93,7 +93,7 @@ export default function DashboardPage() {
         >
            {/* Updated grid-cols to reflect only one tab */}
            {/* Optional: Hide TabsList if only one tab */}
-          {/* <TabsList className="grid w-full grid-cols-1 gap-2 mb-6 h-auto bg-card/70 dark:bg-card/60 backdrop-blur-sm border border-border/20 shadow-sm rounded-lg p-1 max-w-xs mx-auto">
+          {/* <TabsList className="grid w-full grid-cols-1 gap-2 mb-6 h-auto bg-card/70 dark:bg-card/60 border border-border/20 shadow-sm rounded-lg p-1 max-w-xs mx-auto"> // Removed backdrop-blur-sm
             <TabsTrigger value="statistics" className="py-2 data-[state=active]:shadow-md transition-subtle rounded-md flex items-center justify-center gap-2 data-[state=active]:hover-glow data-[state=active]:focus-glow">
               <BarChart3 className="h-4 w-4" /> Statistics
             </TabsTrigger>
@@ -102,7 +102,7 @@ export default function DashboardPage() {
           {/* </TabsList> */}
 
           {/* Display StatisticsView directly without TabsContent if preferred when only one tab */}
-          <StatisticsView className="bg-card/80 dark:bg-card/70 backdrop-blur-md border-border/30" />
+          <StatisticsView className="bg-card/80 dark:bg-card/70 border-border/30" /> {/* Removed backdrop-blur-md */}
 
           {/* Removed Releases Tab Content */}
           {/* Removed Events Tab Content */}

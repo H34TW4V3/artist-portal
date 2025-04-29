@@ -70,7 +70,7 @@ export default function DocumentsPage() {
     <div className="flex min-h-screen w-full flex-col bg-transparent">
       <main className="relative z-10 flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
         {/* Header Card - Dynamically updates based on active tab */}
-        <Card className="mb-4 sm:mb-8 bg-card/80 dark:bg-card/70 backdrop-blur-md shadow-lg rounded-lg border-border/30">
+        <Card className="mb-4 sm:mb-8 bg-card/80 dark:bg-card/70 shadow-lg rounded-lg border-border/30"> {/* Removed backdrop-blur-md */}
            {/* Center align text */}
           <CardHeader className="flex flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-4">
@@ -108,7 +108,7 @@ export default function DocumentsPage() {
             onValueChange={(value) => setActiveTab(value as keyof typeof tabHeaders)} // Update state on change
             className="w-full"
         >
-          <TabsList className="grid w-full grid-cols-2 gap-2 mb-6 h-auto bg-card/70 dark:bg-card/60 backdrop-blur-sm border border-border/20 shadow-sm rounded-lg p-1 max-w-md">
+          <TabsList className="grid w-full grid-cols-2 gap-2 mb-6 h-auto bg-card/70 dark:bg-card/60 border border-border/20 shadow-sm rounded-lg p-1 max-w-md"> {/* Removed backdrop-blur-sm */}
             <TabsTrigger value="agreements" className="py-2 data-[state=active]:shadow-md transition-subtle rounded-md flex items-center justify-center gap-2 data-[state=active]:hover-glow data-[state=active]:focus-glow">
               <FileText className="h-4 w-4" /> My Agreements
             </TabsTrigger>
@@ -118,7 +118,7 @@ export default function DocumentsPage() {
           </TabsList>
 
           <TabsContent value="agreements">
-            <Card className="bg-card/80 dark:bg-card/70 backdrop-blur-md border-border/30 shadow-md rounded-lg">
+            <Card className="bg-card/80 dark:bg-card/70 border-border/30 shadow-md rounded-lg"> {/* Removed backdrop-blur-md */}
               <CardHeader>
                 <CardTitle className="text-lg font-semibold text-foreground">Your Agreements</CardTitle>
                 <CardDescription className="text-muted-foreground">Review and download your signed agreements.</CardDescription>
@@ -136,7 +136,7 @@ export default function DocumentsPage() {
           </TabsContent>
 
           <TabsContent value="handbooks">
-            <Card className="bg-card/80 dark:bg-card/70 backdrop-blur-md border-border/30 shadow-md rounded-lg">
+            <Card className="bg-card/80 dark:bg-card/70 border-border/30 shadow-md rounded-lg"> {/* Removed backdrop-blur-md */}
               <CardHeader>
                 <CardTitle className="text-lg font-semibold text-foreground">Handbooks</CardTitle>
                 <CardDescription className="text-muted-foreground">Access helpful guides and handbooks.</CardDescription>

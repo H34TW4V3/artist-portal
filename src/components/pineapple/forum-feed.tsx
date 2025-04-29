@@ -97,7 +97,7 @@ export function ForumFeed({ className }: ForumFeedProps) {
             {isLoading ? (
                 // Skeleton Loading State - More refined skeleton
                 Array.from({ length: 3 }).map((_, index) => (
-                    <Card key={`skeleton-${index}`} className="bg-card/70 dark:bg-card/60 backdrop-blur-sm border border-border/30 shadow-md rounded-lg overflow-hidden">
+                    <Card key={`skeleton-${index}`} className="bg-card/70 dark:bg-card/60 border border-border/30 shadow-md rounded-lg overflow-hidden"> {/* Removed backdrop-blur-sm */}
                         <CardHeader className="flex flex-row items-center gap-3 p-4">
                             <Skeleton className="h-10 w-10 rounded-full bg-muted/50" />
                             <div className="space-y-1">
@@ -119,7 +119,7 @@ export function ForumFeed({ className }: ForumFeedProps) {
                 ))
             ) : posts.length === 0 ? (
                  // Display 'No Posts' message directly in the feed area
-                 <div className="p-6 text-center text-muted-foreground bg-card/70 dark:bg-card/60 backdrop-blur-sm border border-border/30 shadow-md rounded-lg min-h-[300px] flex flex-col justify-center items-center">
+                 <div className="p-6 text-center text-muted-foreground bg-card/70 dark:bg-card/60 border border-border/30 shadow-md rounded-lg min-h-[300px] flex flex-col justify-center items-center"> {/* Removed backdrop-blur-sm */}
                     <p className="text-lg font-medium">No Posts Yet</p>
                     <p className="mt-2">
                         The forum is quiet... Be the first to start a discussion!
@@ -128,7 +128,7 @@ export function ForumFeed({ className }: ForumFeedProps) {
              ) : (
                 // Display Posts - Enhanced Styling
                 posts.map((post) => (
-                    <Card key={post.id} className="bg-card/80 dark:bg-card/70 backdrop-blur-md border border-border/30 shadow-lg rounded-xl overflow-hidden transition-all duration-300 hover:shadow-xl hover:border-primary/40"> {/* Rounded-xl, updated border/shadow */}
+                    <Card key={post.id} className="bg-card/80 dark:bg-card/70 border border-border/30 shadow-lg rounded-xl overflow-hidden transition-all duration-300 hover:shadow-xl hover:border-primary/40"> {/* Rounded-xl, updated border/shadow, Removed backdrop-blur-md */}
                         <CardHeader className="flex flex-row items-center gap-4 p-4 border-b border-border/20"> {/* Less prominent border */}
                             <Avatar className="h-11 w-11 border-2 border-primary/40">
                                 <AvatarImage src={post.authorAvatarUrl} alt={post.authorName} />

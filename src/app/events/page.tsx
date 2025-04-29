@@ -97,7 +97,7 @@ export default function EventsPage() {
     <div className="flex min-h-screen w-full flex-col bg-transparent">
       <main className="relative z-10 flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
         {/* Header Card */}
-        <Card className="mb-4 sm:mb-8 bg-card/80 dark:bg-card/70 backdrop-blur-md shadow-lg rounded-lg border-border/30">
+        <Card className="mb-4 sm:mb-8 bg-card/80 dark:bg-card/70 shadow-lg rounded-lg border-border/30"> {/* Removed backdrop-blur-md */}
           <CardHeader className="flex flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-4">
               <Link href="/" passHref legacyBehavior>
@@ -122,7 +122,7 @@ export default function EventsPage() {
         {/* Main Content Area */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Calendar Column */}
-          <Card className="lg:col-span-1 bg-card/80 dark:bg-card/70 backdrop-blur-md border-border/30 shadow-md rounded-lg p-4 flex flex-col items-center">
+          <Card className="lg:col-span-1 bg-card/80 dark:bg-card/70 border-border/30 shadow-md rounded-lg p-4 flex flex-col items-center"> {/* Removed backdrop-blur-md */}
              <h2 className="text-lg font-semibold text-foreground mb-4">Calendar</h2>
             <Calendar
               mode="single"
@@ -146,7 +146,7 @@ export default function EventsPage() {
 
           {/* Events List & Actions Column */}
           <div className="lg:col-span-2 space-y-6">
-            <Card className="bg-card/80 dark:bg-card/70 backdrop-blur-md border-border/30 shadow-md rounded-lg">
+            <Card className="bg-card/80 dark:bg-card/70 border-border/30 shadow-md rounded-lg"> {/* Removed backdrop-blur-md */}
               <CardHeader className="flex flex-row justify-between items-center">
                 <CardTitle className="text-lg font-semibold text-foreground">
                   Upcoming Events

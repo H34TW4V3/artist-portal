@@ -30,7 +30,7 @@ export function AgreementCard({ title, icon, className }: AgreementCardProps) {
 
   return (
     <Card className={cn(
-        "bg-background/70 dark:bg-background/50 backdrop-blur-sm border border-border/40 shadow-sm rounded-lg transition-subtle hover:shadow-md hover:border-border/60 flex flex-col justify-between", // Ensure flex column layout
+        "bg-background/70 dark:bg-background/50 border border-border/40 shadow-sm rounded-lg transition-subtle hover:shadow-md hover:border-border/60 flex flex-col justify-between", // Removed backdrop-blur-sm
         className
     )}>
       <CardHeader className="flex flex-row items-start gap-4 pb-2"> {/* Adjust spacing */}

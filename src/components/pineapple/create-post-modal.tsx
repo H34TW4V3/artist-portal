@@ -22,7 +22,7 @@ interface CreatePostModalProps {
 export function CreatePostModal({ isOpen, onClose, onSuccess }: CreatePostModalProps) {
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-md md:max-w-lg bg-card/95 dark:bg-card/80 backdrop-blur-sm border-border/50">
+      <DialogContent className="sm:max-w-md md:max-w-lg bg-card/95 dark:bg-card/80 border-border/50"> {/* Removed backdrop-blur-sm */}
         <DialogHeader>
           <DialogTitle className="text-primary">Create New Post</DialogTitle>
           <DialogDescription className="text-muted-foreground">

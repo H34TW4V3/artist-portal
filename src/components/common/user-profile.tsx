@@ -252,7 +252,7 @@ export default function UserProfile() {
 
       {/* Profile Edit Modal */}
        <Dialog open={isProfileModalOpen} onOpenChange={setIsProfileModalOpen}>
-           <DialogContent className="sm:max-w-md md:max-w-lg lg:max-w-xl bg-card/95 dark:bg-card/80 backdrop-blur-sm border-border/50">
+           <DialogContent className="sm:max-w-md md:max-w-lg lg:max-w-xl bg-card/95 dark:bg-card/80 border-border/50"> {/* Removed backdrop-blur-sm */}
                <DialogHeader>
                   <DialogTitle className="text-primary">Manage Your Profile</DialogTitle>
                    <DialogDescription className="text-muted-foreground">
@@ -284,7 +284,7 @@ export default function UserProfile() {
 
       {/* Change Password Modal */}
       <Dialog open={isPasswordModalOpen} onOpenChange={setIsPasswordModalOpen}>
-        <DialogContent className="sm:max-w-md bg-card/95 dark:bg-card/80 backdrop-blur-sm border-border/50">
+        <DialogContent className="sm:max-w-md bg-card/95 dark:bg-card/80 border-border/50"> {/* Removed backdrop-blur-sm */}
           <DialogHeader>
             <DialogTitle className="text-primary">Change Password</DialogTitle>
             <DialogDescription className="text-muted-foreground">
