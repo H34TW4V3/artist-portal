@@ -10,7 +10,7 @@ import { useEffect } from 'react';
 import { Loader2 } from 'lucide-react'; // Import Loader2 for loading animation
 
 // Placeholder URL for the GIF - replace with actual URL
-const LOGIN_BACKGROUND_GIF_URL = "https://i.pinimg.com/originals/c5/34/8b/c5348b195b53f3e5b7463394728ee83e.gif"; // Replace with actual GIF URL
+const LOGIN_BACKGROUND_GIF_URL = "https://giffiles.alphacoders.com/173/173157.gif"; // Updated GIF URL
 
 // Custom Login Icon based on the provided image
 const LoginIcon = () => (
