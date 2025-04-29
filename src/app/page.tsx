@@ -17,12 +17,12 @@ const PineappleIcon = () => (
 );
 
 
-// Define the navigation items
+// Define the navigation items - REMOVED Manage Profile
 const navItems = [
   { title: "Dashboard", href: "/dashboard", icon: <LayoutDashboard className="h-10 w-10" />, description: "View stats & releases" },
   { title: "Documents", href: "/documents", icon: <FileText className="h-10 w-10" />, description: "Access agreements & handbooks" },
-  { title: "Manage Profile", href: "/profile", icon: <UserCog className="h-10 w-10" />, description: "Update your details" },
   { title: "Pineapple", href: "/pineapple", icon: <PineappleIcon />, description: "A tropical surprise!" }, // Uses the updated icon
+  // { title: "Manage Profile", href: "/profile", icon: <UserCog className="h-10 w-10" />, description: "Update your details" }, // Removed profile link
   // Add more sections here if needed
   // { title: "Settings", href: "/settings", icon: <Settings className="h-10 w-10" />, description: "App settings" },
 ];
@@ -80,4 +80,3 @@ export default function HomePage() {
     </div>
   );
 }
-
