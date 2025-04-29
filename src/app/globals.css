@@ -130,4 +130,29 @@ body {
   .focus-glow {
       @apply focus-visible:shadow-[0_0_15px_2px_theme(colors.accent/0.6)];
   }
+
+   /* Keyframes for login page animation */
+  @keyframes fade-in-up {
+    from {
+      opacity: 0;
+      transform: translateY(20px) scale(0.98);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+   .animate-fade-in-up {
+       animation: fade-in-up 0.5s ease-out forwards;
+   }
+
+   /* Subtle pulse animation for icons */
+   @keyframes subtle-pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.03); }
+   }
+   .animate-subtle-pulse {
+       animation: subtle-pulse 2.5s ease-in-out infinite;
+   }
+
 }

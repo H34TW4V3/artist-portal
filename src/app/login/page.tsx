@@ -11,7 +11,8 @@ import { Loader2 } from 'lucide-react'; // Import Loader2 for loading animation
 
 // Custom Login Icon based on the provided image
 const LoginIcon = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 100 100" className="h-24 w-24 mb-6 text-primary"> {/* Increased size */}
+    // Add subtle pulse animation to the icon
+    <svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 100 100" className="h-24 w-24 mb-6 text-primary animate-subtle-pulse"> {/* Increased size & Added animation */}
       <defs>
         <linearGradient id="oxygenGradient" x1="0%" y1="0%" x2="100%" y2="100%">
           <stop offset="0%" style={{stopColor: 'hsl(180, 100%, 70%)', stopOpacity: 1}} /> {/* Cyan-ish */}
@@ -21,7 +22,7 @@ const LoginIcon = () => (
       </defs>
       {/* Outer circle with gradient stroke */}
       <circle cx="50" cy="50" r="45" fill="none" stroke="url(#oxygenGradient)" strokeWidth="3" />
-      {/* Stylized 'X' with gradient fill */}
+      {/* Stylized 'X' with gradient stroke */}
       <path
         d="M30 30 L70 70 M70 30 L30 70"
         stroke="url(#oxygenGradient)"
@@ -66,8 +67,9 @@ export default function LoginPage() {
     // If not loading and no user, show the login form
     return (
         <div className="flex min-h-screen w-full items-center justify-center bg-transparent p-4 relative z-10">
+            {/* Add entrance animation to the card container */}
             <div className={cn(
-                "w-full max-w-md rounded-xl border border-border/30 shadow-xl overflow-hidden" // Removed background/blur classes
+                "w-full max-w-md rounded-xl border border-border/30 shadow-xl overflow-hidden animate-fade-in-up" // Removed background/blur classes & Added animation
             )}>
                 {/* Card Header */}
                  <CardHeader className="items-center text-center p-6 border-b border-border/30"> {/* Removed background */}
