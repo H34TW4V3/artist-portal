@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
-import { MoreHorizontal, Edit, Trash2, Loader2, PlusCircle } from "lucide-react"; // Added PlusCircle
+import { MoreHorizontal, Edit, Trash2, Loader2, UploadCloud } from "lucide-react"; // Changed PlusCircle to UploadCloud
 
 import { Button } from "@/components/ui/button";
 import {
@@ -37,11 +37,12 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogDescription, // Make sure DialogDescription is imported
-  DialogClose, // Import DialogClose
+  DialogDescription,
+  DialogClose,
 } from "@/components/ui/dialog";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { ReleaseForm } from './release-form'; // Import ReleaseForm
+import { ReleaseForm } from './release-form'; // For editing
+import { UploadReleaseModal } from './upload-release-modal'; // Import the new upload modal
 import type { ReleaseMetadata } from '@/services/music-platform';
 import { removeRelease, getReleases } from '@/services/music-platform'; // Import the functions
 import { useToast } from '@/hooks/use-toast';
@@ -62,6 +63,7 @@ export function ReleaseList({ className }: ReleaseListProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [editingRelease, setEditingRelease] = useState<ReleaseWithId | null>(null); // Track release being edited in dialog
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false); // State for upload modal
   const [deletingReleaseId, setDeletingReleaseId] = useState<string | null>(null); // Track which release is being confirmed for deletion
   const [isPerformingAction, setIsPerformingAction] = useState<string | null>(null); // Track ongoing delete action ID
   const { toast } = useToast();
@@ -103,9 +105,10 @@ export function ReleaseList({ className }: ReleaseListProps) {
       }
   }
 
-  // Callback for successful edit/upload from ReleaseForm (now only used for edit success)
+  // Callback for successful edit/upload from respective forms/modals
   const handleSuccess = async () => {
-      setIsEditDialogOpen(false); // Close dialog on success
+      setIsEditDialogOpen(false); // Close edit dialog
+      setIsUploadModalOpen(false); // Close upload modal
       setEditingRelease(null);
       await fetchReleases(); // Refetch the list
   }
@@ -139,24 +142,45 @@ export function ReleaseList({ className }: ReleaseListProps) {
   const formatDate = (dateString: string | Date | undefined): string => {
      if (!dateString) return '-';
      try {
-         const date = typeof dateString === 'string' ? new Date(dateString + 'T00:00:00') : dateString; // Ensure correct parsing if only date string
-         return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+         // Handle both string and Date objects, ensuring string is treated as UTC date part
+         const date = typeof dateString === 'string'
+             ? new Date(dateString + 'T00:00:00Z') // Treat as UTC date part
+             : dateString;
+
+         // Check if the date is valid after parsing
+         if (isNaN(date.getTime())) {
+             console.warn("Invalid date encountered:", dateString);
+             return '-';
+         }
+
+         // Format using UTC methods to avoid timezone shifts affecting the displayed date
+         return date.toLocaleDateString('en-US', {
+             year: 'numeric',
+             month: 'short',
+             day: 'numeric',
+             timeZone: 'UTC' // Explicitly use UTC for formatting
+         });
      } catch (e) {
+         console.error("Error formatting date:", e);
          return '-'; // Handle invalid date formats gracefully
      }
   };
+
 
   // Main view: Release List Table
   return (
     <>
     {/* Adjust background/opacity for dark mode */}
     <Card className={cn("col-span-1 lg:col-span-2 shadow-md rounded-lg", className)}>
-        <CardHeader className="flex flex-row justify-between items-center">
+        <CardHeader className="flex flex-row justify-between items-center gap-4 flex-wrap">
             <div>
                 <CardTitle className="text-xl font-semibold text-primary">Manage Releases</CardTitle>
                 <CardDescription className="text-muted-foreground">View, edit, or remove your existing releases.</CardDescription>
             </div>
-             {/* Removed "Add New" button as form is always visible now */}
+             {/* "Upload New Release" button to trigger the modal */}
+            <Button onClick={() => setIsUploadModalOpen(true)} className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-md ml-auto">
+                <UploadCloud className="mr-2 h-4 w-4" /> Upload New Release
+            </Button>
         </CardHeader>
         <CardContent>
             <div className="overflow-x-auto rounded-md border border-border/50"> {/* Add border around table */}
@@ -194,7 +218,7 @@ export function ReleaseList({ className }: ReleaseListProps) {
                         // No releases message
                         <TableRow>
                             <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
-                                No releases found yet. Use the form above to upload your first one!
+                                No releases found yet. Click "Upload New Release" to add your first one!
                             </TableCell>
                         </TableRow>
                     ) : (
@@ -202,13 +226,20 @@ export function ReleaseList({ className }: ReleaseListProps) {
                         releases.map((release) => (
                             <TableRow key={release.id} className="hover:bg-muted/50 dark:hover:bg-muted/20 transition-colors border-b border-border/30 last:border-b-0">
                                 <TableCell className="hidden sm:table-cell p-2 align-middle">
+                                     {/* Use a consistent placeholder or the actual URL */}
                                     <Image
                                         alt={`${release.title} Artwork`}
                                         className="aspect-square rounded-md object-cover border border-border/50"
                                         height={48}
-                                        src={release.artworkUrl || `https://picsum.photos/seed/${release.id}/64/64?grayscale`} // Consistent grayscale fallback
+                                        // Provide a more stable placeholder if needed, or handle potential 404s from picsum
+                                        src={release.artworkUrl || '/placeholder-artwork.png'} // Example: local placeholder
                                         width={48}
-                                        unoptimized // Needed for frequently changing picsum URLs if used heavily
+                                        onError={(e) => {
+                                            // Optionally handle image loading errors, e.g., set to placeholder
+                                            e.currentTarget.src = '/placeholder-artwork.png';
+                                        }}
+                                        // Consider removing unoptimized if artwork URLs are stable or use next/image optimization features
+                                        // unoptimized
                                     />
                                 </TableCell>
                                 <TableCell className="font-medium text-foreground p-2 align-middle">{release.title}</TableCell>
@@ -229,7 +260,7 @@ export function ReleaseList({ className }: ReleaseListProps) {
                                             <DropdownMenuLabel>Actions</DropdownMenuLabel>
                                             <DropdownMenuItem onClick={() => handleEdit(release)} className="cursor-pointer focus:bg-accent focus:text-accent-foreground">
                                                 <Edit className="mr-2 h-4 w-4" />
-                                                <span>Edit</span>
+                                                <span>Edit Metadata</span>
                                             </DropdownMenuItem>
                                             <DropdownMenuSeparator className="bg-border/50" />
                                             <DropdownMenuItem
@@ -247,13 +278,13 @@ export function ReleaseList({ className }: ReleaseListProps) {
                                             <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
                                             <AlertDialogDescription className="text-muted-foreground">
                                                 This action cannot be undone. This will permanently remove the release
-                                                &quot;{release.title}&quot; and its associated data from the platform.
+                                                &quot;{releases.find(r => r.id === deletingReleaseId)?.title}&quot; and its associated data from the platform.
                                             </AlertDialogDescription>
                                             </AlertDialogHeader>
                                             <AlertDialogFooter>
                                             <AlertDialogCancel disabled={isPerformingAction === release.id} className="border-input hover:bg-muted/50">Cancel</AlertDialogCancel>
                                             <AlertDialogAction
-                                                onClick={() => handleDeleteConfirm(release.id)}
+                                                onClick={() => deletingReleaseId && handleDeleteConfirm(deletingReleaseId)}
                                                 disabled={isPerformingAction === release.id}
                                                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                                             >
@@ -277,36 +308,33 @@ export function ReleaseList({ className }: ReleaseListProps) {
         </CardContent>
     </Card>
 
-    {/* Edit Release Dialog */}
+    {/* Edit Release Metadata Dialog */}
      <Dialog open={isEditDialogOpen} onOpenChange={handleEditDialogClose}>
-          {/* Adjusted background/opacity for dark mode */}
          <DialogContent className="sm:max-w-[425px] md:max-w-lg lg:max-w-xl bg-card/95 dark:bg-card/80 backdrop-blur-sm border-border/50">
              <DialogHeader>
-                <DialogTitle className="text-primary">Edit Release</DialogTitle>
+                <DialogTitle className="text-primary">Edit Release Metadata</DialogTitle>
                 <DialogDescription className="text-muted-foreground">
-                    Make changes to the release details for &quot;{editingRelease?.title}&quot;.
+                    Make changes to the release details for &quot;{editingRelease?.title}&quot;. Note: Audio/Artwork cannot be changed here.
                 </DialogDescription>
              </DialogHeader>
               {editingRelease && (
-                 <ReleaseForm
+                 <ReleaseForm // Use the existing form for *editing metadata only*
                      key={editingRelease.id} // Ensure form remounts/resets for different releases
                      releaseId={editingRelease.id}
                      initialData={editingRelease}
-                     onSuccess={handleSuccess}
-                     // Use transparent background, no shadow/border as it's inside dialog
-                     className="bg-transparent shadow-none border-0 p-0"
+                     onSuccess={handleSuccess} // Re-use the success handler
+                     className="bg-transparent shadow-none border-0 p-0 mt-4" // Adjust styles for dialog
                  />
              )}
-             {/* Optional: Footer with close button if needed */}
-              {/* <DialogFooter className="mt-4">
-                 <DialogClose asChild>
-                     <Button type="button" variant="outline">
-                         Close
-                     </Button>
-                 </DialogClose>
-             </DialogFooter> */}
          </DialogContent>
      </Dialog>
+
+     {/* Upload New Release Modal */}
+     <UploadReleaseModal
+        isOpen={isUploadModalOpen}
+        onClose={() => setIsUploadModalOpen(false)}
+        onSuccess={handleSuccess} // Re-use the success handler to refresh list
+     />
     </>
   );
 }

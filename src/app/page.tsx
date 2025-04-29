@@ -1,6 +1,6 @@
 
 import { StatisticsView } from "@/components/dashboard/statistics-view";
-import { ReleaseForm } from "@/components/dashboard/release-form";
+// ReleaseForm is no longer directly rendered here
 import { ReleaseList } from "@/components/dashboard/release-list";
 import { EventsView } from "@/components/dashboard/events-view"; // Import new EventsView
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -53,9 +53,9 @@ export default function DashboardPage() {
 
            {/* Content for the combined Releases tab */}
           <TabsContent value="releases" className="space-y-6">
-             {/* Use Cards to structure the form and list */}
-            <ReleaseForm key="upload-form" className="bg-card/80 dark:bg-card/60 backdrop-blur-md border-border/30" />
+             {/* ReleaseList now contains the trigger for the upload modal */}
             <ReleaseList className="bg-card/80 dark:bg-card/60 backdrop-blur-md border-border/30" />
+             {/* Removed static ReleaseForm */}
           </TabsContent>
 
            {/* Content for the new Events tab */}
