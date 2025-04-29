@@ -67,8 +67,9 @@ export default function PineapplePage() {
                     <CardHeader className="flex flex-row items-center justify-between gap-4">
                         <div className="flex items-center gap-4">
                             <Link href="/" passHref legacyBehavior>
+                                {/* Use lg size and adjust padding */}
                                 <Button variant="ghost" size="lg" className="h-12 w-12 text-primary hover:bg-primary/10 active:bg-primary/20 p-0" aria-label="Go to Home">
-                                    <Home className="h-7 w-7" />
+                                    <Home className="h-7 w-7" /> {/* Ensure icon size fits */}
                                 </Button>
                             </Link>
                              <PineappleIcon /> {/* Use the Pineapple Icon component */}

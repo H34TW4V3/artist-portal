@@ -2,14 +2,15 @@
 "use client"; // Add use client because we use state and hooks
 
 import { useState, useEffect } from "react"; // Import useEffect
+import Link from "next/link"; // Import Link
 import { StatisticsView } from "@/components/dashboard/statistics-view";
 import { ReleaseList } from "@/components/dashboard/release-list"; // Import ReleaseList
 import { EventsView } from "@/components/dashboard/events-view";
 import UserProfile from "@/components/common/user-profile"; // Changed to default import
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ListMusic, CalendarClock, BarChart3 } from "lucide-react"; // Import ListMusic icon
-// Removed Link and Button imports as the Home button is removed
+import { ListMusic, CalendarClock, BarChart3, Home } from "lucide-react"; // Import ListMusic icon and Home icon
+import { Button } from "@/components/ui/button"; // Import Button
 import { useAuth } from "@/context/auth-context"; // Import useAuth
 import { useRouter } from 'next/navigation'; // Import useRouter
 import { Loader2 } from 'lucide-react'; // Import Loader2 for loading animation
@@ -69,6 +70,12 @@ export default function DashboardPage() {
         <Card className="mb-4 sm:mb-8 bg-card/80 dark:bg-card/70 backdrop-blur-md shadow-lg rounded-lg border-border/30">
           <CardHeader className="flex flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-4">
+              {/* Add Home Button */}
+              <Link href="/" passHref legacyBehavior>
+                 <Button variant="ghost" size="lg" className="h-12 w-12 text-primary hover:bg-primary/10 active:bg-primary/20 p-0" aria-label="Go to Home">
+                   <Home className="h-7 w-7" />
+                 </Button>
+              </Link>
               {/* Display icon for the active tab */}
               {currentHeader.icon}
               <div className="text-center sm:text-left"> {/* Ensure alignment */}
