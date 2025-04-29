@@ -1,7 +1,8 @@
 
 import { AgreementCard } from "@/components/documents/agreement-card";
 import { UserProfile } from "@/components/common/user-profile";
-import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+// Import CardContent
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FileText, FolderKanban } from "lucide-react";
 
@@ -85,3 +86,4 @@ export default function DocumentsPage() {
     </div>
   );
 }
+
