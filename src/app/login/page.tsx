@@ -15,7 +15,7 @@ const LOGIN_BACKGROUND_GIF_URL = "https://giffiles.alphacoders.com/173/173157.gi
 // Custom Login Icon based on the provided image
 const LoginIcon = () => (
     // Add subtle pulse animation to the icon
-    <svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 100 100" className="h-24 w-24 mb-6 text-primary animate-subtle-pulse"> {/* Increased size & Added animation */}
+    <svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 100 100" className="h-32 w-32 mb-8 text-primary animate-subtle-pulse"> {/* Increased size & adjusted margin */}
       <defs>
         <linearGradient id="oxygenGradient" x1="0%" y1="0%" x2="100%" y2="100%">
           <stop offset="0%" style={{stopColor: 'hsl(180, 100%, 70%)', stopOpacity: 1}} /> {/* Cyan-ish */}
@@ -102,3 +102,4 @@ export default function LoginPage() {
         </div>
     );
 }
+
