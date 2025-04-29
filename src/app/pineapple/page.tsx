@@ -12,7 +12,7 @@ import { Home, MessageSquarePlus, Users } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/context/auth-context"; // Import useAuth
 import { useRouter } from 'next/navigation'; // Import useRouter
-import { Loader2 } from 'lucide-react'; // Import Loader2
+import { Loader2 } from 'lucide-react'; // Import Loader2 for loading animation
 
 // Updated Pineapple SVG Icon based on the requested style (wired/gradient)
 const PineappleIcon = () => (

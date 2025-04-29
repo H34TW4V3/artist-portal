@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils';
 import { useAuth } from '@/context/auth-context';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
-import { Loader2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react'; // Import Loader2 for loading animation
 
 // Custom Login Icon based on the provided image
 const LoginIcon = () => (

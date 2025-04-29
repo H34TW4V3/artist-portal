@@ -10,7 +10,7 @@ import { useAuth } from "@/context/auth-context"; // Import useAuth
 import { Skeleton } from "@/components/ui/skeleton"; // Import Skeleton
 import { useRouter } from 'next/navigation'; // Import useRouter
 import { useEffect } from 'react'; // Import useEffect
-import { Loader2 } from 'lucide-react'; // Import Loader2 for checking auth state
+import { Loader2 } from 'lucide-react'; // Import Loader2 for loading animation
 
 // Updated Pineapple SVG Icon based on the requested style (wired/gradient)
 const PineappleIcon = () => (

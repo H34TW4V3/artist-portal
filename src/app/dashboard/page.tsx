@@ -13,7 +13,7 @@ import Link from "next/link"; // Import Link
 import { Button } from "@/components/ui/button"; // Import Button
 import { useAuth } from "@/context/auth-context"; // Import useAuth
 import { useRouter } from 'next/navigation'; // Import useRouter
-import { Loader2 } from 'lucide-react'; // Import Loader2
+import { Loader2 } from 'lucide-react'; // Import Loader2 for loading animation
 
 // Define content for each tab's header
 const tabHeaders = {
