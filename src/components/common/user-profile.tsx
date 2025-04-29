@@ -33,11 +33,6 @@ export function UserProfile({ name, imageUrl, className }: UserProfileProps) {
     .toUpperCase();
 
   // Placeholder actions - replace with actual logic
-  const handleManageProfile = () => {
-    // TODO: Implement navigation to manage profile page
-    toast({ title: "Action", description: "Navigate to Manage Profile page." });
-  };
-
   const handleLogout = () => {
     // TODO: Add logout logic here
     toast({ title: "Action", description: "User logged out." });
@@ -85,10 +80,12 @@ export function UserProfile({ name, imageUrl, className }: UserProfileProps) {
                 <span>Key Documents</span>
             </Link>
         </DropdownMenuItem>
-        {/* Manage Profile */}
-        <DropdownMenuItem onClick={handleManageProfile} className="cursor-pointer focus:bg-accent focus:text-accent-foreground">
-          <Settings className="mr-2 h-4 w-4" />
-          <span>Manage Profile</span>
+        {/* Manage Profile Link - Updated */}
+        <DropdownMenuItem asChild className="cursor-pointer focus:bg-accent focus:text-accent-foreground">
+            <Link href="/profile">
+                <Settings className="mr-2 h-4 w-4" />
+                <span>Manage Profile</span>
+            </Link>
         </DropdownMenuItem>
         <DropdownMenuSeparator className="bg-border/50" />
         {/* Logout */}
