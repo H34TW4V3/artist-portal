@@ -8,7 +8,7 @@ import { format } from "date-fns"
 import Image from 'next/image';
 import type React from 'react';
 import { useState, useEffect } from "react";
-import { Loader2, UploadCloud, X } from "lucide-react";
+import { Loader2, UploadCloud, X, CalendarIcon } from "lucide-react"; // Added CalendarIcon
 
 import { Button } from "@/components/ui/button"
 import {
@@ -24,26 +24,35 @@ import { Input } from "@/components/ui/input"
 import { useToast } from "@/hooks/use-toast"
 import { uploadRelease, updateReleaseMetadata, type ReleaseMetadata } from "@/services/music-platform";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { DatePicker } from "@/components/ui/date-picker";
+// Removed DatePicker import, using ShadCN Calendar+Popover directly now
 import { cn } from "@/lib/utils";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"; // Import Popover components
+import { Calendar } from "@/components/ui/calendar"; // Import Calendar
 
 // Schema for new release (both files required)
 const newReleaseSchema = z.object({
-  title: z.string().min(2, "Title must be at least 2 characters."),
-  artist: z.string().min(2, "Artist name must be at least 2 characters."),
+  title: z.string().min(2, "Title must be at least 2 characters.").max(100, "Title must be 100 characters or less."),
+  artist: z.string().min(2, "Artist name must be at least 2 characters.").max(100, "Artist name must be 100 characters or less."),
   releaseDate: z.date({ required_error: "A release date is required." }),
-  artwork: z.instanceof(File).refine(file => file.size > 0, 'Artwork image is required.'),
-  audioFile: z.instanceof(File).refine(file => file.size > 0, 'Audio file is required.'),
+  artwork: z.instanceof(File).refine(file => file.size > 0, 'Artwork image is required.')
+                           .refine(file => file.size <= 10 * 1024 * 1024, 'Artwork must be 10MB or less.') // Max 10MB
+                           .refine(file => ["image/jpeg", "image/png", "image/gif"].includes(file.type), 'Only JPG, PNG, GIF allowed.'),
+  audioFile: z.instanceof(File).refine(file => file.size > 0, 'Audio file is required.')
+                             .refine(file => file.size <= 100 * 1024 * 1024, 'Audio file must be 100MB or less.') // Max 100MB
+                             .refine(file => ["audio/mpeg", "audio/wav", "audio/flac"].includes(file.type), 'Only MP3, WAV, FLAC allowed.'),
 });
 
 // Schema for editing (files optional)
 const editReleaseSchema = z.object({
-  title: z.string().min(2, "Title must be at least 2 characters."),
-  artist: z.string().min(2, "Artist name must be at least 2 characters."),
+  title: z.string().min(2, "Title must be at least 2 characters.").max(100, "Title must be 100 characters or less."),
+  artist: z.string().min(2, "Artist name must be at least 2 characters.").max(100, "Artist name must be 100 characters or less."),
   releaseDate: z.date({ required_error: "A release date is required." }),
-  artwork: z.instanceof(File).optional(), // Allow undefined or File
+  artwork: z.instanceof(File).optional() // Optional File
+                             .refine(file => !file || file.size <= 10 * 1024 * 1024, 'Artwork must be 10MB or less.') // Validate if present
+                             .refine(file => !file || ["image/jpeg", "image/png", "image/gif"].includes(file.type), 'Only JPG, PNG, GIF allowed.'), // Validate if present
   audioFile: z.instanceof(File).optional(), // Technically not used for metadata edit, but keep for type consistency
 });
+
 
 // Combined type for form values
 type ReleaseFormValues = z.infer<typeof newReleaseSchema> | z.infer<typeof editReleaseSchema>;
@@ -105,9 +114,10 @@ export function ReleaseForm({ releaseId, initialData, onSuccess, className }: Re
              setArtworkPreview(null);
              setAudioFileName(null);
         }
-    }, [initialData, form]); // Depend on initialData and form instance
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [initialData]); // Depend only on initialData to reset
 
-   // Register file inputs explicitly
+   // Register file inputs explicitly - this might not be strictly necessary with Controller but ensures they are known
    useEffect(() => {
      form.register('artwork');
      form.register('audioFile');
@@ -116,68 +126,72 @@ export function ReleaseForm({ releaseId, initialData, onSuccess, className }: Re
 
   async function onSubmit(values: ReleaseFormValues) {
      setIsSubmitting(true);
-     // Keep preview for edit mode until success/failure
-     // setArtworkPreview(null);
-     // setAudioFileName(null);
 
-     const metadata: ReleaseMetadata = {
+     // Ensure releaseDate is valid before formatting
+     let formattedReleaseDate = '';
+     if (values.releaseDate instanceof Date && !isNaN(values.releaseDate.getTime())) {
+       formattedReleaseDate = format(values.releaseDate, 'yyyy-MM-dd');
+     } else {
+        toast({
+            title: "Invalid Date",
+            description: "Please select a valid release date.",
+            variant: "destructive",
+        });
+        setIsSubmitting(false);
+        return; // Stop submission if date is invalid
+     }
+
+
+     const metadataBase: Omit<ReleaseMetadata, 'artworkUrl'> = {
       title: values.title,
       artist: values.artist,
-      releaseDate: format(values.releaseDate, 'yyyy-MM-dd'),
-      artworkUrl: initialData?.artworkUrl || "" // Keep existing URL initially
+      releaseDate: formattedReleaseDate,
     };
 
     try {
       if (isEditMode && releaseId && initialData) {
-        console.log("Updating release:", releaseId, metadata);
-        let newArtworkUrl: string | undefined = undefined;
+        console.log("Updating release:", releaseId, metadataBase);
+        let newArtworkUrl: string | undefined = initialData.artworkUrl; // Start with existing URL
 
         // 1. Handle optional artwork update (if a new file was selected)
-        if (values.artwork instanceof File) {
+        if (values.artwork instanceof File && values.artwork.size > 0) {
           console.log("Updating artwork for release:", releaseId);
           // TODO: Implement actual artwork upload/update logic here
-          // const newArtworkUrlResult = await uploadArtworkForRelease(releaseId, values.artwork);
-          // newArtworkUrl = newArtworkUrlResult; // Store the new URL
+          // For now, simulate upload and generate a new unique URL
            await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate upload
            newArtworkUrl = `https://picsum.photos/seed/${releaseId}/${Date.now()}/200/200`; // Simulate new URL
            console.log("Simulated artwork update successful, new URL:", newArtworkUrl);
+        } else {
+           console.log("No new artwork file selected for update.");
         }
 
         // 2. Update Metadata (potentially with the new artwork URL)
-        await updateReleaseMetadata(releaseId, {
-             ...metadata,
-             artworkUrl: newArtworkUrl ?? metadata.artworkUrl // Use new URL if available, otherwise keep old one
-        });
+        const finalMetadata: ReleaseMetadata = {
+            ...metadataBase,
+            artworkUrl: newArtworkUrl || "", // Use new URL if available, otherwise keep old one (or empty if none existed)
+        };
+        await updateReleaseMetadata(releaseId, finalMetadata);
 
 
         toast({
           title: "Release Updated",
           description: `"${values.title}" metadata updated successfully.`,
-          variant: "default",
+          variant: "default", // Use "default" which adapts to theme
         });
         onSuccess?.(); // Call callback on success
 
       } else if (!isEditMode && values.audioFile instanceof File && values.artwork instanceof File) {
-         console.log("Uploading new release:", metadata);
-        // 1. Upload Release (Metadata + Audio) - Assume this handles initial artwork URL placeholder
-        const newReleaseId = await uploadRelease(metadata, values.audioFile);
+         console.log("Uploading new release:", metadataBase);
 
-        // 2. Upload Artwork (Could be separate step after getting ID)
-        // In this mock, uploadRelease sets a placeholder, we might need to "update" it here if needed
-        console.log("Uploading artwork for new release:", newReleaseId);
-        // TODO: Implement actual artwork upload logic here
-        // const artworkUrl = await uploadArtworkForRelease(newReleaseId, values.artwork);
-        // If uploadRelease doesn't handle artwork, update metadata here:
-        // await updateReleaseMetadata(newReleaseId, { ...metadata, artworkUrl });
-         await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate artwork upload
-         const finalArtworkUrl = `https://picsum.photos/seed/${newReleaseId}/200/200`; // URL set by uploadRelease in mock
-         console.log("Simulated artwork upload successful, URL:", finalArtworkUrl);
+         // 1. Upload Release (Metadata + Audio + Artwork)
+         // Pass both files to uploadRelease for it to handle
+         const { id: newReleaseId, artworkUrl: finalArtworkUrl } = await uploadRelease(metadataBase, values.audioFile, values.artwork);
 
 
         toast({
           title: "Release Uploaded",
           description: `"${values.title}" has been submitted successfully.`,
-          variant: "default",
+           variant: "default", // Use "default"
         });
         form.reset({ // Reset form to default empty state after upload
             title: "",
@@ -188,16 +202,21 @@ export function ReleaseForm({ releaseId, initialData, onSuccess, className }: Re
         });
         setArtworkPreview(null);
         setAudioFileName(null);
-        // Clear file input visual state
-         const artworkInput = document.getElementById('artwork') as HTMLInputElement | null;
-         if (artworkInput) artworkInput.value = '';
-         const audioInput = document.getElementById('audioFile') as HTMLInputElement | null;
-         if (audioInput) audioInput.value = '';
+        // Clear file input visual state (more reliable way)
+        form.setValue('artwork', undefined);
+        form.setValue('audioFile', undefined);
+        const artworkInput = document.getElementById('artwork') as HTMLInputElement | null;
+        if (artworkInput) artworkInput.value = '';
+        const audioInput = document.getElementById('audioFile') as HTMLInputElement | null;
+        if (audioInput) audioInput.value = '';
 
         onSuccess?.(); // Call callback on success
+      } else if (!isEditMode && !(values.artwork instanceof File)) {
+          throw new Error("Artwork image is required for a new release.");
+      } else if (!isEditMode && !(values.audioFile instanceof File)) {
+          throw new Error("Audio file is required for a new release.");
       } else {
-         // This case should ideally be prevented by validation, but handle defensively
-         throw new Error("Missing required files for new release.");
+         throw new Error("Invalid form state for submission.");
       }
     } catch (error) {
       console.error("Error submitting release:", error);
@@ -209,10 +228,6 @@ export function ReleaseForm({ releaseId, initialData, onSuccess, className }: Re
        // Restore original preview if submission fails during edit
        if (isEditMode && initialData?.artworkUrl) {
            setArtworkPreview(initialData.artworkUrl);
-       } else {
-           // Clear potentially broken preview on new upload fail
-           setArtworkPreview(null);
-           setAudioFileName(null);
        }
     } finally {
        setIsSubmitting(false);
@@ -223,7 +238,7 @@ export function ReleaseForm({ releaseId, initialData, onSuccess, className }: Re
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>, fieldName: "artwork" | "audioFile") => {
     const file = event.target.files?.[0];
     if (file) {
-        form.setValue(fieldName, file, { shouldValidate: true, shouldDirty: true });
+        form.setValue(fieldName, file, { shouldValidate: true, shouldDirty: true }); // Trigger validation and mark as dirty
         if (fieldName === "artwork") {
             const reader = new FileReader();
             reader.onloadend = () => {
@@ -234,28 +249,21 @@ export function ReleaseForm({ releaseId, initialData, onSuccess, className }: Re
             setAudioFileName(file.name);
         }
     } else {
-       // If user cancels file selection, reset the field and preview
-       form.setValue(fieldName, undefined, { shouldValidate: true, shouldDirty: true });
-        if (fieldName === "artwork") {
-             // Revert to initial artwork in edit mode, or clear in new mode
-             setArtworkPreview(isEditMode && initialData ? initialData.artworkUrl : null);
-        } else if (fieldName === "audioFile") {
-             setAudioFileName(null);
-        }
+        // If user cancels/clears file selection
+        clearFile(fieldName); // Use the clearFile function
     }
-     // Don't manually clear event.target.value here, let react-hook-form manage state
   };
 
    // Function to clear a file input and its preview
   const clearFile = (fieldName: "artwork" | "audioFile") => {
-      form.setValue(fieldName, undefined, { shouldValidate: true, shouldDirty: true });
+      form.setValue(fieldName, undefined, { shouldValidate: true, shouldDirty: true }); // Set to undefined and validate
       if (fieldName === "artwork") {
           // Revert to initial artwork in edit mode, or clear in new mode
           setArtworkPreview(isEditMode && initialData ? initialData.artworkUrl : null);
       } else {
           setAudioFileName(null);
       }
-       // Also clear the underlying input element's value
+       // Also clear the underlying input element's value for visual consistency
       const inputElement = document.getElementById(fieldName) as HTMLInputElement | null;
       if (inputElement) {
         inputElement.value = ""; // Clear the native input
@@ -263,7 +271,8 @@ export function ReleaseForm({ releaseId, initialData, onSuccess, className }: Re
   }
 
   return (
-     <Card className={cn("bg-card shadow-md rounded-lg transition-subtle", className)}>
+     // Adjusted background/opacity for dark mode and consistency
+     <Card className={cn("shadow-md rounded-lg", className)}>
        <CardHeader>
         <CardTitle className="text-xl font-semibold text-primary">{isEditMode ? "Edit Release" : "Upload New Release"}</CardTitle>
         <CardDescription className="text-muted-foreground">
@@ -272,7 +281,15 @@ export function ReleaseForm({ releaseId, initialData, onSuccess, className }: Re
        </CardHeader>
        <CardContent>
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit, (errors) => console.log("Form validation errors:", errors))} className="space-y-6">
+              {/* Added error logging for debugging */}
+              <form onSubmit={form.handleSubmit(onSubmit, (errors) => {
+                  console.log("Form validation errors:", errors);
+                   toast({ // Show validation errors in a toast
+                       title: "Validation Error",
+                       description: "Please check the form for errors.",
+                       variant: "destructive",
+                   });
+               })} className="space-y-6">
                  {/* Title */}
                  <FormField
                   control={form.control}
@@ -281,7 +298,8 @@ export function ReleaseForm({ releaseId, initialData, onSuccess, className }: Re
                     <FormItem>
                       <FormLabel>Title</FormLabel>
                       <FormControl>
-                        <Input placeholder="Enter release title" {...field} className="bg-background/80 border-input focus:ring-accent" />
+                        {/* Use standard input background */}
+                        <Input placeholder="Enter release title" {...field} className="focus:ring-accent" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -295,7 +313,7 @@ export function ReleaseForm({ releaseId, initialData, onSuccess, className }: Re
                     <FormItem>
                       <FormLabel>Artist</FormLabel>
                       <FormControl>
-                        <Input placeholder="Enter artist name" {...field} className="bg-background/80 border-input focus:ring-accent" />
+                        <Input placeholder="Enter artist name" {...field} className="focus:ring-accent" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -308,38 +326,36 @@ export function ReleaseForm({ releaseId, initialData, onSuccess, className }: Re
                   render={({ field }) => (
                     <FormItem className="flex flex-col">
                       <FormLabel>Release Date</FormLabel>
+                      {/* Use ShadCN Popover + Calendar directly */}
                        <Popover>
                          <PopoverTrigger asChild>
                            <FormControl>
                              <Button
                                variant={"outline"}
                                className={cn(
-                                 "w-full pl-3 text-left font-normal bg-background/80 border-input focus:ring-accent",
+                                 "w-full justify-start text-left font-normal border-input focus:ring-accent", // Use input border color
                                  !field.value && "text-muted-foreground"
                                )}
                              >
-                               {field.value ? (
+                               <CalendarIcon className="mr-2 h-4 w-4 opacity-50" />
+                               {field.value && field.value instanceof Date && !isNaN(field.value.getTime()) ? ( // Check if valid date
                                  format(field.value, "PPP")
                                ) : (
                                  <span>Pick a date</span>
                                )}
-                               <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                              </Button>
                            </FormControl>
                          </PopoverTrigger>
-                         <PopoverContent className="w-auto p-0" align="start">
+                         <PopoverContent className="w-auto p-0 bg-popover border-border" align="start">
                            <Calendar
                              mode="single"
-                             selected={field.value}
-                             onSelect={field.onChange}
-                             disabled={(date) =>
-                               date > new Date() || date < new Date("1900-01-01")
-                             }
+                             selected={field.value instanceof Date && !isNaN(field.value.getTime()) ? field.value : undefined}
+                             onSelect={(date) => field.onChange(date)} // Pass selected date to RHF
+                             disabled={(date) => date > new Date()} // Disable future dates
                              initialFocus
                            />
                          </PopoverContent>
                        </Popover>
-
                       <FormMessage />
                     </FormItem>
                   )}
@@ -354,8 +370,9 @@ export function ReleaseForm({ releaseId, initialData, onSuccess, className }: Re
                       <FormItem>
                         <FormLabel>Artwork Image</FormLabel>
                         <FormControl>
+                              {/* Use bg-muted/20 for a subtle background */}
                              <div className={cn(
-                                 "mt-1 flex justify-center rounded-md border-2 border-dashed px-6 pb-6 pt-5 bg-background/30", // Slightly transparent background
+                                 "mt-1 flex justify-center rounded-md border-2 border-dashed px-6 pb-6 pt-5 bg-muted/20",
                                  fieldState.error ? "border-destructive" : "border-input hover:border-accent",
                                  artworkPreview ? "border-solid p-2" : "" // Adjust padding when preview is shown
                              )}>
@@ -367,20 +384,20 @@ export function ReleaseForm({ releaseId, initialData, onSuccess, className }: Re
                                                 alt="Artwork preview"
                                                 width={200}
                                                 height={200}
-                                                className="mx-auto h-auto w-full max-h-48 rounded-md object-contain border border-border/50" // Added border
+                                                className="mx-auto h-auto w-full max-h-48 rounded-md object-contain border border-border/50"
                                             />
                                             <Button
                                                 type="button"
                                                 variant="destructive"
                                                 size="icon"
-                                                className="absolute -right-2 -top-2 h-6 w-6 opacity-80 group-hover:opacity-100 transition-opacity rounded-full shadow-md" // Made round
+                                                className="absolute -right-2 -top-2 h-6 w-6 opacity-80 group-hover:opacity-100 transition-opacity rounded-full shadow-md"
                                                 onClick={() => clearFile("artwork")}
                                                 aria-label="Remove artwork"
                                             >
                                                 <X className="h-4 w-4" />
                                             </Button>
                                              {/* Hidden label for changing artwork */}
-                                             <label htmlFor="artwork" className="absolute inset-0 cursor-pointer rounded-md focus-within:outline-none focus-within:ring-2 focus-within:ring-accent focus-within:ring-offset-2 group-hover:bg-black/50 transition-colors flex items-center justify-center">
+                                             <label htmlFor="artwork" className="absolute inset-0 cursor-pointer rounded-md focus-within:outline-none focus-within:ring-2 focus-within:ring-accent focus-within:ring-offset-2 group-hover:bg-black/60 transition-colors flex items-center justify-center">
                                                 <span className="text-sm font-medium text-white opacity-0 group-hover:opacity-100 transition-opacity">Change</span>
                                                 <input id="artwork" name="artwork" type="file" className="sr-only" accept="image/jpeg, image/png, image/gif" onChange={(e) => handleFileChange(e, "artwork")} />
                                             </label>
@@ -391,12 +408,11 @@ export function ReleaseForm({ releaseId, initialData, onSuccess, className }: Re
                                             <div className="flex text-sm text-muted-foreground justify-center">
                                                 <label
                                                     htmlFor="artwork"
-                                                    className="relative cursor-pointer rounded-md bg-background/80 px-2 py-1 font-medium text-primary hover:text-primary/90 focus-within:outline-none focus-within:ring-2 focus-within:ring-accent focus-within:ring-offset-2"
+                                                    className="relative cursor-pointer rounded-md bg-background px-2 py-1 font-medium text-primary hover:text-primary/90 focus-within:outline-none focus-within:ring-2 focus-within:ring-accent focus-within:ring-offset-2"
                                                 >
                                                     <span>Upload artwork</span>
                                                     <input id="artwork" name="artwork" type="file" className="sr-only" accept="image/jpeg, image/png, image/gif" onChange={(e) => handleFileChange(e, "artwork")} />
                                                 </label>
-                                                {/* <p className="pl-1">or drag and drop</p> */}
                                             </div>
                                             <p className="text-xs text-muted-foreground">PNG, JPG, GIF up to 10MB</p>
                                         </>
@@ -405,7 +421,7 @@ export function ReleaseForm({ releaseId, initialData, onSuccess, className }: Re
                             </div>
                         </FormControl>
                          <FormDescription className="text-xs">
-                           {isEditMode ? "Upload a new image to replace the current one (optional)." : "Image file for the release cover."}
+                           {isEditMode ? "Upload a new image to replace the current one (optional)." : "Cover image for the release (JPG, PNG, GIF)."}
                          </FormDescription>
                         <FormMessage />
                       </FormItem>
@@ -421,8 +437,9 @@ export function ReleaseForm({ releaseId, initialData, onSuccess, className }: Re
                           <FormItem>
                             <FormLabel>Audio File</FormLabel>
                             <FormControl>
+                                  {/* Use bg-muted/20 for a subtle background */}
                                  <div className={cn(
-                                     "mt-1 flex justify-center rounded-md border-2 border-dashed px-6 pb-6 pt-5 bg-background/30", // Slightly transparent background
+                                     "mt-1 flex justify-center rounded-md border-2 border-dashed px-6 pb-6 pt-5 bg-muted/20",
                                      fieldState.error ? "border-destructive" : "border-input hover:border-accent",
                                      audioFileName ? "border-solid p-4 items-center" : "" // Adjust when file selected
                                  )}>
@@ -433,7 +450,7 @@ export function ReleaseForm({ releaseId, initialData, onSuccess, className }: Re
                                                 type="button"
                                                 variant="ghost"
                                                 size="icon"
-                                                className="h-6 w-6 text-muted-foreground hover:text-destructive rounded-full" // Made round
+                                                className="h-6 w-6 text-muted-foreground hover:text-destructive rounded-full"
                                                 onClick={() => clearFile("audioFile")}
                                                 aria-label="Remove audio file"
                                             >
@@ -446,19 +463,18 @@ export function ReleaseForm({ releaseId, initialData, onSuccess, className }: Re
                                             <div className="flex text-sm text-muted-foreground justify-center">
                                                 <label
                                                     htmlFor="audioFile"
-                                                     className="relative cursor-pointer rounded-md bg-background/80 px-2 py-1 font-medium text-primary hover:text-primary/90 focus-within:outline-none focus-within:ring-2 focus-within:ring-accent focus-within:ring-offset-2"
+                                                     className="relative cursor-pointer rounded-md bg-background px-2 py-1 font-medium text-primary hover:text-primary/90 focus-within:outline-none focus-within:ring-2 focus-within:ring-accent focus-within:ring-offset-2"
                                                 >
                                                     <span>Upload audio file</span>
                                                      <input id="audioFile" name="audioFile" type="file" className="sr-only" accept="audio/mpeg, audio/wav, audio/flac" onChange={(e) => handleFileChange(e, "audioFile")} />
                                                 </label>
-                                                {/* <p className="pl-1">or drag and drop</p> */}
                                             </div>
                                             <p className="text-xs text-muted-foreground">MP3, WAV, FLAC up to 100MB</p>
                                         </div>
                                     )}
                                 </div>
                             </FormControl>
-                             <FormDescription className="text-xs">The main audio track for the release.</FormDescription>
+                             <FormDescription className="text-xs">The main audio track for the release (MP3, WAV, FLAC).</FormDescription>
                             <FormMessage />
                           </FormItem>
                         )}
@@ -466,7 +482,11 @@ export function ReleaseForm({ releaseId, initialData, onSuccess, className }: Re
                 )}
 
                 {/* Submit Button */}
-                <Button type="submit" disabled={isSubmitting || (!form.formState.isDirty && isEditMode)} className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-primary-foreground shadow-md disabled:shadow-none">
+                <Button
+                    type="submit"
+                    disabled={isSubmitting || (!form.formState.isDirty && isEditMode)}
+                    className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-primary-foreground shadow-md disabled:shadow-none disabled:bg-muted disabled:text-muted-foreground" // Improved disabled styles
+                >
                  {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                  {isSubmitting ? 'Submitting...' : (isEditMode ? 'Update Release' : 'Upload Release')}
                 </Button>
@@ -477,8 +497,4 @@ export function ReleaseForm({ releaseId, initialData, onSuccess, className }: Re
   )
 }
 
-
-// Dummy components needed for rendering DatePicker inside the form (already imported)
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
-import { CalendarIcon } from "lucide-react";
+// No longer need dummy components, using ShadCN directly

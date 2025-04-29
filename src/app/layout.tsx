@@ -20,9 +20,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    // Add 'dark' class to enforce dark mode
+    <html lang="en" className="dark">
       {/* Apply the font variable directly from the imported object */}
-      <body className={`${GeistSans.variable} font-sans antialiased`}>
+      <body className={`${GeistSans.variable} font-sans antialiased bg-background text-foreground`}>
         {children}
         <Toaster /> {/* Add Toaster component here */}
       </body>

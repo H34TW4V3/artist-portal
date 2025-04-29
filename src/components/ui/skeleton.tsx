@@ -6,7 +6,8 @@ function Skeleton({
 }: React.HTMLAttributes<HTMLDivElement>) {
   return (
     <div
-      className={cn("animate-pulse rounded-md bg-muted/70", className)} // Use muted with opacity
+      // Use a slightly less transparent muted for better visibility
+      className={cn("animate-pulse rounded-md bg-muted/80 dark:bg-muted/30", className)}
       {...props}
     />
   )
