@@ -47,15 +47,15 @@ export default function DashboardPage() {
            {/* Use bg-card/70 for slightly more transparency */}
           <TabsList className="grid w-full grid-cols-1 sm:grid-cols-3 gap-2 mb-6 h-auto bg-card/70 dark:bg-card/60 backdrop-blur-sm border border-border/20 shadow-sm rounded-lg p-1">
              {/* Added BarChart3 icon for Statistics */}
-            <TabsTrigger value="statistics" className="py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-subtle rounded-md flex items-center justify-center gap-2">
+            <TabsTrigger value="statistics" className="py-2 data-[state=active]:shadow-md transition-subtle rounded-md flex items-center justify-center gap-2">
                 <BarChart3 className="h-4 w-4" /> Statistics
             </TabsTrigger>
              {/* Combined Upload/Manage into Releases, used ListMusic */}
-            <TabsTrigger value="releases" className="py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-subtle rounded-md flex items-center justify-center gap-2">
+            <TabsTrigger value="releases" className="py-2 data-[state=active]:shadow-md transition-subtle rounded-md flex items-center justify-center gap-2">
                  <ListMusic className="h-4 w-4" /> Releases
             </TabsTrigger>
              {/* New Events tab */}
-            <TabsTrigger value="events" className="py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-subtle rounded-md flex items-center justify-center gap-2">
+            <TabsTrigger value="events" className="py-2 data-[state=active]:shadow-md transition-subtle rounded-md flex items-center justify-center gap-2">
                  <CalendarClock className="h-4 w-4" /> Events
             </TabsTrigger>
           </TabsList>

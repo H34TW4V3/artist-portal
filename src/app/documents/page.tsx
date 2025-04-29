@@ -58,11 +58,11 @@ export default function DocumentsPage() {
            {/* Adjusted grid cols for two tabs */}
           <TabsList className="grid w-full grid-cols-2 gap-2 mb-6 h-auto bg-card/70 dark:bg-card/60 backdrop-blur-sm border border-border/20 shadow-sm rounded-lg p-1 max-w-md">
              {/* Agreements Tab */}
-            <TabsTrigger value="agreements" className="py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-subtle rounded-md flex items-center justify-center gap-2">
+            <TabsTrigger value="agreements" className="py-2 data-[state=active]:shadow-md transition-subtle rounded-md flex items-center justify-center gap-2">
                 <FileText className="h-4 w-4" /> My Agreements
             </TabsTrigger>
              {/* Handbooks Tab */}
-            <TabsTrigger value="handbooks" className="py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-subtle rounded-md flex items-center justify-center gap-2">
+            <TabsTrigger value="handbooks" className="py-2 data-[state=active]:shadow-md transition-subtle rounded-md flex items-center justify-center gap-2">
                 <BookOpenText className="h-4 w-4" /> Handbooks
             </TabsTrigger>
           </TabsList>
