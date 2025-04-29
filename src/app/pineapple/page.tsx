@@ -8,7 +8,8 @@ import { Button } from "@/components/ui/button";
 import UserProfile from "@/components/common/user-profile"; // Changed to default import
 import { ForumFeed } from "@/components/pineapple/forum-feed";
 import { CreatePostForm } from "@/components/pineapple/create-post-form";
-import { Home, MessageSquarePlus, Users } from "lucide-react";
+import { DirectMessagesView } from "@/components/pineapple/direct-messages-view"; // Import DM View
+import { Home, MessageSquarePlus, Users, Send } from "lucide-react"; // Added Send icon
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/context/auth-context"; // Import useAuth
 import { useRouter } from 'next/navigation'; // Import useRouter
@@ -27,8 +28,8 @@ const PineappleIcon = () => (
 export default function PineapplePage() {
     const { user, loading } = useAuth(); // Get user info and loading state
     const router = useRouter();
-    // State for active tab
-    const [activeTab, setActiveTab] = useState("forum"); // Default to forum tab
+    // State for active tab - default to forum
+    const [activeTab, setActiveTab] = useState("forum");
     // Removed artistName state
 
     // Redirect unauthenticated users
@@ -42,10 +43,8 @@ export default function PineapplePage() {
     const handlePostSuccess = () => {
         // In a real app, you would likely refetch the forum feed here
         console.log("New post created (placeholder). Refreshing feed...");
-        // For now, maybe switch back to the forum tab if they were on 'create'
-        if (activeTab === 'create') {
-            setActiveTab('forum');
-        }
+        // Switch back to the forum tab after successful post
+        setActiveTab('forum');
     };
 
     // Show loading indicator while checking auth state or if user is not yet available
@@ -90,14 +89,18 @@ export default function PineapplePage() {
                     </CardHeader>
                 </Card>
 
-                 {/* Tabbed Content for Forum and Create Post */}
+                 {/* Tabbed Content for Forum, Create Post, and Messages */}
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                     <TabsList className="grid w-full grid-cols-2 gap-2 mb-6 h-auto bg-card/70 dark:bg-card/60 backdrop-blur-sm border border-border/20 shadow-sm rounded-lg p-1 max-w-md">
+                     {/* Updated grid columns to 3 */}
+                     <TabsList className="grid w-full grid-cols-3 gap-2 mb-6 h-auto bg-card/70 dark:bg-card/60 backdrop-blur-sm border border-border/20 shadow-sm rounded-lg p-1 max-w-lg mx-auto">
                         <TabsTrigger value="forum" className="py-2 data-[state=active]:shadow-md transition-subtle rounded-md flex items-center justify-center gap-2 data-[state=active]:hover-glow data-[state=active]:focus-glow">
                             <Users className="h-4 w-4" /> Forum Feed
                         </TabsTrigger>
                         <TabsTrigger value="create" className="py-2 data-[state=active]:shadow-md transition-subtle rounded-md flex items-center justify-center gap-2 data-[state=active]:hover-glow data-[state=active]:focus-glow">
                             <MessageSquarePlus className="h-4 w-4" /> Create Post
+                        </TabsTrigger>
+                         <TabsTrigger value="messages" className="py-2 data-[state=active]:shadow-md transition-subtle rounded-md flex items-center justify-center gap-2 data-[state=active]:hover-glow data-[state=active]:focus-glow">
+                            <Send className="h-4 w-4" /> Messages
                         </TabsTrigger>
                      </TabsList>
 
@@ -109,6 +112,9 @@ export default function PineapplePage() {
                             onSuccess={handlePostSuccess}
                             className="bg-card/80 dark:bg-card/70 backdrop-blur-md border-border/30"
                         />
+                    </TabsContent>
+                     <TabsContent value="messages">
+                        <DirectMessagesView className="bg-card/80 dark:bg-card/70 backdrop-blur-md border-border/30" />
                     </TabsContent>
                 </Tabs>
 
