@@ -7,9 +7,10 @@ import { getStreamingStats, type StreamingStats } from "@/services/music-platfor
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils"; // Import cn utility
 import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartConfig } from "@/components/ui/chart"; // Import chart components
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'; // Import recharts directly
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from 'recharts'; // Import recharts directly, removed unused Tooltip import
 import type React from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react"; // Import useMemo
+import { Skeleton } from "@/components/ui/skeleton"; // Import Skeleton
 
 // Helper function to format numbers with K/M suffixes
 const formatNumber = (num: number): string => {
@@ -51,17 +52,24 @@ const generateMockChartData = (months = 6) => {
 
 const chartData = generateMockChartData();
 
-// Chart configuration
-const chartConfig = {
-  streams: {
-    label: "Streams",
-    color: "hsl(var(--chart-1))",
-  },
-  revenue: {
-    label: "Revenue ($)",
-    color: "hsl(var(--chart-2))",
-  },
-} satisfies ChartConfig;
+// Helper function to shuffle an array (Fisher-Yates algorithm)
+const shuffleArray = <T>(array: T[]): T[] => {
+  const shuffled = [...array];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+};
+
+// Available chart color CSS variable names (without hsl wrapper)
+const chartColorVarNames = [
+    '--chart-1',
+    '--chart-2',
+    '--chart-3',
+    '--chart-4',
+    '--chart-5'
+];
 
 
 interface StatisticsViewProps {
@@ -72,9 +80,12 @@ interface StatisticsViewProps {
 export function StatisticsView({ className }: StatisticsViewProps) {
   const [stats, setStats] = useState<StreamingStats | null>(null);
   const [loading, setLoading] = useState(true);
+   // State to hold the shuffled color variable names
+  const [shuffledChartColorVars, setShuffledChartColorVars] = useState<string[]>([]);
 
   useEffect(() => {
     const fetchStats = async () => {
+      setLoading(true); // Ensure loading starts true
       try {
         // Fetch mock stats. In a real app, you might pass an artistId or user token.
         const fetchedStats: StreamingStats = await getStreamingStats("artist-id-placeholder");
@@ -87,7 +98,32 @@ export function StatisticsView({ className }: StatisticsViewProps) {
       }
     };
     fetchStats();
-  }, []);
+
+    // Shuffle chart colors once on mount
+    setShuffledChartColorVars(shuffleArray(chartColorVarNames));
+
+  }, []); // Empty dependency array runs once on mount
+
+
+  // Define chartConfig dynamically based on shuffled colors using useMemo
+  const dynamicChartConfig = useMemo(() => {
+    // Use default colors if shuffling hasn't completed or failed
+    const streamColorVar = shuffledChartColorVars[0] || '--chart-1';
+    const revenueColorVar = shuffledChartColorVars[1] || '--chart-2';
+
+    return {
+      streams: {
+        label: "Streams",
+        // Reference the CSS variable directly
+        color: `hsl(var(${streamColorVar}))`,
+      },
+      revenue: {
+        label: "Revenue ($)",
+        // Reference the CSS variable directly
+        color: `hsl(var(${revenueColorVar}))`,
+      },
+    } satisfies ChartConfig;
+  }, [shuffledChartColorVars]); // Recompute only when shuffled colors change
 
 
   return (
@@ -102,9 +138,9 @@ export function StatisticsView({ className }: StatisticsViewProps) {
             {loading || !stats ? (
                 <>
                  {/* Skeletons for Stat Cards */}
-                 <Skeleton className="h-28 w-full" />
-                 <Skeleton className="h-28 w-full" />
-                 <Skeleton className="h-28 w-full" />
+                 <Skeleton className="h-28 w-full bg-muted/50" />
+                 <Skeleton className="h-28 w-full bg-muted/50" />
+                 <Skeleton className="h-28 w-full bg-muted/50" />
                 </>
             ) : (
                 <>
@@ -145,9 +181,10 @@ export function StatisticsView({ className }: StatisticsViewProps) {
                 </CardHeader>
                 <CardContent>
                      {loading ? (
-                        <Skeleton className="h-[250px] w-full" />
+                        <Skeleton className="h-[250px] w-full bg-muted/50" />
                      ) : (
-                        <ChartContainer config={chartConfig} className="h-[250px] w-full">
+                        // Use the dynamic config
+                        <ChartContainer config={dynamicChartConfig} className="h-[250px] w-full">
                             <ResponsiveContainer>
                                 <LineChart
                                     data={chartData}
@@ -178,6 +215,7 @@ export function StatisticsView({ className }: StatisticsViewProps) {
                                     <Line
                                         dataKey="streams"
                                         type="monotone"
+                                        // Use the color from dynamic config
                                         stroke="var(--color-streams)"
                                         strokeWidth={2}
                                         dot={false}
@@ -199,9 +237,10 @@ export function StatisticsView({ className }: StatisticsViewProps) {
                 </CardHeader>
                 <CardContent>
                      {loading ? (
-                         <Skeleton className="h-[250px] w-full" />
+                         <Skeleton className="h-[250px] w-full bg-muted/50" />
                      ) : (
-                        <ChartContainer config={chartConfig} className="h-[250px] w-full">
+                         // Use the dynamic config
+                        <ChartContainer config={dynamicChartConfig} className="h-[250px] w-full">
                             <ResponsiveContainer>
                                 <LineChart
                                     data={chartData}
@@ -232,6 +271,7 @@ export function StatisticsView({ className }: StatisticsViewProps) {
                                     <Line
                                         dataKey="revenue"
                                         type="monotone"
+                                         // Use the color from dynamic config
                                         stroke="var(--color-revenue)"
                                         strokeWidth={2}
                                         dot={false}
@@ -247,7 +287,3 @@ export function StatisticsView({ className }: StatisticsViewProps) {
      </Card>
   );
 }
-
-// Need Skeleton component for loading states
-import { Skeleton } from "@/components/ui/skeleton";
-

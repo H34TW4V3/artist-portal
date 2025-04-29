@@ -49,12 +49,7 @@ export default function DashboardPage() {
         <Card className="mb-4 sm:mb-8 bg-card/80 dark:bg-card/70 backdrop-blur-md shadow-lg rounded-lg border-border/30">
           <CardHeader className="flex flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-4">
-                {/* Add Home Button */}
-                <Link href="/" passHref legacyBehavior>
-                    <Button variant="ghost" size="lg" className="h-12 w-12 text-primary hover:bg-primary/10 active:bg-primary/20 p-0" aria-label="Go to Home">
-                       <Home className="h-7 w-7" />
-                    </Button>
-                </Link>
+                {/* Removed Home Button from Dashboard */}
               {/* Display icon for the active tab */}
               {currentHeader.icon}
               {/* Added text-center sm:text-left */}

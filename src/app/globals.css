@@ -39,11 +39,12 @@ body {
 
     --radius: 0.5rem;
 
-    --chart-1: 233 60% 50%; /* Chart Blue (derived from primary) */
-    --chart-2: 187 80% 50%; /* Chart Teal (derived from accent) */
-    --chart-3: 340 80% 65%; /* Chart Pinkish */
-    --chart-4: 40 90% 60%; /* Chart Orange */
-    --chart-5: 120 50% 55%; /* Chart Green */
+    /* Chart colors for light mode */
+    --chart-1: 220 70% 50%; /* Vibrant Blue */
+    --chart-2: 160 70% 45%; /* Vibrant Green */
+    --chart-3: 350 75% 55%; /* Vibrant Pink */
+    --chart-4: 35 80% 50%;  /* Vibrant Orange */
+    --chart-5: 270 65% 55%; /* Vibrant Purple */
 
     --sidebar-background: 233 10% 96%; /* Slightly Bluer Light Gray */
     --sidebar-foreground: 240 10% 3.9%;
@@ -87,11 +88,12 @@ body {
 
     --radius: 0.5rem;
 
-    --chart-1: 233 65% 70%; /* Chart Blue (Light) */
-    --chart-2: 187 85% 60%; /* Chart Teal (Light) */
-    --chart-3: 340 85% 70%; /* Chart Pinkish (Light) */
-    --chart-4: 40 95% 65%; /* Chart Orange (Light) */
-    --chart-5: 120 55% 60%; /* Chart Green (Light) */
+    /* Chart colors for dark mode - make them brighter */
+    --chart-1: 220 75% 65%; /* Bright Blue */
+    --chart-2: 160 75% 55%; /* Bright Green */
+    --chart-3: 350 80% 65%; /* Bright Pink */
+    --chart-4: 35 85% 60%;  /* Bright Orange */
+    --chart-5: 270 70% 65%; /* Bright Purple */
 
     --sidebar-background: 228 8% 12%; /* Darker sidebar */
     --sidebar-foreground: 0 0% 95%;
