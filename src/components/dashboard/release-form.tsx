@@ -8,6 +8,7 @@ import { format } from "date-fns"
 import type React from 'react';
 import { useState, useEffect } from "react";
 import { Loader2, CalendarIcon } from "lucide-react"; // Keep CalendarIcon
+import { Timestamp } from "firebase/firestore"; // Import Timestamp for initial data typing
 
 import { Button } from "@/components/ui/button"
 import {
@@ -21,7 +22,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { useToast } from "@/hooks/use-toast"
 // Import only updateReleaseMetadata, as upload is handled elsewhere
-import { updateReleaseMetadata, type ReleaseMetadata } from "@/services/music-platform";
+import { updateReleaseMetadata, type ReleaseMetadata, type ReleaseWithId } from "@/services/music-platform"; // Import updated service and types
 import { cn } from "@/lib/utils";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"; // Import Popover components
 import { Calendar } from "@/components/ui/calendar"; // Import Calendar
@@ -31,7 +32,7 @@ const editMetadataSchema = z.object({
   title: z.string().min(2, "Title must be at least 2 characters.").max(100, "Title must be 100 characters or less."),
   artist: z.string().min(2, "Artist name must be at least 2 characters.").max(100, "Artist name must be 100 characters or less."),
   releaseDate: z.date({ required_error: "A release date is required." }),
-  // artworkUrl is part of the initial data but not directly editable here
+  // artworkUrl and other fields are part of the initial data but not directly editable here
 });
 
 // Type for form values (metadata only)
@@ -39,17 +40,41 @@ type EditMetadataFormValues = z.infer<typeof editMetadataSchema>;
 
 interface ReleaseFormProps {
   releaseId: string; // Must be provided for editing
-  initialData: ReleaseMetadata & { id: string }; // Initial data for editing
+  initialData: ReleaseWithId; // Use ReleaseWithId for initial data (includes ID and potentially Timestamp)
   onSuccess?: () => void; // Optional callback after successful submission
   className?: string; // Allow passing custom classes
 }
 
-// Renamed component to be more specific (optional, but good practice)
-// export function EditReleaseMetadataForm({ releaseId, initialData, onSuccess, className }: ReleaseFormProps) {
+
 // Keeping original name for now to minimize refactoring elsewhere immediately
 export function ReleaseForm({ releaseId, initialData, onSuccess, className }: ReleaseFormProps) {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Function to safely parse initial date (string, Date, or Timestamp) into a Date object
+  const parseInitialDate = (dateValue: string | Date | Timestamp | undefined): Date => {
+      if (!dateValue) return new Date(); // Default to today if undefined
+      try {
+          if (dateValue instanceof Timestamp) {
+              return dateValue.toDate();
+          } else if (typeof dateValue === 'string') {
+              // Assume 'YYYY-MM-DD', parse as UTC date part
+              const parts = dateValue.split('-');
+              if (parts.length === 3) {
+                   return new Date(Date.UTC(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2])));
+              }
+               // Fallback parsing attempt
+               const parsed = new Date(dateValue);
+               return isNaN(parsed.getTime()) ? new Date() : parsed;
+          } else if (dateValue instanceof Date) {
+              return dateValue; // Already a Date object
+          }
+      } catch (e) {
+          console.error("Error parsing initial date:", dateValue, e);
+      }
+      return new Date(); // Fallback to today on error
+  };
+
 
   // Use the metadata editing schema
   const form = useForm<EditMetadataFormValues>({
@@ -57,8 +82,8 @@ export function ReleaseForm({ releaseId, initialData, onSuccess, className }: Re
     defaultValues: {
       title: initialData?.title || "",
       artist: initialData?.artist || "",
-      // Ensure date is parsed correctly from string or Date
-      releaseDate: initialData?.releaseDate ? new Date(initialData.releaseDate instanceof Date ? initialData.releaseDate : initialData.releaseDate + 'T00:00:00Z') : new Date(),
+      // Use the helper function to parse the initial date
+      releaseDate: parseInitialDate(initialData?.releaseDate),
     },
      mode: "onChange", // Validate on change for better feedback
   });
@@ -68,7 +93,7 @@ export function ReleaseForm({ releaseId, initialData, onSuccess, className }: Re
         form.reset({
             title: initialData?.title || "",
             artist: initialData?.artist || "",
-            releaseDate: initialData?.releaseDate ? new Date(initialData.releaseDate instanceof Date ? initialData.releaseDate : initialData.releaseDate + 'T00:00:00Z') : new Date(),
+            releaseDate: parseInitialDate(initialData?.releaseDate),
         });
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [initialData]); // Depend only on initialData to reset
@@ -80,12 +105,8 @@ export function ReleaseForm({ releaseId, initialData, onSuccess, className }: Re
      // Ensure releaseDate is valid before formatting
      let formattedReleaseDate = '';
      if (values.releaseDate instanceof Date && !isNaN(values.releaseDate.getTime())) {
-        // Format as YYYY-MM-DD, preserving the local date intended by the user
-        // Get year, month (0-indexed), and day
-        const year = values.releaseDate.getFullYear();
-        const month = (values.releaseDate.getMonth() + 1).toString().padStart(2, '0'); // Add 1 for month, pad with 0
-        const day = values.releaseDate.getDate().toString().padStart(2, '0'); // Pad day with 0
-        formattedReleaseDate = `${year}-${month}-${day}`;
+        // Format as YYYY-MM-DD for Firestore consistency
+        formattedReleaseDate = format(values.releaseDate, "yyyy-MM-dd");
      } else {
         toast({
             title: "Invalid Date",
@@ -96,16 +117,16 @@ export function ReleaseForm({ releaseId, initialData, onSuccess, className }: Re
         return; // Stop submission if date is invalid
      }
 
-     // Construct metadata including the original artworkUrl
-     const metadataToUpdate: ReleaseMetadata = {
+     // Construct metadata for update (only title, artist, releaseDate)
+     const metadataToUpdate: Partial<Pick<ReleaseMetadata, 'title' | 'artist' | 'releaseDate'>> = {
         title: values.title,
         artist: values.artist,
-        releaseDate: formattedReleaseDate,
-        artworkUrl: initialData.artworkUrl, // Keep the existing artwork URL
+        releaseDate: formattedReleaseDate, // Send formatted string
      };
 
     try {
-        console.log("Updating release metadata:", releaseId, metadataToUpdate);
+        console.log("Updating release metadata in Firestore:", releaseId, metadataToUpdate);
+        // Call the updated Firestore service function
         await updateReleaseMetadata(releaseId, metadataToUpdate);
 
         toast({
@@ -198,8 +219,9 @@ export function ReleaseForm({ releaseId, initialData, onSuccess, className }: Re
                           mode="single"
                           selected={field.value instanceof Date && !isNaN(field.value.getTime()) ? field.value : undefined}
                            onSelect={(date) => field.onChange(date || new Date())} // Ensure a date object is always passed
-                           // Disable dates before today + 1 day (allow today)
-                           disabled={(date) => date < new Date(new Date().setHours(0,0,0,0))} // Disable past dates
+                           // Optionally adjust disabled dates logic if needed
+                           // disabled={(date) => date < new Date(new Date().setHours(0,0,0,0))}
+                           disabled={(date) => date < new Date("1900-01-01")} // Allow past dates, but maybe not *too* far past
                           initialFocus
                         />
                       </PopoverContent>

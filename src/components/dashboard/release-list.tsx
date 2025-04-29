@@ -4,6 +4,7 @@
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { MoreHorizontal, Edit, Trash2, Loader2, UploadCloud } from "lucide-react"; // Changed PlusCircle to UploadCloud
+import { Timestamp } from "firebase/firestore"; // Import Timestamp
 
 import { Button } from "@/components/ui/button";
 import {
@@ -38,47 +39,48 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
-  DialogClose,
-} from "@/components/ui/dialog";
+} from "@/components/ui/dialog"; // Removed DialogClose as it's implicit
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ReleaseForm } from './release-form'; // For editing
 import { UploadReleaseModal } from './upload-release-modal'; // Import the new upload modal
-import type { ReleaseMetadata } from '@/services/music-platform';
-import { removeRelease, getReleases } from '@/services/music-platform'; // Import the functions
+import type { ReleaseWithId, ReleaseMetadata } from '@/services/music-platform'; // Import types
+import { removeRelease, getReleases } from '@/services/music-platform'; // Import the Firestore functions
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton'; // Import Skeleton
 import { cn } from '@/lib/utils';
-
-
-// Type for release including ID
-type ReleaseWithId = ReleaseMetadata & { id: string };
+import { useAuth } from '@/context/auth-context'; // Import useAuth
 
 interface ReleaseListProps {
   className?: string;
 }
 
-
 export function ReleaseList({ className }: ReleaseListProps) {
+  const { user } = useAuth(); // Get user for conditional rendering/fetching
   const [releases, setReleases] = useState<ReleaseWithId[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [editingRelease, setEditingRelease] = useState<ReleaseWithId | null>(null); // Track release being edited in dialog
+  const [editingRelease, setEditingRelease] = useState<ReleaseWithId | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false); // State for upload modal
-  const [deletingReleaseId, setDeletingReleaseId] = useState<string | null>(null); // Track which release is being confirmed for deletion
-  const [isPerformingAction, setIsPerformingAction] = useState<string | null>(null); // Track ongoing delete action ID
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [deletingReleaseId, setDeletingReleaseId] = useState<string | null>(null);
+  const [isPerformingAction, setIsPerformingAction] = useState<string | null>(null);
   const { toast } = useToast();
 
-    // Fetch releases function
+  // Fetch releases function using the service
   const fetchReleases = async () => {
+    if (!user) {
+        setIsLoading(false); // No user, stop loading
+        setReleases([]);    // Clear releases
+        return;
+    }
     setIsLoading(true);
     try {
-      const fetchedReleases = await getReleases();
+      const fetchedReleases = await getReleases(); // Call the Firestore service function
       setReleases(fetchedReleases);
     } catch (error) {
       console.error("Error fetching releases:", error);
       toast({
         title: "Error Fetching Releases",
-        description: "Could not load your releases. Please try again later.",
+        description: error instanceof Error ? error.message : "Could not load your releases.",
         variant: "destructive",
       });
       setReleases([]); // Clear releases on error
@@ -87,11 +89,12 @@ export function ReleaseList({ className }: ReleaseListProps) {
     }
   };
 
-  // Fetch releases on component mount and when edit dialog closes successfully
+  // Fetch releases on component mount and when user changes
   useEffect(() => {
     fetchReleases();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Fetch initially only
+  }, [user]); // Refetch if user logs in/out
+
 
   const handleEdit = (release: ReleaseWithId) => {
     setEditingRelease(release);
@@ -117,19 +120,21 @@ export function ReleaseList({ className }: ReleaseListProps) {
   const handleDeleteConfirm = async (releaseId: string) => {
     setIsPerformingAction(releaseId); // Indicate action started
     try {
-        await removeRelease(releaseId);
+        await removeRelease(releaseId); // Call Firestore service function
         // Update state *after* successful deletion
-        setReleases(prevReleases => prevReleases.filter(r => r.id !== releaseId));
+        // No need to manually filter, fetchReleases will get the updated list
         toast({
             title: "Release Removed",
             description: "The release has been successfully removed.",
             variant: "default", // Use default for theme adaptation
         });
+        await fetchReleases(); // Refetch to update the list
+
     } catch (error) {
         console.error("Error removing release:", error);
         toast({
             title: "Removal Failed",
-            description: "Could not remove the release. Please try again.",
+            description: error instanceof Error ? error.message : "Could not remove the release.",
             variant: "destructive",
         });
     } finally {
@@ -138,32 +143,45 @@ export function ReleaseList({ className }: ReleaseListProps) {
     }
   };
 
-  // Format date for display
-  const formatDate = (dateString: string | Date | undefined): string => {
-     if (!dateString) return '-';
-     try {
-         // Handle both string and Date objects, ensuring string is treated as UTC date part
-         const date = typeof dateString === 'string'
-             ? new Date(dateString + 'T00:00:00Z') // Treat as UTC date part
-             : dateString;
+  // Format date for display (handles string YYYY-MM-DD or Firestore Timestamp)
+  const formatDate = (dateValue: string | Date | Timestamp | undefined): string => {
+    if (!dateValue) return '-';
+    try {
+        let date: Date;
+        if (dateValue instanceof Timestamp) {
+            date = dateValue.toDate(); // Convert Firestore Timestamp to Date
+        } else if (typeof dateValue === 'string') {
+             // Assume 'YYYY-MM-DD' format, parse as UTC date part
+             const parts = dateValue.split('-');
+             if (parts.length === 3) {
+                  // Create date ensuring it's treated as UTC midnight
+                  date = new Date(Date.UTC(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2])));
+             } else {
+                  // Fallback attempt (might be inaccurate depending on string format)
+                  date = new Date(dateValue);
+             }
+        } else {
+             date = dateValue; // Already a Date object
+        }
 
-         // Check if the date is valid after parsing
-         if (isNaN(date.getTime())) {
-             console.warn("Invalid date encountered:", dateString);
-             return '-';
-         }
 
-         // Format using UTC methods to avoid timezone shifts affecting the displayed date
-         return date.toLocaleDateString('en-US', {
-             year: 'numeric',
-             month: 'short',
-             day: 'numeric',
-             timeZone: 'UTC' // Explicitly use UTC for formatting
-         });
-     } catch (e) {
-         console.error("Error formatting date:", e);
-         return '-'; // Handle invalid date formats gracefully
-     }
+        // Check if the date is valid after parsing/conversion
+        if (isNaN(date.getTime())) {
+            console.warn("Invalid date encountered:", dateValue);
+            return '-';
+        }
+
+        // Format using US locale, explicitly using UTC to avoid timezone shifts
+        return date.toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric',
+            timeZone: 'UTC' // Display the date as it was intended in UTC
+        });
+    } catch (e) {
+        console.error("Error formatting date:", dateValue, e);
+        return '-'; // Handle invalid date formats gracefully
+    }
   };
 
 
@@ -178,12 +196,20 @@ export function ReleaseList({ className }: ReleaseListProps) {
                 <CardDescription className="text-muted-foreground">View, edit, or remove your existing releases.</CardDescription>
             </div>
              {/* "Upload New Release" button to trigger the modal */}
-            <Button onClick={() => setIsUploadModalOpen(true)} className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-md ml-auto">
-                <UploadCloud className="mr-2 h-4 w-4" /> Upload New Release
-            </Button>
+             {user && ( // Only show upload button if logged in
+                <Button onClick={() => setIsUploadModalOpen(true)} className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-md ml-auto">
+                    <UploadCloud className="mr-2 h-4 w-4" /> Upload New Release
+                </Button>
+              )}
         </CardHeader>
         <CardContent>
-            <div className="overflow-x-auto rounded-md border border-border/50"> {/* Add border around table */}
+             {!user && ( // Show message if not logged in
+                 <div className="text-center py-10 text-muted-foreground">
+                     Please log in to manage your releases.
+                 </div>
+             )}
+            {user && ( // Only show table if logged in
+             <div className="overflow-x-auto rounded-md border border-border/50"> {/* Add border around table */}
                 <Table>
                 <TableHeader>
                     <TableRow className="bg-muted/30 dark:bg-muted/10 hover:bg-muted/50 dark:hover:bg-muted/20"> {/* Subtle header background */}
@@ -233,20 +259,20 @@ export function ReleaseList({ className }: ReleaseListProps) {
                                         className="aspect-square rounded-md object-cover border border-border/50"
                                         height={48}
                                         // Provide a more stable placeholder if needed, or handle potential 404s from picsum
+                                        // Use placeholder if artworkUrl is empty or missing
                                         src={release.artworkUrl || '/placeholder-artwork.png'} // Example: local placeholder
                                         width={48}
                                         onError={(e) => {
                                             // Optionally handle image loading errors, e.g., set to placeholder
                                             e.currentTarget.src = '/placeholder-artwork.png';
                                         }}
-                                        // Consider removing unoptimized if artwork URLs are stable or use next/image optimization features
-                                        // unoptimized
+                                        // unoptimized // Consider removing if URLs are stable
                                     />
                                 </TableCell>
                                 <TableCell className="font-medium text-foreground p-2 align-middle">{release.title}</TableCell>
                                 {/* Removed Artist Cell */}
                                 <TableCell className="hidden md:table-cell text-muted-foreground p-2 align-middle">
-                                  {formatDate(release.releaseDate)}
+                                  {formatDate(release.releaseDate || release.createdAt)} {/* Use releaseDate, fallback to createdAt */}
                                 </TableCell>
                                 <TableCell className="text-right p-2 align-middle">
                                     <AlertDialog open={deletingReleaseId === release.id} onOpenChange={(open) => !open && setDeletingReleaseId(null)}>
@@ -306,6 +332,7 @@ export function ReleaseList({ className }: ReleaseListProps) {
                 </TableBody>
                 </Table>
              </div>
+             )} {/* End of user check for table */}
         </CardContent>
     </Card>
 

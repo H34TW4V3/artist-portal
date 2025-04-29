@@ -4,8 +4,8 @@ import { initializeApp, getApps, getApp, type FirebaseApp } from "firebase/app";
 // Add SDKs for Firebase products that you want to use
 // https://firebase.google.com/docs/web/setup#available-libraries
 import { getAuth } from "firebase/auth";
-// import { getFirestore } from "firebase/firestore"; // Example: If you use Firestore
-// import { getStorage } from "firebase/storage";   // Example: If you use Storage
+import { getFirestore } from "firebase/firestore"; // Import getFirestore
+import { getStorage } from "firebase/storage";   // Import getStorage
 
 // Your web app's Firebase configuration
 // IMPORTANT: Use environment variables for sensitive information
@@ -32,17 +32,15 @@ if (!getApps().length) {
 
 // Initialize Firebase Authentication and get a reference to the service
 const auth = getAuth(app);
+// Initialize Cloud Firestore and get a reference to the service
+const db = getFirestore(app);
+// Initialize Cloud Storage and get a reference to the service
+const storage = getStorage(app);
+
 
 // Export the initialized app and services as needed
-export { app, auth };
+export { app, auth, db, storage }; // Export db and storage
 
-// Example: Export Firestore instance if used
-// const db = getFirestore(app);
-// export { db };
-
-// Example: Export Storage instance if used
-// const storage = getStorage(app);
-// export { storage };
 
 // --- Validation ---
 // Check if essential Firebase config variables are loaded
@@ -55,3 +53,9 @@ if (!firebaseConfig.authDomain) {
 if (!firebaseConfig.projectId) {
     console.error("Firebase Error: NEXT_PUBLIC_FIREBASE_PROJECT_ID is not defined. Check your .env.local file.");
 }
+// Add checks for storage bucket if needed
+if (!firebaseConfig.storageBucket) {
+    console.error("Firebase Error: NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET is not defined. Check your .env.local file.");
+}
+
+

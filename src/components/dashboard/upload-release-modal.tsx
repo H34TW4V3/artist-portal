@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react"; // Import useEffect
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -32,7 +32,7 @@ import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { useToast } from "@/hooks/use-toast";
-import { uploadReleaseZip } from "@/services/music-platform"; // Use the new service function
+import { uploadReleaseZip, type ReleaseUploadMetadata } from "@/services/music-platform"; // Use the Firestore service function and type
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area"; // Added ScrollArea for guidelines
 
@@ -69,14 +69,19 @@ export function UploadReleaseModal({ isOpen, onClose, onSuccess }: UploadRelease
      mode: "onChange", // Validate on change
   });
 
-  // Reset form when modal opens/closes
-  useState(() => {
-    if (!isOpen) {
-      form.reset();
-      setZipFileName(null);
-      setIsSubmitting(false);
-    }
-  });
+  // Reset form when modal opens/closes - Use useEffect for robustness
+   useEffect(() => {
+       if (!isOpen) {
+           form.reset({
+               releaseName: "",
+               releaseDate: new Date(),
+               releaseZip: undefined,
+           });
+           setZipFileName(null);
+           setIsSubmitting(false);
+       }
+   // eslint-disable-next-line react-hooks/exhaustive-deps
+   }, [isOpen]); // Rerun when isOpen changes
 
   // Handle file input changes and update state
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -102,13 +107,10 @@ export function UploadReleaseModal({ isOpen, onClose, onSuccess }: UploadRelease
   async function onSubmit(values: UploadFormValues) {
     setIsSubmitting(true);
 
-    // Ensure releaseDate is valid
+    // Ensure releaseDate is valid and format it
      let formattedReleaseDate = '';
      if (values.releaseDate instanceof Date && !isNaN(values.releaseDate.getTime())) {
-        const year = values.releaseDate.getFullYear();
-        const month = (values.releaseDate.getMonth() + 1).toString().padStart(2, '0');
-        const day = values.releaseDate.getDate().toString().padStart(2, '0');
-        formattedReleaseDate = `${year}-${month}-${day}`;
+        formattedReleaseDate = format(values.releaseDate, "yyyy-MM-dd"); // Format as YYYY-MM-DD
      } else {
         toast({ title: "Invalid Date", description: "Please select a valid release date.", variant: "destructive" });
         setIsSubmitting(false);
@@ -121,18 +123,20 @@ export function UploadReleaseModal({ isOpen, onClose, onSuccess }: UploadRelease
         return;
     }
 
-    try {
-      console.log("Uploading release ZIP:", { name: values.releaseName, date: formattedReleaseDate, fileName: values.releaseZip.name });
+    const uploadData: ReleaseUploadMetadata = {
+        releaseName: values.releaseName,
+        releaseDate: formattedReleaseDate,
+    };
 
-      // Call the new service function
-      await uploadReleaseZip({
-          releaseName: values.releaseName,
-          releaseDate: formattedReleaseDate,
-      }, values.releaseZip);
+    try {
+      console.log("Uploading release ZIP to Firestore/Storage:", { uploadData, fileName: values.releaseZip.name });
+
+      // Call the Firestore service function
+      await uploadReleaseZip(uploadData, values.releaseZip);
 
       toast({
         title: "Upload Successful",
-        description: `"${values.releaseName}" submitted for processing.`,
+        description: `"${values.releaseName}" submitted for processing. It will appear in your releases list shortly.`,
         variant: "default",
       });
       onSuccess(); // Call the success callback (refreshes list)
@@ -356,5 +360,3 @@ export function UploadReleaseModal({ isOpen, onClose, onSuccess }: UploadRelease
     </Dialog>
   );
 }
-
-    

@@ -1,7 +1,32 @@
 
 /**
- * MOCK IMPLEMENTATION: Replace with actual API calls to your backend/Firebase.
+ * Service layer for interacting with the music platform backend/database.
+ * Uses Firebase Firestore for storing release metadata and Firebase Storage for assets.
  */
+
+import {
+  getFirestore,
+  collection,
+  query,
+  where,
+  getDocs,
+  doc,
+  setDoc,
+  updateDoc,
+  deleteDoc,
+  serverTimestamp, // Import serverTimestamp
+  Timestamp,      // Import Timestamp type if needed for comparison/display
+  orderBy,       // Import orderBy
+} from "firebase/firestore";
+import {
+    getStorage,
+    ref,
+    uploadBytes,
+    getDownloadURL,
+    deleteObject
+} from "firebase/storage";
+import { getAuth } from "firebase/auth";
+import { app, db, storage } from './firebase-config'; // Import db and storage
 
 // --- Interfaces ---
 
@@ -26,20 +51,27 @@ export interface ReleaseMetadataBase {
   /** The main artist name. */
   artist: string;
   /** Release date in 'yyyy-MM-dd' format. */
-  releaseDate: string; // Always string format now
+  releaseDate: string; // Keep as string for Firestore compatibility and consistency
 }
 
 /**
- * Represents the metadata for a music release *after* processing,
- * including the generated artwork URL.
+ * Represents the metadata for a music release stored in Firestore.
  */
 export interface ReleaseMetadata extends ReleaseMetadataBase {
-   /** URL of the cover artwork image. Populated after backend processing. */
+   /** URL of the cover artwork image in Firebase Storage. */
    artworkUrl: string;
+   /** URL of the release ZIP file in Firebase Storage. */
+   zipUrl?: string; // URL of the uploaded ZIP
+   /** ID of the user (artist) who owns this release. */
+   userId: string;
+   /** Timestamp when the release was created in Firestore. */
+   createdAt?: Timestamp; // Firestore Timestamp, optional on creation
+   /** Status of the release processing (optional). */
+   status?: 'processing' | 'completed' | 'failed';
 }
 
 /**
- * Represents the metadata submitted with the ZIP upload.
+ * Represents the metadata submitted with the ZIP upload form.
  */
 export interface ReleaseUploadMetadata {
   /** The name provided for the release during upload. */
@@ -49,26 +81,29 @@ export interface ReleaseUploadMetadata {
 }
 
 
-// Type for a release including its unique ID
+// Type for a release including its unique Firestore document ID
 export type ReleaseWithId = ReleaseMetadata & { id: string };
 
-// --- Mock Data Store ---
+// --- Helper Functions ---
 
-let mockReleases: ReleaseWithId[] = [
-  { id: 'release1', title: 'Sunset Drive', artist: 'Synthwave Masters', artworkUrl: 'https://picsum.photos/seed/release1/200/200', releaseDate: '2023-10-26' },
-  { id: 'release2', title: 'Ocean Breeze', artist: 'Chillhop Vibes', artworkUrl: 'https://picsum.photos/seed/release2/200/200', releaseDate: '2023-09-15' },
-  { id: 'release3', title: 'Midnight City', artist: 'Electro Nights', artworkUrl: 'https://picsum.photos/seed/release3/200/200', releaseDate: '2023-11-01' },
-  { id: 'release4', title: 'Forest Whispers', artist: 'Ambient Worlds', artworkUrl: 'https://picsum.photos/seed/release4/200/200', releaseDate: '2023-08-05' },
-  // Add a release that might have been uploaded via ZIP (could start without artwork)
-  { id: 'release-zip-1', title: 'Digital Dreams', artist: 'Code Collective', artworkUrl: '', releaseDate: '2024-01-10' }, // Initially no artwork URL
-];
-
-let nextReleaseId = 5;
+/**
+ * Gets the current authenticated user's ID.
+ * Throws an error if no user is logged in.
+ */
+const getCurrentUserId = (): string => {
+    const auth = getAuth(app);
+    const user = auth.currentUser;
+    if (!user) {
+        console.error("Music Platform Service Error: No authenticated user found.");
+        throw new Error("Authentication required. Please log in.");
+    }
+    return user.uid;
+};
 
 // --- API Functions ---
 
 /**
- * Simulates fetching streaming statistics.
+ * Simulates fetching streaming statistics (Remains Mocked).
  * @param _artistId - Placeholder for artist ID (unused in mock).
  * @returns A promise resolving to mock StreamingStats.
  */
@@ -83,153 +118,192 @@ export async function getStreamingStats(_artistId: string): Promise<StreamingSta
 }
 
 /**
- * Simulates fetching the list of releases for the artist.
- * Returns processed releases (potentially including those from ZIP uploads).
- * @returns A promise resolving to an array of ReleaseWithId.
+ * Fetches the list of releases for the currently authenticated artist from Firestore.
+ * @returns A promise resolving to an array of ReleaseWithId, ordered by creation date descending.
  */
 export async function getReleases(): Promise<ReleaseWithId[]> {
-     console.log("Mock API: Fetching releases...");
-     await new Promise(resolve => setTimeout(resolve, 800)); // Simulate network delay
+    const userId = getCurrentUserId(); // Ensure user is logged in
+    console.log(`Firestore: Fetching releases for user ${userId}...`);
 
-     // Simulate backend processing adding artwork URL to the ZIP upload
-     const processedReleases = mockReleases.map(release => {
-         if (release.id === 'release-zip-1' && !release.artworkUrl) {
-             // Simulate artwork being processed and URL added
-             return { ...release, artworkUrl: `https://picsum.photos/seed/${release.id}/200/200` };
-         }
-         return release;
-     });
-     mockReleases = processedReleases; // Update the mock store with processed data
+    try {
+        const releasesRef = collection(db, "releases");
+        // Query for releases belonging to the current user, order by createdAt descending
+        const q = query(releasesRef, where("userId", "==", userId), orderBy("createdAt", "desc"));
+        const querySnapshot = await getDocs(q);
 
+        const releases: ReleaseWithId[] = [];
+        querySnapshot.forEach((doc) => {
+            // TODO: Add robust validation here (e.g., using Zod) if needed
+            const data = doc.data() as ReleaseMetadata; // Assume data matches interface
+            releases.push({ id: doc.id, ...data });
+        });
 
-     // Return a sorted copy
-     return [...mockReleases].sort((a, b) => {
-        const dateA = new Date(a.releaseDate + 'T00:00:00Z').getTime(); // Ensure consistent parsing
-        const dateB = new Date(b.releaseDate + 'T00:00:00Z').getTime(); // Ensure consistent parsing
-        return dateB - dateA;
-     });
-}
-
-
-/**
- * Simulates uploading a new music release as a ZIP file containing audio and artwork.
- * Assumes backend processing will extract metadata and files.
- * @param uploadMetadata - Metadata provided during the upload (name, date).
- * @param zipFile - The ZIP file containing the release assets.
- * @returns A promise resolving when the upload is accepted for processing.
- */
-export async function uploadReleaseZip(uploadMetadata: ReleaseUploadMetadata, zipFile: File): Promise<void> {
-    console.log("Mock API: Uploading release ZIP...", { uploadMetadata, zipFileName: zipFile.name });
-    await new Promise(resolve => setTimeout(resolve, 1800)); // Simulate ZIP upload delay
-
-    // --- Backend Simulation ---
-    // In a real backend:
-    // 1. Receive the ZIP file and metadata.
-    // 2. Generate a unique ID.
-    // 3. Store the ZIP temporarily.
-    // 4. Queue a processing job (e.g., Cloud Function, background task).
-    // 5. The job would:
-    //    - Unzip the file.
-    //    - Validate contents (find audio, artwork based on naming convention or manifest).
-    //    - Extract technical metadata from audio (duration, format).
-    //    - Potentially extract ID3 tags for artist/title if not provided reliably.
-    //    - Upload audio and artwork to storage (e.g., Cloud Storage).
-    //    - Create the final ReleaseMetadata record in the database (Firestore).
-    //    - Include the storage URLs (like artworkUrl).
-    //    - Update the status (e.g., 'processing', 'completed', 'failed').
-
-    // --- Mock Implementation ---
-    // We simulate the *initial* creation of the record, marked as processing.
-    // The getReleases function will later simulate the 'completed' state.
-    const newReleaseId = `release-zip-${nextReleaseId++}`;
-
-    // Assume artist name might be extracted from ZIP or defaults
-    // For simplicity, let's use a placeholder or derive from the name.
-    // A real implementation would need a better way to get the artist.
-    const extractedArtist = uploadMetadata.releaseName.split('-')[0]?.trim() || "Unknown Artist"; // Very basic guess
-
-    const newReleaseRecord: ReleaseWithId = {
-        id: newReleaseId,
-        title: uploadMetadata.releaseName,
-        artist: extractedArtist, // Placeholder - Needs real logic
-        releaseDate: uploadMetadata.releaseDate, // Already formatted string
-        artworkUrl: '', // Initially empty, backend processing will fill this
-        // Potentially add a 'status': 'processing' field here
-    };
-
-    mockReleases.unshift(newReleaseRecord); // Add the 'processing' record
-    console.log("Mock API: Release ZIP accepted for processing. ID:", newReleaseId);
-    // No need to return ID/URL here, as processing happens async.
-    // The UI will see the new release via getReleases later.
-}
-
-
-/**
- * Simulates updating the metadata for an existing release.
- * This function now *only* updates text fields (title, artist, date).
- * Artwork is handled by the initial ZIP upload or a separate process.
- * @param releaseId - The ID of the release to update.
- * @param metadataToUpdate - The *metadata* fields to update (title, artist, releaseDate). artworkUrl is ignored here.
- * @returns A promise resolving when the update is complete.
- */
-export async function updateReleaseMetadata(releaseId: string, metadataToUpdate: ReleaseMetadata): Promise<void> {
-    console.log(`Mock API: Updating metadata for release ${releaseId}...`, { title: metadataToUpdate.title, artist: metadataToUpdate.artist, releaseDate: metadataToUpdate.releaseDate });
-    await new Promise(resolve => setTimeout(resolve, 700)); // Simulate update delay
-
-    const releaseIndex = mockReleases.findIndex(r => r.id === releaseId);
-    if (releaseIndex !== -1) {
-        // Update only the specified fields, keep existing ID and artworkUrl
-        mockReleases[releaseIndex] = {
-            ...mockReleases[releaseIndex], // Keep existing fields (ID, artworkUrl)
-            title: metadataToUpdate.title,
-            artist: metadataToUpdate.artist,
-            releaseDate: metadataToUpdate.releaseDate, // Already formatted string
-        };
-        console.log("Mock API: Metadata updated for release:", releaseId);
-    } else {
-        console.error("Mock API: Release not found for update:", releaseId);
-        throw new Error(`Release with ID ${releaseId} not found.`);
+        console.log(`Firestore: Found ${releases.length} releases for user ${userId}.`);
+        return releases;
+    } catch (error) {
+        console.error("Firestore: Error fetching releases:", error);
+        throw new Error("Failed to fetch releases from database.");
     }
 }
 
 
 /**
- * Simulates removing an existing release.
- * @param releaseId - The ID of the release to remove.
+ * Uploads a new music release ZIP, stores it in Firebase Storage,
+ * and creates a corresponding metadata document in Firestore.
+ *
+ * @param uploadMetadata - Metadata provided during the upload (name, date).
+ * @param zipFile - The ZIP file containing the release assets.
+ * @returns A promise resolving when the Firestore document is created.
+ */
+export async function uploadReleaseZip(uploadMetadata: ReleaseUploadMetadata, zipFile: File): Promise<void> {
+    const userId = getCurrentUserId(); // Ensure user is logged in
+    console.log(`Firestore/Storage: Uploading release ZIP for user ${userId}...`, { uploadMetadata, zipFileName: zipFile.name });
+
+    // 1. Upload ZIP to Firebase Storage
+    const zipFileName = `${userId}_${Date.now()}_${zipFile.name}`;
+    const storageRef = ref(storage, `releaseZips/${userId}/${zipFileName}`);
+    let zipUrl = '';
+
+    try {
+        console.log(`Storage: Uploading ${zipFileName}...`);
+        const snapshot = await uploadBytes(storageRef, zipFile);
+        zipUrl = await getDownloadURL(snapshot.ref);
+        console.log(`Storage: Upload successful. ZIP URL: ${zipUrl}`);
+    } catch (error) {
+        console.error("Storage: Error uploading ZIP file:", error);
+        throw new Error("Failed to upload release package.");
+    }
+
+    // 2. Create Firestore Document
+    // Assume artist name is derived from user profile or needs separate input later.
+    // Using a placeholder for now. Fetching from user profile is better.
+    const auth = getAuth(app);
+    const artistName = auth.currentUser?.displayName || auth.currentUser?.email?.split('@')[0] || "Unknown Artist";
+
+    const newReleaseData: Omit<ReleaseMetadata, 'createdAt'> = { // Exclude createdAt for initial data
+        title: uploadMetadata.releaseName,
+        artist: artistName,
+        releaseDate: uploadMetadata.releaseDate, // String format 'YYYY-MM-DD'
+        artworkUrl: '', // Initially empty, backend/user needs to update this
+        zipUrl: zipUrl, // Store the URL of the uploaded ZIP
+        userId: userId,
+        status: 'processing', // Mark as processing initially
+    };
+
+    try {
+        // Create a new document reference with an auto-generated ID
+        const newDocRef = doc(collection(db, "releases"));
+        // Add createdAt timestamp using serverTimestamp()
+        await setDoc(newDocRef, {
+            ...newReleaseData,
+            createdAt: serverTimestamp(), // Add server timestamp
+        });
+        console.log("Firestore: Release metadata document created successfully. ID:", newDocRef.id);
+    } catch (error) {
+        console.error("Firestore: Error creating release document:", error);
+        // Attempt to delete the uploaded ZIP if Firestore write fails
+        try {
+            await deleteObject(storageRef);
+            console.log(`Storage: Rolled back - deleted ${zipFileName} due to Firestore error.`);
+        } catch (deleteError) {
+            console.error(`Storage: Failed to delete ${zipFileName} after Firestore error:`, deleteError);
+        }
+        throw new Error("Failed to save release metadata to database.");
+    }
+}
+
+
+/**
+ * Updates the metadata (title, artist, releaseDate) for an existing release in Firestore.
+ * Does not update artworkUrl or zipUrl.
+ * @param releaseId - The Firestore document ID of the release to update.
+ * @param metadataToUpdate - An object containing the fields to update (title, artist, releaseDate).
+ * @returns A promise resolving when the update is complete.
+ */
+export async function updateReleaseMetadata(releaseId: string, metadataToUpdate: Partial<Pick<ReleaseMetadata, 'title' | 'artist' | 'releaseDate'>>): Promise<void> {
+    const userId = getCurrentUserId(); // Ensure user is logged in
+    console.log(`Firestore: Updating metadata for release ${releaseId} by user ${userId}...`, metadataToUpdate);
+
+    const releaseDocRef = doc(db, "releases", releaseId);
+
+    // Optional: Verify the release belongs to the current user before updating
+    // const docSnap = await getDoc(releaseDocRef);
+    // if (!docSnap.exists() || docSnap.data()?.userId !== userId) {
+    //    console.error(`Firestore: Release ${releaseId} not found or permission denied for user ${userId}.`);
+    //    throw new Error("Release not found or you don't have permission to edit it.");
+    // }
+
+    try {
+        await updateDoc(releaseDocRef, {
+            ...metadataToUpdate, // Spread the fields to update
+            // Optionally update a 'lastModified' timestamp here
+        });
+        console.log("Firestore: Metadata updated successfully for release:", releaseId);
+    } catch (error) {
+        console.error(`Firestore: Error updating metadata for release ${releaseId}:`, error);
+        throw new Error("Failed to update release metadata.");
+    }
+}
+
+
+/**
+ * Removes an existing release document from Firestore and its associated ZIP file from Storage.
+ * @param releaseId - The Firestore document ID of the release to remove.
  * @returns A promise resolving when the removal is complete.
  */
 export async function removeRelease(releaseId: string): Promise<void> {
-    console.log(`Mock API: Removing release ${releaseId}...`);
-    await new Promise(resolve => setTimeout(resolve, 600)); // Simulate deletion delay
+    const userId = getCurrentUserId(); // Ensure user is logged in
+    console.log(`Firestore/Storage: Removing release ${releaseId} for user ${userId}...`);
 
-    const initialLength = mockReleases.length;
-    mockReleases = mockReleases.filter(r => r.id !== releaseId);
+    const releaseDocRef = doc(db, "releases", releaseId);
 
-    if (mockReleases.length < initialLength) {
-        console.log("Mock API: Release removed:", releaseId);
-    } else {
-        console.warn("Mock API: Release not found for removal:", releaseId);
-        // Resolve silently as the item is already gone or never existed
+    try {
+        // Optional: Fetch the document first to get the zipUrl for deletion
+        // const docSnap = await getDoc(releaseDocRef);
+        // if (!docSnap.exists() || docSnap.data()?.userId !== userId) {
+        //     console.error(`Firestore: Release ${releaseId} not found or permission denied for user ${userId}.`);
+        //     throw new Error("Release not found or you don't have permission to remove it.");
+        // }
+        // const releaseData = docSnap.data() as ReleaseMetadata;
+
+        // 1. Delete Firestore document
+        await deleteDoc(releaseDocRef);
+        console.log(`Firestore: Release document ${releaseId} deleted successfully.`);
+
+        // 2. Attempt to delete associated ZIP file from Storage (best effort)
+        // This requires knowing the zipUrl or constructing the storage path.
+        // If zipUrl was stored in the document, use it. Otherwise, this part might fail.
+        // Example (assuming zipUrl is available):
+        // if (releaseData?.zipUrl) {
+        //     try {
+        //         const zipStorageRef = ref(storage, releaseData.zipUrl); // Get ref from URL
+        //         await deleteObject(zipStorageRef);
+        //         console.log(`Storage: Deleted associated ZIP file for release ${releaseId}.`);
+        //     } catch (storageError: any) {
+        //          // Log error but don't fail the whole operation if file not found (it might have been deleted already)
+        //         if (storageError.code === 'storage/object-not-found') {
+        //              console.warn(`Storage: ZIP file for release ${releaseId} not found (maybe already deleted).`);
+        //         } else {
+        //              console.error(`Storage: Error deleting ZIP file for release ${releaseId}:`, storageError);
+        //              // Optionally re-throw or handle differently if deletion is critical
+        //         }
+        //     }
+        // } else {
+        //     console.warn(`Storage: No zipUrl found for release ${releaseId}, cannot delete ZIP file.`);
+        // }
+
+    } catch (error) {
+        console.error(`Firestore: Error deleting release ${releaseId}:`, error);
+        throw new Error("Failed to remove release.");
     }
 }
 
-// --- Deprecated/Old Functions (Keep or remove based on strategy) ---
+// --- Deprecated Functions ---
 
 /**
  * @deprecated Use uploadReleaseZip instead.
- * Simulates uploading a new music release with separate audio and artwork files.
  */
-export async function uploadRelease_DEPRECATED(metadataBase: ReleaseMetadataBase, audioFile: File, artworkFile: File): Promise<{ id: string; artworkUrl: string }> {
+export async function uploadRelease_DEPRECATED(): Promise<void> {
     console.warn("Mock API: uploadRelease is deprecated. Use uploadReleaseZip.");
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    const newReleaseId = `release${nextReleaseId++}`;
-    const finalArtworkUrl = `https://picsum.photos/seed/${newReleaseId}/200/200`;
-    const newRelease: ReleaseWithId = {
-        ...metadataBase,
-        id: newReleaseId,
-        artworkUrl: finalArtworkUrl,
-        releaseDate: metadataBase.releaseDate instanceof Date ? metadataBase.releaseDate.toISOString().split('T')[0] : metadataBase.releaseDate,
-    };
-    mockReleases.unshift(newRelease);
-    return { id: newReleaseId, artworkUrl: finalArtworkUrl };
+    throw new Error("Function uploadRelease_DEPRECATED is deprecated.");
 }
