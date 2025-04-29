@@ -7,7 +7,8 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+// Import FormDescription here
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from '@/hooks/use-toast';
@@ -116,6 +117,7 @@ export function CreatePostForm({ onSuccess, className }: CreatePostFormProps) {
                                             disabled={isSubmitting}
                                         />
                                     </FormControl>
+                                     {/* Now FormDescription is defined */}
                                      <FormDescription className="text-xs">
                                          You can use simple markdown for formatting (e.g., **bold**, *italic*).
                                      </FormDescription>
