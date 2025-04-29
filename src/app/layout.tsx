@@ -9,6 +9,7 @@ import { SettingsMenuButton } from '@/components/common/settings-menu-button';
 import { WallpaperCustomizerModal } from '@/components/common/wallpaper-customizer-modal';
 import { AuthProvider } from '@/context/auth-context'; // Import AuthProvider
 import { useState, useEffect } from 'react';
+import { usePathname } from 'next/navigation'; // Import usePathname
 
 // Default wallpaper URL
 const DEFAULT_WALLPAPER_URL = "https://t4.ftcdn.net/jpg/08/62/54/35/360_F_862543518_D0LQEQDZqkbTNM8CMB6iuiauhfaj4wr6.jpg";
@@ -36,6 +37,7 @@ export default function RootLayout({
   const [theme, setTheme] = useState<'light' | 'dark'>('dark');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
+  const pathname = usePathname(); // Get current pathname
 
   useEffect(() => {
     setIsMounted(true);
@@ -102,7 +104,7 @@ export default function RootLayout({
             </div>
 
             {/* Settings Menu and Wallpaper Modal - Render only when authenticated or needed */}
-            {isMounted && (
+            {isMounted && pathname !== '/login' && ( // Hide if on login page
               <>
                 <SettingsMenuButton
                     onOpenWallpaperModal={() => setIsModalOpen(true)}
