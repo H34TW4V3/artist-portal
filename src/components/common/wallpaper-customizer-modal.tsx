@@ -77,8 +77,9 @@ export function WallpaperCustomizerModal({
         toast({ title: "Image Too Large", description: "Please select an image under 5MB.", variant: "destructive" });
         return;
       }
+      // Keep image/* to allow GIF
       if (!file.type.startsWith('image/')) {
-        toast({ title: "Invalid File Type", description: "Please select an image file.", variant: "destructive" });
+        toast({ title: "Invalid File Type", description: "Please select an image file (PNG, JPG, GIF).", variant: "destructive" });
         return;
       }
 
@@ -132,7 +133,7 @@ export function WallpaperCustomizerModal({
         <DialogHeader>
           <DialogTitle className="text-primary">Customize Background</DialogTitle>
           <DialogDescription>
-            Choose a preset image or upload your own. {/* Updated description */}
+            Choose a preset image or upload your own (including GIFs). {/* Updated description */}
           </DialogDescription>
         </DialogHeader>
 
@@ -184,7 +185,7 @@ export function WallpaperCustomizerModal({
                  )}>
                     {previewDataUrl ? (
                          <div className="flex items-center gap-3 w-full">
-                             <Image src={previewDataUrl} alt="Uploaded preview" width={100} height={67} className="rounded-md object-cover aspect-video border border-border" />
+                             <Image src={previewDataUrl} alt="Uploaded preview" width={100} height={67} className="rounded-md object-cover aspect-video border border-border" unoptimized={selectedFile?.type === 'image/gif'} />
                              <div className="text-sm text-foreground truncate flex-grow">{selectedFile?.name}</div>
                              <Button variant="ghost" size="icon" onClick={clearUpload} className="h-7 w-7 text-muted-foreground hover:text-destructive">
                                  <X className="h-4 w-4" />
@@ -205,6 +206,7 @@ export function WallpaperCustomizerModal({
                                 <input id="wallpaper-upload" ref={fileInputRef} name="wallpaper-upload" type="file" className="sr-only" accept="image/*" onChange={handleFileChange} />
                                 <p className="pl-1">or drag and drop</p>
                               </div>
+                              {/* Explicitly mention GIF support */}
                               <p className="text-xs text-muted-foreground">PNG, JPG, GIF up to 5MB</p>
                          </div>
                      )}
