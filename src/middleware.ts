@@ -15,14 +15,15 @@ export async function middleware(request: NextRequest) {
     const isPublicPath = PUBLIC_PATHS.some(path => pathname.startsWith(path));
 
     if (isPublicPath) {
-        // If accessing a public path (like login) with a valid token, redirect to home
+        // If accessing a public path (like login) with a valid token, redirect to dashboard
         if (sessionToken) {
             // Basic check: If token exists, assume valid for now.
             // Ideally, verify token validity here if using Edge functions with Firebase Admin SDK or a backend endpoint.
             // Since direct Admin SDK usage isn't trivial in Edge Middleware without workarounds,
             // we'll rely on the client-side checks for now.
-            console.log(`Middleware: Public path (${pathname}), but token exists. Redirecting to /`);
-            return NextResponse.redirect(new URL('/', request.url));
+            console.log(`Middleware: Public path (${pathname}), but token exists. Redirecting to /dashboard`);
+            // *** CHANGE: Redirect to /dashboard instead of / ***
+            return NextResponse.redirect(new URL('/dashboard', request.url));
         }
         // Allow access to public paths if no token
         console.log(`Middleware: Public path (${pathname}), no token. Allowing access.`);
@@ -35,17 +36,28 @@ export async function middleware(request: NextRequest) {
         console.log(`Middleware: Protected path (${pathname}), no token. Redirecting to /login`);
         // Preserve the intended destination for redirection after login
         const loginUrl = new URL('/login', request.url);
-        loginUrl.searchParams.set('redirect', pathname); // Add redirect query param if needed
+        // Don't set redirect param if the original destination was home, just go to dashboard after login
+        // Preserve redirect only if it's not the root path itself
+        if (pathname !== '/') {
+             loginUrl.searchParams.set('redirect', pathname);
+        }
         return NextResponse.redirect(loginUrl);
     }
 
-    // If token exists for a protected route, allow access
+    // --- Handle root path for authenticated users ---
+    // If the user is authenticated and tries to access the root path ('/'), redirect them to the dashboard.
+    if (sessionToken && pathname === '/') {
+        console.log(`Middleware: Authenticated user accessing root path. Redirecting to /dashboard`);
+        return NextResponse.redirect(new URL('/dashboard', request.url));
+    }
+
+
+    // If token exists for a protected route (and not root), allow access
     // Again, ideal verification would happen here or on the client-side components
     console.log(`Middleware: Protected path (${pathname}), token exists. Allowing access.`);
     return NextResponse.next();
 
     // --- Token Verification (Advanced - Example using a hypothetical backend) ---
-    // If you have a backend endpoint for verification:
     /*
     try {
         const verificationResponse = await fetch('/api/auth/verify', {
@@ -74,3 +86,4 @@ export const config = {
     // Match all paths except for static assets, API routes, and Next.js internals
     matcher: ['/((?!api|_next/static|_next/image|favicon.ico).*)'],
 };
+
