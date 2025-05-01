@@ -226,7 +226,7 @@ export function LoginForm({ onLoginSuccess }: LoginFormProps) {
     <>
       <Form {...form}>
 
-        {/* Use relative container for step animations - Removed min-height */}
+        {/* Use relative container for step animations - Adjusted min-height */}
         <div className="relative overflow-hidden">
              <form
                onSubmit={(e) => {
@@ -237,7 +237,8 @@ export function LoginForm({ onLoginSuccess }: LoginFormProps) {
                 aria-live="polite"
              >
               {/* Step 1: Email */}
-              <div className={cn("space-y-4 min-h-[150px]", getAnimationClasses(1))}> {/* Added min-height for step 1 */}
+               {/* Adjusted min-height */}
+              <div className={cn("space-y-4 min-h-[100px]", getAnimationClasses(1))}>
                 {currentStep === 1 && (
                   <FormField
                     control={form.control}
@@ -263,8 +264,8 @@ export function LoginForm({ onLoginSuccess }: LoginFormProps) {
               </div>
 
               {/* Step 2: Password */}
-               {/* Added min-height for step 2 */}
-              <div className={cn("space-y-4 flex flex-col items-center min-h-[230px]", getAnimationClasses(2))}>
+               {/* Adjusted min-height */}
+              <div className={cn("space-y-4 flex flex-col items-center min-h-[200px]", getAnimationClasses(2))}>
                 {currentStep === 2 && (
                   <>
                     {/* Show Avatar and Name */}
