@@ -32,6 +32,7 @@ export default function ReleasesPage() {
                loadingText="Loading Releases..."
                userImageUrl={user?.photoURL}
                userName={user?.displayName || user?.email?.split('@')[0]}
+               appletIcon={<ListMusic />} // Pass the Releases icon
             />; // Pass custom text and user info
   }
 

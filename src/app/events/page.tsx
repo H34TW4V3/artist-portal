@@ -74,6 +74,7 @@ export default function EventsPage() {
                loadingText="Loading Events..."
                userImageUrl={user?.photoURL}
                userName={user?.displayName || user?.email?.split('@')[0]}
+               appletIcon={<CalendarClock />} // Pass the Events icon
             />; // Pass custom text and user info
   }
 

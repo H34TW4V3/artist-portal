@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React from 'react'; // Import React
 import { Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'; // Import Avatar components
@@ -10,6 +10,7 @@ interface SplashScreenProps {
     loadingText?: string; // Optional prop for custom loading text
     userImageUrl?: string | null; // Optional user image URL
     userName?: string | null; // Optional user name for fallback/initials
+    appletIcon?: React.ReactNode; // Optional specific icon for the applet being loaded
 }
 
 // Placeholder URL for the GIF - consistent with login page
@@ -26,7 +27,8 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
     style,
     loadingText,
     userImageUrl,
-    userName
+    userName,
+    appletIcon // Destructure the new prop
 }) => {
     return (
         <div
@@ -45,8 +47,14 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
 
              {/* Content Overlay - Ensures content is above the background */}
              <div className="relative z-10 flex flex-col items-center justify-center text-center p-4 rounded-lg bg-background/30 dark:bg-background/20 backdrop-blur-sm">
-                 {/* Conditional Logo/Avatar */}
-                 {userImageUrl || userName ? (
+                 {/* Conditional Logo/Avatar - Prioritize appletIcon */}
+                 {appletIcon ? (
+                     <div className="h-32 w-32 mb-8 text-primary animate-subtle-pulse flex items-center justify-center">
+                          {/* Render the passed icon, ensuring size and color consistency */}
+                          {/* Cloning to apply consistent styles */}
+                          {React.isValidElement(appletIcon) ? React.cloneElement(appletIcon as React.ReactElement, { className: 'h-20 w-20 text-primary' }) : appletIcon}
+                     </div>
+                 ) : userImageUrl || userName ? (
                      <Avatar className="h-32 w-32 mb-8 border-4 border-primary/50 animate-subtle-pulse">
                          <AvatarImage src={userImageUrl || undefined} alt={userName || 'User'} />
                          <AvatarFallback className="text-4xl bg-muted text-muted-foreground">
@@ -78,3 +86,4 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
         </div>
     );
 };
+

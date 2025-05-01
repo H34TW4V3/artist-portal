@@ -61,10 +61,13 @@ export default function DocumentsPage() {
    // Use SplashScreen instead of Loader2
    if (loading || !user) {
      // Pass user details if available, otherwise null
+     // Determine icon based on the default active tab
+     const loadingIcon = activeTab === 'handbooks' ? <BookOpenText /> : <FileText />;
      return <SplashScreen
                loadingText="Loading Documents..."
                userImageUrl={user?.photoURL}
                userName={user?.displayName || user?.email?.split('@')[0]}
+               appletIcon={loadingIcon} // Pass the appropriate icon
             />; // Pass custom text and user info
    }
 

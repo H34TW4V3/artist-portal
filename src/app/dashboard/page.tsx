@@ -54,6 +54,7 @@ export default function DashboardPage() {
               loadingText="Loading Dashboard..."
               userImageUrl={user?.photoURL}
               userName={user?.displayName || user?.email?.split('@')[0]}
+              appletIcon={<BarChart3 />} // Pass the Dashboard icon
            />; // Pass custom text and user info
   }
 

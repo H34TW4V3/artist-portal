@@ -62,6 +62,7 @@ export default function PineapplePage() {
                    loadingText="Loading Pineapple..."
                    userImageUrl={user?.photoURL}
                    userName={user?.displayName || user?.email?.split('@')[0]}
+                   appletIcon={<PineappleIcon />} // Pass the Pineapple icon
                 />; // Pass custom text and user info
     }
 
