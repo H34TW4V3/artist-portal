@@ -218,6 +218,8 @@ export default function HomePage() {
                         // Common animation classes
                         const animationClass = "opacity-0 animate-fade-in-up";
                         const animationDelay = `${index * 100}ms`; // Staggered delay
+                        // Common active state classes for click feedback
+                        const activeStateClasses = "active:scale-95 active:opacity-80 transition-transform duration-100";
 
                         // Check if the item has an imageSrc property
                         if (item.imageSrc) {
@@ -247,8 +249,8 @@ export default function HomePage() {
                                 <a
                                     href={item.href}
                                     key={item.href}
-                                     // Apply animation class and style
-                                    className={cn("block group relative aspect-[4/3]", animationClass)}
+                                     // Apply animation class, style, and active state classes
+                                    className={cn("block group relative aspect-[4/3]", animationClass, activeStateClasses)}
                                     style={{ animationDelay }}
                                     target="_blank" // Open external links in new tab
                                     rel="noopener noreferrer"
@@ -277,8 +279,8 @@ export default function HomePage() {
                                 <a
                                     href={item.href}
                                     key={item.href}
-                                     // Apply animation class and style
-                                    className={cn("block group aspect-[4/3]", animationClass)}
+                                     // Apply animation class, style, and active state classes
+                                    className={cn("block group aspect-[4/3]", animationClass, activeStateClasses)}
                                     style={{ animationDelay }}
                                     target="_blank" // Open external links in new tab
                                     rel="noopener noreferrer"
@@ -287,8 +289,8 @@ export default function HomePage() {
                                 </a>
                             ) : (
                                 <Link href={item.href} key={item.href} passHref legacyBehavior>
-                                     {/* Apply animation class and style */}
-                                    <a className={cn("block group aspect-[4/3]", animationClass)} style={{ animationDelay }}> {/* Use anchor tag for legacyBehavior, added aspect ratio */}
+                                     {/* Apply animation class, style, and active state classes */}
+                                    <a className={cn("block group aspect-[4/3]", animationClass, activeStateClasses)} style={{ animationDelay }}> {/* Use anchor tag for legacyBehavior, added aspect ratio */}
                                         {cardContent}
                                     </a>
                                 </Link>
