@@ -18,7 +18,8 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Progress } from "@/components/ui/progress"; // Import Progress
+// Removed Progress import
+// import { Progress } from "@/components/ui/progress"; // Import Progress
 import { useToast } from "@/hooks/use-toast";
 import { ForgotPasswordModal } from "./forgot-password-modal"; // Import the modal
 import { useAuth } from "@/context/auth-context"; // Import useAuth hook
@@ -184,10 +185,10 @@ export function LoginForm({ onLoginSuccess }: LoginFormProps) {
   return (
     <>
       <Form {...form}>
-         {/* Progress Bar */}
-         <div className="px-6 pb-4"> {/* Add padding */}
+         {/* Removed Progress Bar */}
+         {/* <div className="px-6 pb-4"> // Removed padding
            <Progress value={(currentStep / STEPS.length) * 100} className="w-full h-1.5" />
-         </div>
+         </div> */}
 
         {/* Use relative container for step animations */}
         <div className="relative overflow-hidden min-h-[200px]"> {/* Adjust min-height as needed */}
@@ -307,5 +308,6 @@ export function LoginForm({ onLoginSuccess }: LoginFormProps) {
     </>
   );
 }
+
 
 
