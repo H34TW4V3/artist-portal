@@ -145,7 +145,23 @@ body {
   }
    .animate-fade-in-up {
        animation: fade-in-up 0.5s ease-out forwards;
+       opacity: 0; /* Start hidden */
    }
+
+   /* Keyframes for fade-out animation */
+    @keyframes fade-out {
+      from {
+        opacity: 1;
+      }
+      to {
+        opacity: 0;
+        visibility: hidden; /* Hide element after animation */
+      }
+    }
+    .animate-fade-out {
+      animation: fade-out 0.5s ease-in-out forwards;
+    }
+
 
    /* Subtle pulse animation for icons */
    @keyframes subtle-pulse {

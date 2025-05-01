@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button"; // Keep button for potential fu
 import { getFirestore, doc, getDoc } from "firebase/firestore"; // Import Firestore functions
 import { app } from "@/services/firebase-config"; // Import Firebase app config
 import type { ProfileFormValues } from "@/components/profile/profile-form"; // Import profile type
+import { SplashScreen } from "@/components/common/splash-screen"; // Import SplashScreen
 
 // Pineapple Icon Component (retained from previous state)
 const PineappleIcon = () => (
@@ -69,6 +70,7 @@ export default function HomePage() {
     const [profileData, setProfileData] = useState<ProfileFormValues | null>(null);
     const [profileLoading, setProfileLoading] = useState(true); // State for profile data loading
     const [clientGreeting, setClientGreeting] = useState(""); // State for client-side greeting generation
+    const [showSplash, setShowSplash] = useState(true); // State for splash screen visibility
 
     // Fetch profile data from Firestore
     useEffect(() => {
@@ -129,14 +131,23 @@ export default function HomePage() {
             // Provide a default or loading greeting
             setClientGreeting("Welcome!");
         }
+
+         // Splash screen timeout
+         const timer = setTimeout(() => {
+            setShowSplash(false);
+        }, 1500); // Show splash for 1.5 seconds
+
+        return () => clearTimeout(timer); // Cleanup timer
+
     }, [user, authLoading, profileLoading, profileData, router]); // Depend on profileData and profileLoading
 
 
     // Combined loading state
     const isLoading = authLoading || profileLoading;
 
-    // Show loading indicator while checking auth state or fetching profile
-    if (isLoading) {
+    // Show initial loading indicator *before* splash screen logic kicks in
+    // This handles the very first auth check
+    if (isLoading && showSplash) { // Only show full page loader if auth/profile loading AND splash hasn't timed out yet
          return (
               <div className="flex min-h-screen w-full items-center justify-center bg-background p-4">
                 <Loader2 className="h-16 w-16 animate-spin text-primary" />
@@ -144,7 +155,13 @@ export default function HomePage() {
          );
     }
 
-    // If not loading and no user, let useEffect handle redirect
+    // Show Splash Screen
+    if (showSplash) {
+        return <SplashScreen />;
+    }
+
+
+    // If not loading and no user, let useEffect handle redirect (or show loader if redirect hasn't happened)
      if (!user) {
          return (
               <div className="flex min-h-screen w-full items-center justify-center bg-background p-4">
@@ -166,7 +183,7 @@ export default function HomePage() {
                         <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="hsl(var(--primary))" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-8 w-8 hidden sm:block"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
                         <div className="text-center sm:text-left"> {/* Center align text */}
                             <CardTitle className="text-xl sm:text-3xl font-bold tracking-tight text-primary">
-                                {clientGreeting || "Loading greeting..."} {/* Display the client-side greeting */}
+                                {clientGreeting || "Welcome!"} {/* Display the client-side greeting */}
                             </CardTitle>
                             <CardDescription className="text-muted-foreground text-xs sm:text-sm">
                                 Your central hub for management and insights.
@@ -197,7 +214,11 @@ export default function HomePage() {
                 <div className="max-w-5xl mx-auto w-full">
                      {/* Updated grid to accommodate 6 items - adjust columns if needed */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"> {/* Reduced gap */}
-                    {navItems.map((item) => {
+                    {navItems.map((item, index) => {
+                        // Common animation classes
+                        const animationClass = "opacity-0 animate-fade-in-up";
+                        const animationDelay = `${index * 100}ms`; // Staggered delay
+
                         // Check if the item has an imageSrc property
                         if (item.imageSrc) {
                             const cardContent = (
@@ -226,7 +247,9 @@ export default function HomePage() {
                                 <a
                                     href={item.href}
                                     key={item.href}
-                                    className="block group relative aspect-[4/3]" // Added relative and aspect ratio
+                                     // Apply animation class and style
+                                    className={cn("block group relative aspect-[4/3]", animationClass)}
+                                    style={{ animationDelay }}
                                     target="_blank" // Open external links in new tab
                                     rel="noopener noreferrer"
                                 >
@@ -254,7 +277,9 @@ export default function HomePage() {
                                 <a
                                     href={item.href}
                                     key={item.href}
-                                    className="block group aspect-[4/3]" // Added aspect ratio
+                                     // Apply animation class and style
+                                    className={cn("block group aspect-[4/3]", animationClass)}
+                                    style={{ animationDelay }}
                                     target="_blank" // Open external links in new tab
                                     rel="noopener noreferrer"
                                 >
@@ -262,7 +287,8 @@ export default function HomePage() {
                                 </a>
                             ) : (
                                 <Link href={item.href} key={item.href} passHref legacyBehavior>
-                                    <a className="block group aspect-[4/3]"> {/* Use anchor tag for legacyBehavior, added aspect ratio */}
+                                     {/* Apply animation class and style */}
+                                    <a className={cn("block group aspect-[4/3]", animationClass)} style={{ animationDelay }}> {/* Use anchor tag for legacyBehavior, added aspect ratio */}
                                         {cardContent}
                                     </a>
                                 </Link>
