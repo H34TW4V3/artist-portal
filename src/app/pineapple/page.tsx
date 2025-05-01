@@ -6,7 +6,7 @@ import Link from "next/link";
 import { Card, CardDescription, CardHeader, CardTitle, CardContent } from "@/components/ui/card"; // Import CardContent
 import { Button } from "@/components/ui/button";
 import UserProfile from "@/components/common/user-profile"; // Changed to default import
-// import { TimeWeather } from "@/components/common/time-weather"; // Import TimeWeather - Temporarily disabled
+import { TimeWeather } from "@/components/common/time-weather"; // Import TimeWeather - Re-enabled
 import { ForumFeed } from "@/components/pineapple/forum-feed";
 // Removed CreatePostForm import, now handled by modal
 import { DirectMessagesView } from "@/components/pineapple/direct-messages-view"; // Import DM View
@@ -89,20 +89,20 @@ export default function PineapplePage() {
                                 </CardDescription>
                             </div>
                         </div>
-                        {/* Time and Weather - Temporarily disabled
+                        {/* Time and Weather - Re-enabled */}
                          <div className="flex-shrink-0 ml-auto hidden md:flex">
                              <TimeWeather />
                          </div>
-                        */}
+
                         {/* Render UserProfile component - added flex-shrink-0 */}
-                        <div className="flex-shrink-0 ml-auto"> {/* Adjusted to use ml-auto when weather is hidden */}
+                        <div className="flex-shrink-0"> {/* Removed ml-auto as weather is back */}
                             <UserProfile />
                         </div>
-                        {/* Mobile Time and Weather - Temporarily disabled
+                        {/* Mobile Time and Weather - Re-enabled */}
                          <div className="w-full md:hidden mt-2">
                              <TimeWeather />
                          </div>
-                        */}
+
                     </CardHeader>
                 </Card>
 

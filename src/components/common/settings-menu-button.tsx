@@ -32,7 +32,7 @@ export function SettingsMenuButton({
   currentTheme,
   onToggleWeatherAnimations,
   weatherAnimationsEnabled,
-  showWeatherToggle = true, // Default to true
+  showWeatherToggle = true, // Default to true - Re-enabled
   onOpenAboutModal, // Receive the new handler
   className,
 }: SettingsMenuButtonProps) {

@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from "react";
 import UserProfile from "@/components/common/user-profile";
-// import { TimeWeather } from "@/components/common/time-weather"; // Import TimeWeather - Temporarily disabled
+import { TimeWeather } from "@/components/common/time-weather"; // Import TimeWeather - Re-enabled
 import { Card, CardDescription, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { CalendarClock, Home, PlusCircle } from "lucide-react"; // Use CalendarClock icon, add PlusCircle
 import Link from "next/link";
@@ -119,20 +119,20 @@ export default function EventsPage() {
                 </CardDescription>
               </div>
             </div>
-            {/* Time and Weather - Temporarily disabled
+            {/* Time and Weather - Re-enabled */}
              <div className="flex-shrink-0 ml-auto hidden md:flex">
                  <TimeWeather />
              </div>
-             */}
+
              {/* Render UserProfile component - added flex-shrink-0 */}
-             <div className="flex-shrink-0 ml-auto"> {/* Adjusted to use ml-auto when weather is hidden */}
+             <div className="flex-shrink-0"> {/* Removed ml-auto as weather is back */}
                 <UserProfile />
              </div>
-             {/* Mobile Time and Weather - Temporarily disabled
+             {/* Mobile Time and Weather - Re-enabled */}
              <div className="w-full md:hidden mt-2">
                  <TimeWeather />
              </div>
-             */}
+
           </CardHeader>
         </Card>
 

@@ -4,7 +4,7 @@
 import Link from "next/link";
 import Image from "next/image"; // Import next/image
 import UserProfile from "@/components/common/user-profile"; // Keep UserProfile
-// import { TimeWeather } from "@/components/common/time-weather"; // Import TimeWeather - Temporarily disabled
+import { TimeWeather } from "@/components/common/time-weather"; // Import TimeWeather - Re-enabled
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 // Import relevant icons
 import { LayoutDashboard, FileText, Home, ListMusic, CalendarClock } from "lucide-react"; // Removed Radio icon
@@ -207,21 +207,21 @@ export default function HomePage() {
                         </div>
                     </div>
 
-                     {/* Time and Weather - Temporarily disabled
+                     {/* Time and Weather - Re-enabled */}
                     <div className="flex-shrink-0 ml-auto hidden md:flex">
                         <TimeWeather />
                     </div>
-                    */}
+
 
                     {/* Render UserProfile component - added flex-shrink-0 */}
-                    <div className="flex-shrink-0 ml-auto"> {/* Adjusted to use ml-auto when weather is hidden */}
+                    <div className="flex-shrink-0"> {/* Removed ml-auto as weather is back */}
                         <UserProfile />
                     </div>
-                    {/* Mobile Time and Weather - Temporarily disabled
+                    {/* Mobile Time and Weather - Re-enabled */}
                      <div className="w-full md:hidden mt-2">
                          <TimeWeather />
                      </div>
-                    */}
+
                 </CardHeader>
                 </Card>
 

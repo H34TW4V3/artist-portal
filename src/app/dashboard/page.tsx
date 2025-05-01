@@ -7,7 +7,7 @@ import { StatisticsView } from "@/components/dashboard/statistics-view";
 // import { ReleaseList } from "@/components/dashboard/release-list"; // Commented out ReleaseList import
 // import { EventsView } from "@/components/dashboard/events-view"; // Commented out EventsView import
 import UserProfile from "@/components/common/user-profile"; // Changed to default import
-// import { TimeWeather } from "@/components/common/time-weather"; // Import TimeWeather - Temporarily disabled
+import { TimeWeather } from "@/components/common/time-weather"; // Import TimeWeather - Re-enabled
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 // Commented out ListMusic and CalendarClock icons
@@ -83,20 +83,20 @@ export default function DashboardPage() {
                 </CardDescription>
               </div>
             </div>
-            {/* Time and Weather - Temporarily disabled
+            {/* Time and Weather - Re-enabled */}
              <div className="flex-shrink-0 ml-auto hidden md:flex">
                  <TimeWeather />
              </div>
-            */}
+
             {/* Render UserProfile component - added flex-shrink-0 */}
-            <div className="flex-shrink-0 ml-auto"> {/* Adjusted to use ml-auto when weather is hidden */}
+            <div className="flex-shrink-0"> {/* Adjusted to not use ml-auto as weather is back */}
                 <UserProfile />
             </div>
-            {/* Mobile Time and Weather - Temporarily disabled
+            {/* Mobile Time and Weather - Re-enabled */}
              <div className="w-full md:hidden mt-2">
                  <TimeWeather />
              </div>
-            */}
+
           </CardHeader>
         </Card>
 
