@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils';
 import { useAuth } from '@/context/auth-context';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react'; // Import useState
-// Import Loader2 for loading animation - Removed
+// Removed Loader2 import
 import { SplashScreen } from '@/components/common/splash-screen'; // Import SplashScreen
 
 // Placeholder URL for the GIF - replace with actual URL
@@ -46,6 +46,9 @@ export default function LoginPage() {
     const router = useRouter();
     const [showSplash, setShowSplash] = useState(false); // State to control splash visibility *after* login
     const [isCardVisible, setIsCardVisible] = useState(true); // State to control login card visibility
+    const [splashUserName, setSplashUserName] = useState<string | null>(null); // State for splash user name
+    const [splashUserImageUrl, setSplashUserImageUrl] = useState<string | null>(null); // State for splash user image
+
 
     useEffect(() => {
         // Redirect authenticated users away from login page
@@ -59,7 +62,12 @@ export default function LoginPage() {
         }
     }, [user, loading, router]);
 
-    const handleLoginSuccess = () => {
+    // Update handleLoginSuccess to accept name and imageUrl
+    const handleLoginSuccess = (name: string, imageUrl: string | null) => {
+         // Store name and image URL for the splash screen
+         setSplashUserName(name);
+         setSplashUserImageUrl(imageUrl);
+
          // Trigger animation: hide card, show splash
          setIsCardVisible(false);
          setShowSplash(true);
@@ -93,12 +101,20 @@ export default function LoginPage() {
              />
 
              {/* Show splash screen if triggered */}
-             {showSplash && <SplashScreen loadingText="Logging in..." style={{ animationDelay: '0s' }} />} {/* Pass custom text, remove delay for instant show */}
+             {showSplash && (
+                <SplashScreen
+                    loadingText="Logging in..."
+                    userImageUrl={splashUserImageUrl} // Pass stored image URL
+                    userName={splashUserName} // Pass stored user name
+                    style={{ animationDelay: '0s' }} // Pass custom text, remove delay for instant show
+                 />
+              )}
 
             {/* Card container - Conditionally render based on visibility */}
             {isCardVisible && (
                  <div className={cn(
-                    "relative z-10 w-full max-w-md rounded-xl border border-border/30 shadow-xl overflow-hidden animate-fade-in-up bg-card/20 dark:bg-card/10" // Added background opacity, ensure relative and z-10
+                    "relative z-10 w-full max-w-md rounded-xl border border-border/30 shadow-xl overflow-hidden animate-fade-in-up bg-card/20 dark:bg-card/10", // Added background opacity, ensure relative and z-10
+                    !isCardVisible && "animate-fade-out" // Apply fade-out when card should hide
                  )}>
                     {/* Card Header */}
                      <CardHeader className="items-center text-center p-6 border-b border-border/30"> {/* Removed background */}

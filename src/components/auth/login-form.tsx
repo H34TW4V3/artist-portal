@@ -47,9 +47,9 @@ const loginSchema = emailSchema.merge(passwordSchema);
 
 type LoginFormValues = z.infer<typeof loginSchema>;
 
-// Add onLoginSuccess prop
+// Update onLoginSuccess prop to accept name and imageUrl
 interface LoginFormProps {
-    onLoginSuccess: () => void;
+    onLoginSuccess: (name: string, imageUrl: string | null) => void;
 }
 
 // TODO: Place your login sound file at /public/sounds/login-jingle.mp3
@@ -176,6 +176,7 @@ export function LoginForm({ onLoginSuccess }: LoginFormProps) {
   // Play login sound function
   const playLoginSound = () => {
     if (audio) {
+      audio.currentTime = 0; // Rewind to start
       audio.play().catch(error => console.error("Error playing login sound:", error));
     } else {
        console.warn("Login sound audio element not ready.");
@@ -184,11 +185,15 @@ export function LoginForm({ onLoginSuccess }: LoginFormProps) {
 
 
   async function onSubmit(values: LoginFormValues) {
-    // Login logic now uses the values directly from the form state
+    // Determine name and image URL *before* calling login/onLoginSuccess
+    // These were determined when moving from step 1 to 2
+    const nameForSplash = profileData?.name || enteredEmail?.split('@')[0] || "User";
+    const imageUrlForSplash = profileData?.imageUrl || null;
+
     try {
       await login(values.artistId, values.password); // Use the validated values
-       playLoginSound(); // Play sound on success
-       onLoginSuccess(); // Call the success handler passed from parent
+      playLoginSound(); // Play sound on success
+      onLoginSuccess(nameForSplash, imageUrlForSplash); // Call the success handler passed from parent with name and image URL
     } catch (error) {
       console.error("Login failed:", error);
       // If login fails due to wrong password, stay on password step

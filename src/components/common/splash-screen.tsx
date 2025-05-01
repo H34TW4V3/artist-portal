@@ -47,14 +47,14 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
 
              {/* Content Overlay - Ensures content is above the background */}
              <div className="relative z-10 flex flex-col items-center justify-center text-center p-4 rounded-lg bg-background/30 dark:bg-background/20 backdrop-blur-sm">
-                 {/* Conditional Logo/Avatar - Prioritize appletIcon */}
+                 {/* Conditional Logo/Avatar - Prioritize appletIcon, then user info, then default logo */}
                  {appletIcon ? (
                      <div className="h-32 w-32 mb-8 text-primary animate-subtle-pulse flex items-center justify-center">
                           {/* Render the passed icon, ensuring size and color consistency */}
                           {/* Cloning to apply consistent styles */}
                           {React.isValidElement(appletIcon) ? React.cloneElement(appletIcon as React.ReactElement, { className: 'h-20 w-20 text-primary' }) : appletIcon}
                      </div>
-                 ) : userImageUrl || userName ? (
+                 ) : userImageUrl || userName ? ( // Check for user info if no appletIcon
                      <Avatar className="h-32 w-32 mb-8 border-4 border-primary/50 animate-subtle-pulse">
                          <AvatarImage src={userImageUrl || undefined} alt={userName || 'User'} />
                          <AvatarFallback className="text-4xl bg-muted text-muted-foreground">
@@ -76,13 +76,18 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
                      </svg>
                  )}
 
-                {/* Loading Indicator */}
-                <Loader2 className="h-8 w-8 animate-spin text-primary mt-4" />
+                 {/* Loading Indicator */}
+                 <Loader2 className="h-8 w-8 animate-spin text-primary mt-4" />
                  {/* Use loadingText prop or default */}
                 <p className="mt-4 text-lg text-foreground font-semibold">
                     {loadingText || 'Loading Artist Hub...'}
                 </p>
+                {/* Display User Name if available */}
+                {userName && (
+                    <p className="mt-1 text-sm text-muted-foreground">{userName}</p>
+                 )}
             </div>
         </div>
     );
 };
+
