@@ -182,79 +182,83 @@ export default function HomePage() {
                 </Card>
 
                 {/* Navigation Grid - App Screen Style */}
-                 {/* Updated grid to accommodate 6 items - adjust columns if needed */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6"> {/* Keep lg:grid-cols-3 */}
-                {navItems.map((item) => {
-                    // Check if the item has an imageSrc property
-                    if (item.imageSrc) {
-                         const cardContent = (
-                             <Card className={cn(
-                                "bg-card/50 dark:bg-card/40 border border-border/30 shadow-md rounded-lg transition-all duration-200 ease-in-out cursor-pointer text-center h-full flex flex-col justify-center items-center overflow-hidden", // Added overflow-hidden
-                                "hover:shadow-lg hover:border-primary/50 hover:-translate-y-1 hover-glow" // Hover effects
-                            )}>
-                                {/* Render Image directly, filling the card */}
-                                <Image
-                                     src={item.imageSrc}
-                                     alt={item.title} // Use title for alt text
-                                     layout="fill" // Fill the container
-                                     objectFit="cover" // Cover the container area
-                                     className="transition-transform duration-300 group-hover:scale-105" // Added scale effect on hover
-                                     data-ai-hint="spotify for artists banner" // Add hint if needed
-                                 />
-                                {/* Optional: Overlay title/description if desired */}
-                                {/* <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex flex-col justify-end p-4">
-                                     <CardTitle className="text-lg font-semibold text-white">{item.title}</CardTitle>
-                                     <CardDescription className="text-sm text-white/80">{item.description}</CardDescription>
-                                 </div> */}
-                            </Card>
-                         );
-                         return (
-                            <a
-                                href={item.href}
-                                key={item.href}
-                                className="block group relative aspect-[4/3]" // Added relative and aspect ratio
-                                target="_blank" // Open external links in new tab
-                                rel="noopener noreferrer"
-                            >
-                                {cardContent}
-                            </a>
-                         );
-                    } else {
-                        // Original card content for items with icons
-                         const cardContent = (
-                             <Card className={cn(
-                                "bg-card/50 dark:bg-card/40 border border-border/30 shadow-md rounded-lg transition-all duration-200 ease-in-out cursor-pointer text-center h-full flex flex-col justify-center items-center p-6", // Adjusted opacity
-                                "hover:shadow-lg hover:border-primary/50 hover:-translate-y-1 hover-glow" // Hover effects
-                            )}>
-                                <CardContent className="flex flex-col items-center justify-center space-y-4 p-0"> {/* Increased space-y */}
-                                    <div className="p-4 rounded-full bg-primary/10 text-primary transition-colors group-hover:bg-primary/20 mb-2"> {/* Increased padding */}
-                                         {/* Render icon if it exists */}
-                                         {item.icon}
-                                    </div>
-                                    <CardTitle className="text-lg font-semibold text-foreground">{item.title}</CardTitle>
-                                    <CardDescription className="text-sm text-muted-foreground">{item.description}</CardDescription>
-                                </CardContent>
-                            </Card>
-                         );
-                         return item.external ? (
-                             <a
-                                 href={item.href}
-                                 key={item.href}
-                                 className="block group aspect-[4/3]" // Added aspect ratio
-                                 target="_blank" // Open external links in new tab
-                                 rel="noopener noreferrer"
-                             >
-                                 {cardContent}
-                             </a>
-                         ) : (
-                             <Link href={item.href} key={item.href} passHref legacyBehavior>
-                                 <a className="block group aspect-[4/3]"> {/* Use anchor tag for legacyBehavior, added aspect ratio */}
-                                     {cardContent}
-                                 </a>
-                             </Link>
-                         );
-                     }
-                })}
+                {/* Wrap grid in a container with max-width */}
+                <div className="max-w-5xl mx-auto w-full">
+                     {/* Updated grid to accommodate 6 items - adjust columns if needed */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"> {/* Reduced gap */}
+                    {navItems.map((item) => {
+                        // Check if the item has an imageSrc property
+                        if (item.imageSrc) {
+                            const cardContent = (
+                                <Card className={cn(
+                                    "bg-card/50 dark:bg-card/40 border border-border/30 shadow-md rounded-lg transition-all duration-200 ease-in-out cursor-pointer text-center h-full flex flex-col justify-center items-center overflow-hidden", // Added overflow-hidden
+                                    "hover:shadow-lg hover:border-primary/50 hover:-translate-y-1 hover-glow" // Hover effects
+                                )}>
+                                    {/* Render Image directly, filling the card */}
+                                    <Image
+                                        src={item.imageSrc}
+                                        alt={item.title} // Use title for alt text
+                                        layout="fill" // Fill the container
+                                        objectFit="cover" // Cover the container area
+                                        className="transition-transform duration-300 group-hover:scale-105" // Added scale effect on hover
+                                        data-ai-hint="spotify for artists banner" // Add hint if needed
+                                        unoptimized // Consider keeping if image causes issues
+                                    />
+                                    {/* Optional: Overlay title/description if desired */}
+                                    {/* <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex flex-col justify-end p-4">
+                                        <CardTitle className="text-lg font-semibold text-white">{item.title}</CardTitle>
+                                        <CardDescription className="text-sm text-white/80">{item.description}</CardDescription>
+                                    </div> */}
+                                </Card>
+                            );
+                            return (
+                                <a
+                                    href={item.href}
+                                    key={item.href}
+                                    className="block group relative aspect-[4/3]" // Added relative and aspect ratio
+                                    target="_blank" // Open external links in new tab
+                                    rel="noopener noreferrer"
+                                >
+                                    {cardContent}
+                                </a>
+                            );
+                        } else {
+                            // Original card content for items with icons
+                            const cardContent = (
+                                <Card className={cn(
+                                    "bg-card/50 dark:bg-card/40 border border-border/30 shadow-md rounded-lg transition-all duration-200 ease-in-out cursor-pointer text-center h-full flex flex-col justify-center items-center p-6", // Adjusted opacity
+                                    "hover:shadow-lg hover:border-primary/50 hover:-translate-y-1 hover-glow" // Hover effects
+                                )}>
+                                    <CardContent className="flex flex-col items-center justify-center space-y-4 p-0"> {/* Increased space-y */}
+                                        <div className="p-4 rounded-full bg-primary/10 text-primary transition-colors group-hover:bg-primary/20 mb-2"> {/* Increased padding */}
+                                            {/* Render icon if it exists */}
+                                            {item.icon}
+                                        </div>
+                                        <CardTitle className="text-lg font-semibold text-foreground">{item.title}</CardTitle>
+                                        <CardDescription className="text-sm text-muted-foreground">{item.description}</CardDescription>
+                                    </CardContent>
+                                </Card>
+                            );
+                            return item.external ? (
+                                <a
+                                    href={item.href}
+                                    key={item.href}
+                                    className="block group aspect-[4/3]" // Added aspect ratio
+                                    target="_blank" // Open external links in new tab
+                                    rel="noopener noreferrer"
+                                >
+                                    {cardContent}
+                                </a>
+                            ) : (
+                                <Link href={item.href} key={item.href} passHref legacyBehavior>
+                                    <a className="block group aspect-[4/3]"> {/* Use anchor tag for legacyBehavior, added aspect ratio */}
+                                        {cardContent}
+                                    </a>
+                                </Link>
+                            );
+                        }
+                    })}
+                    </div>
                 </div>
             </main>
         </div>
