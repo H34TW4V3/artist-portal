@@ -29,7 +29,7 @@ const PineappleIcon = () => (
 // Spotify Icon Component using the provided URL
 const SpotifyIcon = () => (
     <img
-        src="https://image.pngaaa.com/979/3918979-middle.png" // Use the provided URL
+        src="https://www.citypng.com/public/uploads/preview/spotify-purple-text-logo-free-png-701751694774505ogjsndspdc.png" // Use the new provided URL
         alt="Spotify Icon"
         className="h-10 w-10 object-contain" // Maintain aspect ratio
     />
