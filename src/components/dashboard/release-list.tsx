@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
-import { MoreHorizontal, Edit, Trash2, Loader2, UploadCloud, PlusCircle } from "lucide-react"; // Changed PlusCircle to UploadCloud, added PlusCircle back for Add
+import { MoreHorizontal, Edit, Trash2, Loader2, UploadCloud, PlusCircle } from "lucide-react"; // Kept Edit for modal title consistency maybe
 import { Timestamp } from "firebase/firestore"; // Import Timestamp
 
 import { Button } from "@/components/ui/button";
@@ -16,14 +16,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from "@/components/ui/table";
-import {
     AlertDialog,
     AlertDialogAction,
     AlertDialogCancel,
@@ -33,17 +25,12 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from "@/components/ui/dialog"; // Removed DialogClose as it's implicit
+// Import ManageReleaseModal instead of the generic Dialog
+import { ManageReleaseModal } from './manage-release-modal'; // Import the new modal
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { ReleaseForm } from './release-form'; // For editing
+// Removed ReleaseForm import as it's likely inside ManageReleaseModal now
 import { UploadReleaseModal } from './upload-release-modal'; // Import the upload modal
-import { AddExistingReleaseModal } from './add-existing-release-modal'; // Import placeholder modal
+import { AddExistingReleaseModal } from './add-existing-release-modal'; // Import add existing modal
 import type { ReleaseWithId, ReleaseMetadata } from '@/services/music-platform'; // Import types
 import { removeRelease, getReleases } from '@/services/music-platform'; // Import the Firestore functions
 import { useToast } from '@/hooks/use-toast';
@@ -59,8 +46,8 @@ export function ReleaseList({ className }: ReleaseListProps) {
   const { user } = useAuth(); // Get user for conditional rendering/fetching
   const [releases, setReleases] = useState<ReleaseWithId[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [editingRelease, setEditingRelease] = useState<ReleaseWithId | null>(null);
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [selectedRelease, setSelectedRelease] = useState<ReleaseWithId | null>(null); // Changed from editingRelease
+  const [isManageModalOpen, setIsManageModalOpen] = useState(false); // Changed from isEditDialogOpen
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [isAddExistingModalOpen, setIsAddExistingModalOpen] = useState(false); // State for new modal
   const [deletingReleaseId, setDeletingReleaseId] = useState<string | null>(null);
@@ -99,24 +86,28 @@ export function ReleaseList({ className }: ReleaseListProps) {
   }, [user]); // Refetch if user logs in/out
 
 
-  const handleEdit = (release: ReleaseWithId) => {
-    setEditingRelease(release);
-    setIsEditDialogOpen(true); // Open the edit dialog
+  // Handle opening the manage modal when a row is clicked
+  const handleRowClick = (release: ReleaseWithId, e: React.MouseEvent) => {
+     // Prevent modal open if clicking inside the dropdown trigger/content area
+     const targetElement = e.target as Element;
+     if (targetElement.closest('[data-radix-dropdown-menu-trigger], [data-radix-dropdown-menu-content]')) {
+        return;
+     }
+    setSelectedRelease(release);
+    setIsManageModalOpen(true);
   };
 
-  const handleEditDialogClose = (open: boolean) => {
-      setIsEditDialogOpen(open);
-      if (!open) {
-          setEditingRelease(null); // Clear editing state when dialog closes
-      }
+  const handleManageDialogClose = () => {
+      setIsManageModalOpen(false);
+      setSelectedRelease(null); // Clear selected state when dialog closes
   }
 
   // Callback for successful edit/upload/add existing from respective forms/modals
   const handleSuccess = async () => {
-      setIsEditDialogOpen(false); // Close edit dialog
+      setIsManageModalOpen(false); // Close manage dialog
       setIsUploadModalOpen(false); // Close upload modal
       setIsAddExistingModalOpen(false); // Close add existing modal
-      setEditingRelease(null);
+      setSelectedRelease(null);
       await fetchReleases(); // Refetch the list
   }
 
@@ -125,12 +116,10 @@ export function ReleaseList({ className }: ReleaseListProps) {
     setIsPerformingAction(releaseId); // Indicate action started
     try {
         await removeRelease(releaseId); // Call Firestore service function
-        // Update state *after* successful deletion
-        // No need to manually filter, fetchReleases will get the updated list
         toast({
             title: "Release Removed",
             description: "The release has been successfully removed.",
-            variant: "default", // Use default for theme adaptation
+            variant: "default",
         });
         await fetchReleases(); // Refetch to update the list
 
@@ -147,44 +136,33 @@ export function ReleaseList({ className }: ReleaseListProps) {
     }
   };
 
-  // Format date for display (handles string YYYY-MM-DD or Firestore Timestamp)
+  // Format date for display
   const formatDate = (dateValue: string | Date | Timestamp | undefined): string => {
     if (!dateValue) return '-';
     try {
         let date: Date;
         if (dateValue instanceof Timestamp) {
-            date = dateValue.toDate(); // Convert Firestore Timestamp to Date
+            date = dateValue.toDate();
         } else if (typeof dateValue === 'string') {
-             // Assume 'YYYY-MM-DD' format, parse as UTC date part
              const parts = dateValue.split('-');
              if (parts.length === 3) {
-                  // Create date ensuring it's treated as UTC midnight
                   date = new Date(Date.UTC(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2])));
              } else {
-                  // Fallback attempt (might be inaccurate depending on string format)
                   date = new Date(dateValue);
              }
         } else {
-             date = dateValue; // Already a Date object
+             date = dateValue;
         }
-
-
-        // Check if the date is valid after parsing/conversion
-        if (isNaN(date.getTime())) {
-            console.warn("Invalid date encountered:", dateValue);
-            return '-';
-        }
-
-        // Format using US locale, explicitly using UTC to avoid timezone shifts
+        if (isNaN(date.getTime())) return '-';
         return date.toLocaleDateString('en-US', {
             year: 'numeric',
             month: 'short',
             day: 'numeric',
-            timeZone: 'UTC' // Display the date as it was intended in UTC
+            timeZone: 'UTC'
         });
     } catch (e) {
         console.error("Error formatting date:", dateValue, e);
-        return '-'; // Handle invalid date formats gracefully
+        return '-';
     }
   };
 
@@ -192,15 +170,13 @@ export function ReleaseList({ className }: ReleaseListProps) {
   // Main view: Release List Table
   return (
     <>
-    {/* Adjust background/opacity for dark mode */}
-    <Card className={cn("col-span-1 lg:col-span-2 shadow-md rounded-lg bg-card/60 dark:bg-card/50", className)}> {/* Adjusted opacity */}
+    <Card className={cn("col-span-1 lg:col-span-2 shadow-md rounded-lg bg-card/60 dark:bg-card/50", className)}>
         <CardHeader className="flex flex-row justify-between items-center gap-4 flex-wrap">
             <div>
                 <CardTitle className="text-xl font-semibold text-primary">Manage Releases</CardTitle>
-                <CardDescription className="text-muted-foreground">View, edit, or remove your existing releases.</CardDescription>
+                <CardDescription className="text-muted-foreground">View, edit, or remove your releases.</CardDescription> {/* Updated description */}
             </div>
-             {/* "Add Release" button with dropdown */}
-             {user && ( // Only show button if logged in
+             {user && (
                  <DropdownMenu>
                      <DropdownMenuTrigger asChild>
                          <Button className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-md ml-auto">
@@ -213,7 +189,7 @@ export function ReleaseList({ className }: ReleaseListProps) {
                              <span>Upload New Release</span>
                          </DropdownMenuItem>
                          <DropdownMenuItem onClick={() => setIsAddExistingModalOpen(true)} className="cursor-pointer focus:bg-accent focus:text-accent-foreground">
-                             <PlusCircle className="mr-2 h-4 w-4" /> {/* Placeholder icon */}
+                             <PlusCircle className="mr-2 h-4 w-4" />
                              <span>Add Existing Release</span>
                          </DropdownMenuItem>
                      </DropdownMenuContent>
@@ -221,21 +197,20 @@ export function ReleaseList({ className }: ReleaseListProps) {
               )}
         </CardHeader>
         <CardContent>
-             {!user && ( // Show message if not logged in
+             {!user && (
                  <div className="text-center py-10 text-muted-foreground">
                      Please log in to manage your releases.
                  </div>
              )}
-            {user && ( // Only show table if logged in
-             <div className="overflow-x-auto rounded-md border border-border/50"> {/* Add border around table */}
+            {user && (
+             <div className="overflow-x-auto rounded-md border border-border/50">
                 <Table>
                 <TableHeader>
-                    <TableRow className="bg-muted/30 dark:bg-muted/10 hover:bg-muted/50 dark:hover:bg-muted/20"> {/* Subtle header background */}
-                    <TableHead className="w-[64px] hidden sm:table-cell p-2"> {/* Adjusted padding */}
+                    <TableRow className="bg-muted/30 dark:bg-muted/10 hover:bg-muted/50 dark:hover:bg-muted/20">
+                    <TableHead className="w-[64px] hidden sm:table-cell p-2">
                         Artwork
                     </TableHead>
                     <TableHead className="p-2">Title</TableHead>
-                    {/* Removed Artist Header */}
                     <TableHead className="hidden md:table-cell p-2">Release Date</TableHead>
                     <TableHead className="text-right p-2">
                         Actions
@@ -244,15 +219,12 @@ export function ReleaseList({ className }: ReleaseListProps) {
                 </TableHeader>
                 <TableBody>
                     {isLoading ? (
-                        // Loading Skeletons
                         Array.from({ length: 3 }).map((_, index) => (
                             <TableRow key={`skeleton-${index}`} className="border-b border-border/30">
                                 <TableCell className="hidden sm:table-cell p-2">
-                                    {/* Skeleton size matches Image size (h-12 w-12 = 48x48) */}
                                     <Skeleton className="h-12 w-12 rounded-md bg-muted/50" />
                                 </TableCell>
                                 <TableCell className="p-2"><Skeleton className="h-4 w-3/4 bg-muted/50" /></TableCell>
-                                {/* Removed Artist Skeleton */}
                                 <TableCell className="hidden md:table-cell p-2"><Skeleton className="h-4 w-20 bg-muted/50" /></TableCell>
                                 <TableCell className="text-right p-2">
                                     <Skeleton className="h-8 w-8 rounded-md ml-auto bg-muted/50" />
@@ -260,55 +232,60 @@ export function ReleaseList({ className }: ReleaseListProps) {
                             </TableRow>
                         ))
                     ) : releases.length === 0 ? (
-                        // No releases message
                         <TableRow>
-                            {/* Adjusted colspan */}
                             <TableCell colSpan={4} className="h-24 text-center text-muted-foreground">
                                 No releases found yet. Click "Add Release" to get started!
                             </TableCell>
                         </TableRow>
                     ) : (
-                        // Actual releases data
                         releases.map((release) => (
-                            <TableRow key={release.id} className="hover:bg-muted/50 dark:hover:bg-muted/20 transition-colors border-b border-border/30 last:border-b-0">
+                            // Added cursor-pointer and onClick handler to the row
+                            <TableRow
+                                key={release.id}
+                                className="hover:bg-muted/50 dark:hover:bg-muted/20 transition-colors border-b border-border/30 last:border-b-0 cursor-pointer"
+                                onClick={(e) => handleRowClick(release, e)}
+                            >
                                 <TableCell className="hidden sm:table-cell p-2 align-middle">
                                     <Image
                                         alt={`${release.title} Artwork`}
                                         className="aspect-square rounded-md object-cover border border-border/50"
                                         height={48}
-                                        // Use placeholder if artworkUrl is empty or missing
                                         src={release.artworkUrl || placeholderArtwork}
                                         width={48}
-                                        onError={(e) => {
-                                            // Fallback to placeholder on error
-                                            e.currentTarget.src = placeholderArtwork;
-                                            e.currentTarget.srcset = ""; // Clear srcset if using responsive images
-                                        }}
-                                         data-ai-hint="album artwork cover" // Added hint
-                                        // unoptimized // Consider removing if URLs are stable
+                                        onError={(e) => { e.currentTarget.src = placeholderArtwork; e.currentTarget.srcset = ""; }}
+                                         data-ai-hint="album artwork cover"
                                     />
                                 </TableCell>
                                 <TableCell className="font-medium text-foreground p-2 align-middle">{release.title}</TableCell>
-                                {/* Removed Artist Cell */}
                                 <TableCell className="hidden md:table-cell text-muted-foreground p-2 align-middle">
-                                  {formatDate(release.releaseDate || release.createdAt)} {/* Use releaseDate, fallback to createdAt */}
+                                  {formatDate(release.releaseDate || release.createdAt)}
                                 </TableCell>
                                 <TableCell className="text-right p-2 align-middle">
+                                    {/* Actions Dropdown - Needs stopPropagation */}
                                     <AlertDialog open={deletingReleaseId === release.id} onOpenChange={(open) => !open && setDeletingReleaseId(null)}>
                                         <DropdownMenu>
                                             <DropdownMenuTrigger asChild>
-                                            <Button aria-haspopup="true" size="icon" variant="ghost" disabled={isPerformingAction === release.id} className="h-8 w-8 data-[state=open]:bg-accent data-[state=open]:text-accent-foreground">
+                                            {/* Added stopPropagation to button click */}
+                                            <Button
+                                                aria-haspopup="true"
+                                                size="icon"
+                                                variant="ghost"
+                                                disabled={isPerformingAction === release.id}
+                                                className="h-8 w-8 data-[state=open]:bg-accent data-[state=open]:text-accent-foreground"
+                                                onClick={(e) => e.stopPropagation()} // Stop row click
+                                            >
                                                 {isPerformingAction === release.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <MoreHorizontal className="h-4 w-4" />}
                                                 <span className="sr-only">Toggle menu</span>
                                             </Button>
                                             </DropdownMenuTrigger>
                                             <DropdownMenuContent align="end" className="bg-popover border-border">
                                             <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                            <DropdownMenuItem onClick={() => handleEdit(release)} className="cursor-pointer focus:bg-accent focus:text-accent-foreground">
+                                            {/* Removed Edit Item - Row click handles opening manage modal now */}
+                                            {/* <DropdownMenuItem onClick={() => handleEdit(release)} className="cursor-pointer focus:bg-accent focus:text-accent-foreground">
                                                 <Edit className="mr-2 h-4 w-4" />
                                                 <span>Edit Metadata</span>
                                             </DropdownMenuItem>
-                                            <DropdownMenuSeparator className="bg-border/50" />
+                                            <DropdownMenuSeparator className="bg-border/50" /> */}
                                             <DropdownMenuItem
                                                 onClick={() => setDeletingReleaseId(release.id)}
                                                 className="text-destructive focus:text-destructive focus:bg-destructive/10 cursor-pointer"
@@ -319,7 +296,7 @@ export function ReleaseList({ className }: ReleaseListProps) {
                                             </DropdownMenuContent>
                                         </DropdownMenu>
                                         {/* Delete Confirmation Dialog */}
-                                        <AlertDialogContent className="bg-card/85 dark:bg-card/70 border-border"> {/* Adjusted opacity */}
+                                        <AlertDialogContent className="bg-card/85 dark:bg-card/70 border-border">
                                             <AlertDialogHeader>
                                             <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
                                             <AlertDialogDescription className="text-muted-foreground">
@@ -351,43 +328,30 @@ export function ReleaseList({ className }: ReleaseListProps) {
                 </TableBody>
                 </Table>
              </div>
-             )} {/* End of user check for table */}
+             )}
         </CardContent>
     </Card>
 
-    {/* Edit Release Metadata Dialog */}
-     <Dialog open={isEditDialogOpen} onOpenChange={handleEditDialogClose}>
-         <DialogContent className="sm:max-w-[425px] md:max-w-lg lg:max-w-xl bg-card/85 dark:bg-card/70 border-border/50"> {/* Adjusted opacity */}
-             <DialogHeader>
-                <DialogTitle className="text-primary">Edit Release Metadata</DialogTitle>
-                <DialogDescription className="text-muted-foreground">
-                    Make changes to the release details for &quot;{editingRelease?.title}&quot;. Note: Audio/Artwork cannot be changed here.
-                </DialogDescription>
-             </DialogHeader>
-              {editingRelease && (
-                 <ReleaseForm // Use the existing form for *editing metadata only*
-                     key={editingRelease.id} // Ensure form remounts/resets for different releases
-                     releaseId={editingRelease.id}
-                     initialData={editingRelease}
-                     onSuccess={handleSuccess} // Re-use the success handler
-                     className="bg-transparent shadow-none border-0 p-0 mt-4" // Adjust styles for dialog
-                 />
-             )}
-         </DialogContent>
-     </Dialog>
+    {/* Manage Release Modal */}
+     <ManageReleaseModal
+         isOpen={isManageModalOpen}
+         onClose={handleManageDialogClose}
+         releaseData={selectedRelease} // Pass the selected release data
+         onSuccess={handleSuccess} // Re-use the success handler
+     />
 
      {/* Upload New Release Modal */}
      <UploadReleaseModal
         isOpen={isUploadModalOpen}
         onClose={() => setIsUploadModalOpen(false)}
-        onSuccess={handleSuccess} // Re-use the success handler to refresh list
+        onSuccess={handleSuccess}
      />
 
-      {/* Add Existing Release Modal (Placeholder) */}
+      {/* Add Existing Release Modal */}
       <AddExistingReleaseModal
           isOpen={isAddExistingModalOpen}
           onClose={() => setIsAddExistingModalOpen(false)}
-          onSuccess={handleSuccess} // Re-use the success handler
+          onSuccess={handleSuccess}
       />
     </>
   );

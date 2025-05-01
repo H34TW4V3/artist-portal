@@ -9,8 +9,8 @@ export interface EventData {
   endTime?: string | null;   // Store as HH:MM string or null
   location?: string | null;
   description?: string | null;
-  userId: string; // ID of the user who created the event
-  createdAt: Timestamp; // Firestore server timestamp for creation time
+  userId: string; // ID of the user who created the event - ADDED
+  createdAt: Timestamp; // Firestore server timestamp for creation time - ADDED
 }
 
 // Event structure including the Firestore document ID
