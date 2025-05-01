@@ -1,5 +1,5 @@
 
-import React from 'react'; // Import React
+import React, { useEffect, useRef } from 'react'; // Import React and hooks
 import { Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'; // Import Avatar components
@@ -11,6 +11,7 @@ interface SplashScreenProps {
     userImageUrl?: string | null; // Optional user image URL
     userName?: string | null; // Optional user name for fallback/initials
     appletIcon?: React.ReactNode; // Optional specific icon for the applet being loaded
+    duration?: number; // Optional duration in milliseconds
 }
 
 // Placeholder URL for the GIF - consistent with login page
@@ -28,16 +29,48 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
     loadingText,
     userImageUrl,
     userName,
-    appletIcon // Destructure the new prop
+    appletIcon, // Destructure the new prop
+    duration = 3000, // Default duration if not provided
 }) => {
+    const [isVisible, setIsVisible] = React.useState(true);
+    const timerRef = useRef<NodeJS.Timeout | null>(null);
+
+    // Effect to handle automatic fade-out based on duration
+    // This only applies if the parent doesn't control visibility externally via className/unmounting
+    useEffect(() => {
+        // Clear any existing timer when component updates
+        if (timerRef.current) {
+            clearTimeout(timerRef.current);
+        }
+
+        // Set a new timer to hide the splash screen after the specified duration
+        timerRef.current = setTimeout(() => {
+            setIsVisible(false);
+        }, duration);
+
+        // Cleanup timer on unmount
+        return () => {
+            if (timerRef.current) {
+                clearTimeout(timerRef.current);
+            }
+        };
+    }, [duration]); // Rerun if duration changes
+
+    // Determine animation based on visibility state
+    // Apply fade-out only when isVisible becomes false
+    const animationClass = isVisible ? 'animate-fade-in-up opacity-100' : 'animate-fade-out';
+
+
     return (
         <div
             className={cn(
-                "fixed inset-0 z-[9999] flex flex-col items-center justify-center animate-fade-out", // Use fade-out animation from globals.css if defined, otherwise just animate-out
-                "transition-opacity duration-500 ease-in-out", // Ensure opacity transition
-                className
+                "fixed inset-0 z-[9999] flex flex-col items-center justify-center",
+                "transition-opacity duration-500 ease-in-out", // Smooth opacity transition
+                 animationClass, // Apply fade-in or fade-out animation
+                className // Allow overriding classes
             )}
-            style={{ animationDelay: '1s', animationFillMode: 'forwards', ...style }} // Delay fade-out, keep final state, merge styles
+            // Style might be used for initial animation delay if needed
+            style={style}
         >
             {/* Background GIF - Same as login page */}
             <div
@@ -80,10 +113,11 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
                  <Loader2 className="h-8 w-8 animate-spin text-primary mt-4" />
                  {/* Use loadingText prop or default */}
                 <p className="mt-4 text-lg text-foreground font-semibold">
+                    {/* Ensure loadingText updates are reflected */}
                     {loadingText || 'Loading Artist Hub...'}
                 </p>
-                {/* Display User Name if available */}
-                {userName && (
+                {/* Display User Name if available AND not already in loadingText */}
+                {userName && !loadingText?.includes(userName) && (
                     <p className="mt-1 text-sm text-muted-foreground">{userName}</p>
                  )}
             </div>

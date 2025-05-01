@@ -66,10 +66,10 @@ export default function LoginPage() {
          // Play the login sound as the splash appears
          playLoginSound();
 
-        // Set timer to redirect after splash animation completes (at least 3 seconds)
+        // Set timer to redirect after splash animation completes
         setTimeout(() => {
             router.replace('/'); // Redirect to home page
-        }, 3000); // Set duration to 3 seconds
+        }, 5000); // Set duration to 5 seconds
     };
 
 
@@ -97,12 +97,15 @@ export default function LoginPage() {
              {/* Show splash screen if triggered */}
              {showSplash && (
                 <SplashScreen
-                    loadingText="Logging in..." // Use specific text for login splash
+                    // Update loading text to include the user's name
+                    loadingText={`Welcome, ${splashUserName || 'User'}!`}
                     userImageUrl={splashUserImageUrl} // Pass stored image URL
                     userName={splashUserName} // Pass stored user name
                     style={{ animationDelay: '0s' }} // Remove delay for instant show
-                    // Override default fade-out animation for this specific instance
+                    // Override default fade-out animation for this specific instance if needed
                     className="animate-none opacity-100"
+                    // Specify duration for how long this component itself stays visible (redundant if controlled by parent state, but can be useful)
+                    duration={5000} // Pass duration to splash screen if it uses it internally
                  />
               )}
 
