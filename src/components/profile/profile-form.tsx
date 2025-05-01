@@ -211,13 +211,13 @@ export function ProfileForm({ initialData, updateFunction, onSuccess, onCancel, 
                     </Alert>
                 </FormItem>
 
-                {/* Name */}
+                {/* Artist Name */}
                 <FormField
                     control={form.control}
                     name="name"
                     render={({ field }) => (
                         <FormItem>
-                            <FormLabel>Artist Name</FormLabel>
+                            <FormLabel>Artist Name</FormLabel> {/* Changed label here */}
                             <FormControl>
                                 <Input placeholder="Your artist or band name" {...field} disabled={isSubmitting} />
                             </FormControl>
@@ -306,3 +306,4 @@ export function ProfileForm({ initialData, updateFunction, onSuccess, onCancel, 
         </Form>
     );
 }
+

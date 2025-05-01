@@ -70,7 +70,7 @@ export default function HomePage() {
     const [profileData, setProfileData] = useState<ProfileFormValues | null>(null);
     const [profileLoading, setProfileLoading] = useState(true); // State for profile data loading
     const [clientGreeting, setClientGreeting] = useState(""); // State for client-side greeting generation
-    const [showSplash, setShowSplash] = useState(true); // State for splash screen visibility
+    const [showSplash, setShowSplash] = useState(false); // State for splash screen visibility
     const [hasShownInitialSplash, setHasShownInitialSplash] = useState(false); // Track if initial splash was shown
 
     // Fetch profile data from Firestore
@@ -122,24 +122,25 @@ export default function HomePage() {
 
         // Set greeting after both auth and profile data are loaded
         if (!isLoading && user) {
-            // Prioritize profileData.name, then displayName, then email, then 'Artist'
-            const nameFromProfile = profileData?.name;
+            // Prioritize profileData.name (Artist Name), then displayName, then email, then 'Artist'
+            const artistNameFromProfile = profileData?.name;
             const nameFromAuth = user.displayName;
             const nameFromEmail = user.email?.split('@')[0];
-            const finalName = nameFromProfile || nameFromAuth || nameFromEmail || 'Artist';
+            const finalName = artistNameFromProfile || nameFromAuth || nameFromEmail || 'Artist';
 
             // Generate greeting on client side using the helper function
             setClientGreeting(getRandomGreeting(finalName));
 
             // Only start the splash timer if it hasn't been shown before in this session/mount
             if (!hasShownInitialSplash) {
-                const timer = setTimeout(() => {
-                    setShowSplash(false);
-                    setHasShownInitialSplash(true); // Mark as shown
-                }, 1500); // Show splash for 1.5 seconds
+                 setShowSplash(true); // Ensure splash is shown if needed
+                 const timer = setTimeout(() => {
+                     setShowSplash(false);
+                     setHasShownInitialSplash(true); // Mark as shown
+                 }, 0); // Set delay to 0 if no splash animation needed or handle elsewhere
 
-                // Cleanup timer only if it was started
-                return () => clearTimeout(timer);
+                 // Cleanup timer only if it was started
+                 return () => clearTimeout(timer);
             } else {
                 // If splash already shown, ensure showSplash is false immediately
                 setShowSplash(false);
@@ -155,7 +156,7 @@ export default function HomePage() {
             setClientGreeting("Welcome!");
             // Keep showSplash true while loading, unless already shown
             if (!hasShownInitialSplash) {
-                setShowSplash(true);
+                setShowSplash(false); // Keep splash hidden until conditions met
             }
         }
 
@@ -171,13 +172,15 @@ export default function HomePage() {
     const displayImageUrl = profileData?.imageUrl || user?.photoURL || null;
 
     // Show Splash Screen only if loading OR if it's the initial timed splash display
-     if (isLoading || (showSplash && !hasShownInitialSplash)) {
+     if (isLoading) { // Simplified: Show loader only during actual loading phases
         // Pass the generated greeting and user info
-        return <SplashScreen
-                    loadingText={`Loading Hub for ${displayName}...`}
-                    userImageUrl={displayImageUrl}
-                    userName={displayName}
-               />;
+        // No splash screen needed here as per requirement removal
+        return (
+             <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-background/50 backdrop-blur-sm">
+                <Loader2 className="h-12 w-12 animate-spin text-primary" />
+                 <p className="mt-4 text-lg text-foreground font-semibold">Loading Hub...</p>
+             </div>
+        );
     }
 
 
@@ -319,3 +322,4 @@ export default function HomePage() {
         </div>
     );
 }
+

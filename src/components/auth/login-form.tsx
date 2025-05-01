@@ -212,8 +212,8 @@ export function LoginForm({ onLoginSuccess }: LoginFormProps) {
     }
   }
 
-  // Determine display name and image URL for step 2
-  const displayNameStep2 = profileData?.name || enteredEmail?.split('@')[0] || "User";
+  // Determine display name and image URL for step 2 - Use Artist Name from profile
+  const artistNameStep2 = profileData?.name || enteredEmail?.split('@')[0] || "User"; // Use profile name first
   const displayImageUrlStep2 = profileData?.imageUrl || null;
 
 
@@ -270,13 +270,13 @@ export function LoginForm({ onLoginSuccess }: LoginFormProps) {
                      ) : (
                          <div className="flex flex-col items-center mb-4 text-center">
                              <Avatar className="h-20 w-20 mb-2 border-2 border-primary/40">
-                                 <AvatarImage src={displayImageUrlStep2 || undefined} alt={displayNameStep2} />
+                                 <AvatarImage src={displayImageUrlStep2 || undefined} alt={artistNameStep2} />
                                  <AvatarFallback className="text-2xl bg-muted text-muted-foreground">
-                                    {getInitials(displayNameStep2)}
+                                    {getInitials(artistNameStep2)}
                                  </AvatarFallback>
                              </Avatar>
                              <p className="text-lg font-medium text-foreground">
-                                {displayNameStep2}
+                                {artistNameStep2} {/* Display artist name */}
                              </p>
                              <p className="text-xs text-muted-foreground">Enter your password</p>
                          </div>
