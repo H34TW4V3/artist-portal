@@ -64,6 +64,7 @@ export function ReleaseList({ className }: ReleaseListProps) {
   const [deletingReleaseId, setDeletingReleaseId] = useState<string | null>(null);
   const [isPerformingAction, setIsPerformingAction] = useState<string | null>(null);
   const { toast } = useToast();
+  const placeholderArtwork = "/placeholder-artwork.png"; // Define placeholder path
 
   // Fetch releases function using the service
   const fetchReleases = async () => {
@@ -254,19 +255,19 @@ export function ReleaseList({ className }: ReleaseListProps) {
                         releases.map((release) => (
                             <TableRow key={release.id} className="hover:bg-muted/50 dark:hover:bg-muted/20 transition-colors border-b border-border/30 last:border-b-0">
                                 <TableCell className="hidden sm:table-cell p-2 align-middle">
-                                     {/* Use a consistent placeholder or the actual URL */}
                                     <Image
                                         alt={`${release.title} Artwork`}
                                         className="aspect-square rounded-md object-cover border border-border/50"
                                         height={48}
-                                        // Provide a more stable placeholder if needed, or handle potential 404s from picsum
                                         // Use placeholder if artworkUrl is empty or missing
-                                        src={release.artworkUrl || '/placeholder-artwork.png'} // Example: local placeholder
+                                        src={release.artworkUrl || placeholderArtwork}
                                         width={48}
                                         onError={(e) => {
-                                            // Optionally handle image loading errors, e.g., set to placeholder
-                                            e.currentTarget.src = '/placeholder-artwork.png';
+                                            // Fallback to placeholder on error
+                                            e.currentTarget.src = placeholderArtwork;
+                                            e.currentTarget.srcset = ""; // Clear srcset if using responsive images
                                         }}
+                                         data-ai-hint="album artwork cover" // Added hint
                                         // unoptimized // Consider removing if URLs are stable
                                     />
                                 </TableCell>
@@ -367,3 +368,4 @@ export function ReleaseList({ className }: ReleaseListProps) {
     </>
   );
 }
+

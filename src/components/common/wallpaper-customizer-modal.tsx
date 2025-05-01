@@ -12,11 +12,14 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label"; // Keep Label if needed for Upload section
+import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { RotateCcw, Upload, Image as ImageIcon, X } from "lucide-react"; // Import necessary icons
-import { ScrollArea } from "@/components/ui/scroll-area"; // Import ScrollArea
+import { RotateCcw, Upload, Image as ImageIcon, X, Music, Loader2 } from "lucide-react"; // Import necessary icons
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
+import { getLatestReleaseArtwork } from "@/services/music-platform"; // Import the new service
+import { useAuth } from "@/context/auth-context"; // Import useAuth to get user
+import { Skeleton } from "@/components/ui/skeleton"; // Import Skeleton
 
 // Generate some random image URLs for predefined options
 const generatePicsumUrls = (count: number): string[] => {
@@ -42,12 +45,36 @@ export function WallpaperCustomizerModal({
   onReset,
   defaultUrl,
 }: WallpaperCustomizerModalProps) {
-  // Removed inputUrl state
+  const { user } = useAuth(); // Get user for fetching
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewDataUrl, setPreviewDataUrl] = useState<string | null>(null); // For uploaded image preview
-  const [selectedPredefined, setSelectedPredefined] = useState<string | null>(null);
+  const [selectedPredefined, setSelectedPredefined] = useState<string | null>(null); // Holds URL of selected preset OR release artwork
+  const [latestReleaseArtworkUrl, setLatestReleaseArtworkUrl] = useState<string | null>(null);
+  const [isLoadingArtwork, setIsLoadingArtwork] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+
+  // Fetch latest release artwork when modal opens
+   useEffect(() => {
+     const fetchArtwork = async () => {
+       if (isOpen && user) {
+         setIsLoadingArtwork(true);
+         setLatestReleaseArtworkUrl(null); // Reset on open
+         try {
+           const url = await getLatestReleaseArtwork();
+           setLatestReleaseArtworkUrl(url);
+         } catch (error) {
+           console.error("Error fetching latest release artwork:", error);
+           // Optionally show a toast
+         } finally {
+           setIsLoadingArtwork(false);
+         }
+       }
+     };
+
+     fetchArtwork();
+   }, [isOpen, user]);
+
 
   // Sync state when modal opens or currentUrl changes
   useEffect(() => {
@@ -55,19 +82,22 @@ export function WallpaperCustomizerModal({
         // Reset states based on currentUrl
         const isDataUri = currentUrl.startsWith('data:image');
         const isPredefined = predefinedWallpapers.includes(currentUrl);
+        const isLatestRelease = currentUrl === latestReleaseArtworkUrl && latestReleaseArtworkUrl !== null;
 
-        // Don't set inputUrl anymore
         setSelectedFile(null);
         setPreviewDataUrl(isDataUri ? currentUrl : null); // Show preview if current is data URI
-        setSelectedPredefined(isPredefined ? currentUrl : null);
+        // Set selectedPredefined if current matches predefined OR latest release artwork
+        setSelectedPredefined(isPredefined || isLatestRelease ? currentUrl : null);
+
     } else {
         // Clear everything on close
-        // No inputUrl to clear
         setSelectedFile(null);
         setPreviewDataUrl(null);
         setSelectedPredefined(null);
+        // Don't reset latestReleaseArtworkUrl, it's fetched on open
+        setIsLoadingArtwork(false); // Ensure loading is reset
     }
-  }, [currentUrl, isOpen]);
+  }, [currentUrl, isOpen, latestReleaseArtworkUrl]); // Add latestReleaseArtworkUrl dependency
 
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -84,8 +114,7 @@ export function WallpaperCustomizerModal({
       }
 
       setSelectedFile(file);
-      // Removed clearing inputUrl
-      setSelectedPredefined(null); // Clear predefined selection
+      setSelectedPredefined(null); // Clear predefined/release selection
 
       const reader = new FileReader();
       reader.onloadend = () => {
@@ -100,23 +129,27 @@ export function WallpaperCustomizerModal({
 
     if (selectedFile && previewDataUrl) {
       finalUrlOrDataUri = previewDataUrl;
-    } else if (selectedPredefined) {
+    } else if (selectedPredefined) { // This now covers presets AND release artwork
         finalUrlOrDataUri = selectedPredefined;
     }
-    // Removed inputUrl check
-    // If nothing selected, finalUrlOrDataUri remains empty, onApply will handle it (use default)
     onApply(finalUrlOrDataUri);
   };
 
-  const handlePredefinedClick = (url: string) => {
+  // Generalized handler for selecting predefined or release artwork
+  const handlePredefinedOrReleaseClick = (url: string) => {
     setSelectedPredefined(url);
-    // Removed clearing inputUrl
     setSelectedFile(null);
     setPreviewDataUrl(null);
+     if (fileInputRef.current) { // Also clear the file input visually
+         fileInputRef.current.value = "";
+     }
   };
 
   const triggerFileInput = () => {
     fileInputRef.current?.click();
+     // Clear other selections when opening file input
+     setSelectedPredefined(null);
+     // Preview URL will be set on file selection
   };
 
   const clearUpload = () => {
@@ -129,42 +162,78 @@ export function WallpaperCustomizerModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-lg md:max-w-2xl bg-card/85 dark:bg-card/70 border-border/50"> {/* Adjusted opacity */}
+      <DialogContent className="sm:max-w-lg md:max-w-2xl bg-card/85 dark:bg-card/70 border-border/50">
         <DialogHeader>
           <DialogTitle className="text-primary">Customize Background</DialogTitle>
           <DialogDescription>
-            Choose a preset image or upload your own (including GIFs). {/* Updated description */}
+            Choose a preset image, use your latest release artwork, or upload your own (including GIFs).
           </DialogDescription>
         </DialogHeader>
 
         <ScrollArea className="max-h-[60vh] pr-4">
           <div className="grid gap-6 py-4">
 
-            {/* Predefined Images Section */}
+            {/* Predefined & Release Artwork Section */}
             <div>
-                <Label className="text-muted-foreground text-sm font-medium">Presets</Label>
-                <div className="grid grid-cols-4 gap-3 mt-2">
+                <Label className="text-muted-foreground text-sm font-medium">Choose Wallpaper</Label>
+                 <div className="grid grid-cols-3 sm:grid-cols-4 gap-3 mt-2">
+                    {/* Latest Release Artwork Option */}
+                    {isLoadingArtwork ? (
+                        <Skeleton className="aspect-video rounded-md bg-muted/50" />
+                    ) : latestReleaseArtworkUrl ? (
+                         <button
+                             onClick={() => handlePredefinedOrReleaseClick(latestReleaseArtworkUrl)}
+                             className={cn(
+                                 "aspect-video rounded-md overflow-hidden border-2 transition-all focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 relative group", // Added relative group
+                                 selectedPredefined === latestReleaseArtworkUrl ? "border-primary ring-2 ring-primary ring-offset-2" : "border-transparent hover:border-primary/50"
+                             )}
+                             title="Use Latest Release Artwork"
+                         >
+                             <Image
+                                 src={latestReleaseArtworkUrl}
+                                 alt="Latest release artwork"
+                                 width={150}
+                                 height={100}
+                                 className="object-cover w-full h-full"
+                                 unoptimized // Good idea for potentially dynamic URLs
+                                 onError={(e) => { e.currentTarget.src = '/placeholder-artwork.png'; }} // Fallback
+                             />
+                             {/* Subtle icon overlay */}
+                             <div className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity">
+                                 <Music className="h-6 w-6 text-white/80" />
+                             </div>
+                         </button>
+                    ) : (
+                         // Placeholder if no artwork found or user not logged in
+                         <div className="aspect-video rounded-md border-2 border-dashed border-border/40 flex items-center justify-center text-muted-foreground text-xs text-center p-2">
+                           No latest artwork found
+                         </div>
+                     )}
+
+                    {/* Predefined Wallpapers */}
                     {predefinedWallpapers.map((url) => (
-                    <button
-                        key={url}
-                        onClick={() => handlePredefinedClick(url)}
-                        className={cn(
-                            "aspect-video rounded-md overflow-hidden border-2 transition-all focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
-                            selectedPredefined === url ? "border-primary ring-2 ring-primary ring-offset-2" : "border-transparent hover:border-primary/50"
-                        )}
-                    >
-                        <Image
-                            src={url}
-                            alt="Predefined wallpaper option"
-                            width={150}
-                            height={100}
-                            className="object-cover w-full h-full"
-                            unoptimized // Avoid optimization for external URLs if needed
-                        />
-                    </button>
+                        <button
+                            key={url}
+                            onClick={() => handlePredefinedOrReleaseClick(url)}
+                            className={cn(
+                                "aspect-video rounded-md overflow-hidden border-2 transition-all focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+                                selectedPredefined === url ? "border-primary ring-2 ring-primary ring-offset-2" : "border-transparent hover:border-primary/50"
+                            )}
+                            title="Use Preset Wallpaper"
+                        >
+                            <Image
+                                src={url}
+                                alt="Predefined wallpaper option"
+                                width={150}
+                                height={100}
+                                className="object-cover w-full h-full"
+                                unoptimized // Avoid optimization for external URLs if needed
+                            />
+                        </button>
                     ))}
                 </div>
             </div>
+
 
             {/* Separator */}
             <div className="relative">
@@ -181,7 +250,8 @@ export function WallpaperCustomizerModal({
                 <Label htmlFor="wallpaper-upload" className="text-muted-foreground text-sm font-medium">Upload Image</Label>
                 <div className={cn(
                      "mt-2 flex rounded-md border-2 border-dashed px-4 py-4 items-center gap-4",
-                     previewDataUrl ? "border-solid border-primary/30" : "border-input hover:border-accent justify-center"
+                      // Highlight border if this section is active (file selected or being dragged over)
+                      previewDataUrl ? "border-solid border-primary/30" : "border-input hover:border-accent justify-center"
                  )}>
                     {previewDataUrl ? (
                          <div className="flex items-center gap-3 w-full">
@@ -213,14 +283,11 @@ export function WallpaperCustomizerModal({
                 </div>
             </div>
 
-            {/* URL Input Section REMOVED */}
-
           </div>
         </ScrollArea>
 
         <DialogFooter className="gap-2 sm:gap-0 pt-4 border-t border-border/50">
-           {/* Removed the display of default URL */}
-           <div className="flex-grow"></div> {/* Add spacer if needed for alignment */}
+           <div className="flex-grow"></div> {/* Add spacer */}
           <Button
             type="button"
             variant="outline"
@@ -235,6 +302,8 @@ export function WallpaperCustomizerModal({
             onClick={handleApplyClick}
             className="bg-primary hover:bg-primary/90 text-primary-foreground"
             aria-label="Apply new wallpaper"
+             // Disable apply if nothing is selected (no preview, no predefined/release)
+             disabled={!previewDataUrl && !selectedPredefined}
            >
             Apply
           </Button>
@@ -243,3 +312,4 @@ export function WallpaperCustomizerModal({
     </Dialog>
   );
 }
+

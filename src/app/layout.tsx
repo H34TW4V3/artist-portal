@@ -111,6 +111,8 @@ export default function RootLayout({
     <html lang="en" className={`${GeistSans.variable} ${isMounted ? theme : 'dark'}`}>
       <head>
          {/* Removed explicit title and meta description - Let Next.js handle metadata via convention or export */}
+         {/* Add link for placeholder artwork */}
+         <link rel="preload" href="/placeholder-artwork.png" as="image" />
       </head>
       <body className="font-sans antialiased bg-background text-foreground relative min-h-screen">
         <AuthProvider> {/* Wrap content with AuthProvider */}
@@ -168,3 +170,4 @@ export default function RootLayout({
     </html>
   );
 }
+
