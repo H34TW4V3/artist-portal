@@ -1,12 +1,11 @@
-
 "use client";
 
-import { useState, useEffect } from "react"; // Import useEffect
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { format } from "date-fns";
-import { Loader2, UploadCloud, X, CalendarIcon, FileArchive, HelpCircle, Info } from "lucide-react"; // Added HelpCircle, Info
+import { Loader2, UploadCloud, X, CalendarIcon, FileArchive, HelpCircle, Info, ArrowLeft, ArrowRight } from "lucide-react"; // Added Arrows
 
 import { Button } from "@/components/ui/button";
 import {
@@ -17,7 +16,7 @@ import {
   DialogDescription,
   DialogFooter,
   DialogClose,
-  DialogTrigger // Added DialogTrigger
+  DialogTrigger
 } from "@/components/ui/dialog";
 import {
     AlertDialog,
@@ -28,7 +27,7 @@ import {
     AlertDialogFooter,
     AlertDialogHeader,
     AlertDialogTitle,
-} from "@/components/ui/alert-dialog"; // Import AlertDialog components
+} from "@/components/ui/alert-dialog";
 import {
   Form,
   FormControl,
@@ -42,17 +41,25 @@ import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { useToast } from "@/hooks/use-toast";
-import { uploadReleaseZip, type ReleaseUploadMetadata } from "@/services/music-platform"; // Use the Firestore service function and type
+import { uploadReleaseZip, type ReleaseUploadMetadata } from "@/services/music-platform";
 import { cn } from "@/lib/utils";
-import { ScrollArea } from "@/components/ui/scroll-area"; // Added ScrollArea for guidelines
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Progress } from "@/components/ui/progress"; // Import Progress
 
 
-// Schema for the upload modal
+// Define steps
+const STEPS = [
+  { id: 1, name: "Release Details" },
+  { id: 2, name: "Upload Package" },
+  // Removed confirmation step, handled by AlertDialog
+];
+
+// Schema remains the same, validation happens progressively
 const uploadSchema = z.object({
   releaseName: z.string().min(2, "Release name must be at least 2 characters.").max(100, "Name must be 100 characters or less."),
   releaseDate: z.date({ required_error: "A release date is required." }),
   releaseZip: z.instanceof(File).refine(file => file.size > 0, 'Release ZIP file is required.')
-                           .refine(file => file.size <= 500 * 1024 * 1024, 'ZIP file must be 500MB or less.') // Max 500MB (adjust as needed)
+                           .refine(file => file.size <= 500 * 1024 * 1024, 'ZIP file must be 500MB or less.')
                            .refine(file => file.type === "application/zip" || file.type === "application/x-zip-compressed", 'File must be a ZIP archive.'),
 });
 
@@ -61,47 +68,77 @@ type UploadFormValues = z.infer<typeof uploadSchema>;
 interface UploadReleaseModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSuccess: () => void; // Callback after successful upload
+  onSuccess: () => void;
 }
 
 export function UploadReleaseModal({ isOpen, onClose, onSuccess }: UploadReleaseModalProps) {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [zipFileName, setZipFileName] = useState<string | null>(null);
-  const [showConfirmationDialog, setShowConfirmationDialog] = useState(false); // State for confirmation dialog
-  const [confirmedReleaseName, setConfirmedReleaseName] = useState<string>(""); // State to store release name for confirmation
+  const [showConfirmationDialog, setShowConfirmationDialog] = useState(false);
+  const [confirmedReleaseName, setConfirmedReleaseName] = useState<string>("");
+  const [currentStep, setCurrentStep] = useState(1);
+  const [previousStep, setPreviousStep] = useState(1); // For animation direction
 
   const form = useForm<UploadFormValues>({
     resolver: zodResolver(uploadSchema),
     defaultValues: {
       releaseName: "",
-      releaseDate: new Date(), // Default to today
+      releaseDate: new Date(),
       releaseZip: undefined,
     },
-     mode: "onChange", // Validate on change
+    mode: "onChange",
   });
 
-  // Reset form when modal opens/closes - Use useEffect for robustness
+   // Function to handle step change and animation state
+   const goToStep = (step: number) => {
+     setPreviousStep(currentStep);
+     setCurrentStep(step);
+   };
+
+   // Determine animation classes based on step change direction
+   const getAnimationClasses = (stepId: number): string => {
+       if (stepId === currentStep && currentStep > previousStep) {
+           return "animate-slide-in-from-right"; // Entering from right
+       }
+       if (stepId === currentStep && currentStep < previousStep) {
+           return "animate-slide-in-from-left"; // Entering from left
+       }
+       if (stepId === previousStep && currentStep > previousStep) {
+           return "animate-slide-out-to-left"; // Exiting to left
+       }
+       if (stepId === previousStep && currentStep < previousStep) {
+           return "animate-slide-out-to-right"; // Exiting to right
+       }
+       return stepId === currentStep ? "" : "hidden"; // Only current step is visible (unless animating out)
+   };
+
+
+   // Reset form and step when modal opens/closes
    useEffect(() => {
        if (!isOpen) {
-           // Delay reset on close to avoid issues if quickly reopened
            const timer = setTimeout(() => {
-                form.reset({
-                    releaseName: "",
-                    releaseDate: new Date(),
-                    releaseZip: undefined,
-                });
+                form.reset({ releaseName: "", releaseDate: new Date(), releaseZip: undefined });
                 setZipFileName(null);
                 setIsSubmitting(false);
-                setShowConfirmationDialog(false); // Ensure confirmation is closed
+                setShowConfirmationDialog(false);
                 setConfirmedReleaseName("");
+                setCurrentStep(1); // Reset to first step
+                setPreviousStep(1);
            }, 150);
            return () => clearTimeout(timer);
+       } else {
+           // Ensure reset when opening if it wasn't closed cleanly
+           form.reset({ releaseName: "", releaseDate: new Date(), releaseZip: undefined });
+           setZipFileName(null);
+           setIsSubmitting(false);
+           setCurrentStep(1);
+           setPreviousStep(1);
        }
    // eslint-disable-next-line react-hooks/exhaustive-deps
-   }, [isOpen]); // Rerun when isOpen changes
+   }, [isOpen]);
 
-  // Handle file input changes and update state
+  // Handle file input changes
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
@@ -112,28 +149,63 @@ export function UploadReleaseModal({ isOpen, onClose, onSuccess }: UploadRelease
     }
   };
 
-  // Function to clear file input and state
   const clearFile = () => {
       form.setValue("releaseZip", undefined, { shouldValidate: true, shouldDirty: true });
       setZipFileName(null);
       const inputElement = document.getElementById("releaseZip") as HTMLInputElement | null;
       if (inputElement) {
-        inputElement.value = ""; // Clear the native input
+        inputElement.value = "";
       }
   }
 
+   // Validate current step before proceeding
+   const validateStep = async (step: number): Promise<boolean> => {
+     let fieldsToValidate: (keyof UploadFormValues)[] = [];
+     if (step === 1) {
+       fieldsToValidate = ["releaseName", "releaseDate"];
+     } else if (step === 2) {
+        fieldsToValidate = ["releaseZip"];
+     }
+
+     const isValid = await form.trigger(fieldsToValidate);
+     if (!isValid) {
+          toast({ title: "Validation Error", description: "Please fix the errors before proceeding.", variant: "destructive" });
+     }
+     return isValid;
+   };
+
+
+  // Handle "Next" button click
+  const handleNext = async () => {
+    if (await validateStep(currentStep)) {
+      if (currentStep < STEPS.length) {
+        goToStep(currentStep + 1);
+      } else {
+        // If on last step, trigger submission
+        await form.handleSubmit(onSubmit)();
+      }
+    }
+  };
+
+  // Handle "Previous" button click
+  const handlePrevious = () => {
+    if (currentStep > 1) {
+      goToStep(currentStep - 1);
+    }
+  };
+
   async function onSubmit(values: UploadFormValues) {
+    // This function is now only called when the "Submit" button (previously "Next" on the last step) is clicked
     setIsSubmitting(true);
 
-    // Ensure releaseDate is valid and format it
-     let formattedReleaseDate = '';
-     if (values.releaseDate instanceof Date && !isNaN(values.releaseDate.getTime())) {
-        formattedReleaseDate = format(values.releaseDate, "yyyy-MM-dd"); // Format as YYYY-MM-DD
-     } else {
-        toast({ title: "Invalid Date", description: "Please select a valid release date.", variant: "destructive" });
-        setIsSubmitting(false);
-        return;
-     }
+    let formattedReleaseDate = '';
+    if (values.releaseDate instanceof Date && !isNaN(values.releaseDate.getTime())) {
+       formattedReleaseDate = format(values.releaseDate, "yyyy-MM-dd");
+    } else {
+       toast({ title: "Invalid Date", description: "Please select a valid release date.", variant: "destructive" });
+       setIsSubmitting(false);
+       return;
+    }
 
     if (!(values.releaseZip instanceof File)) {
         toast({ title: "Missing File", description: "Please select a ZIP file to upload.", variant: "destructive" });
@@ -147,268 +219,223 @@ export function UploadReleaseModal({ isOpen, onClose, onSuccess }: UploadRelease
     };
 
     try {
-      console.log("Uploading release ZIP to Firestore/Storage:", { uploadData, fileName: values.releaseZip.name });
-
-      // Call the Firestore service function
       await uploadReleaseZip(uploadData, values.releaseZip);
-
-      console.log("Upload successful, showing confirmation dialog.");
-      setConfirmedReleaseName(values.releaseName); // Store name for dialog
-      setShowConfirmationDialog(true); // Show the confirmation dialog instead of immediate toast/close
-
-      // Do NOT call onSuccess or onClose here yet
-
+      setConfirmedReleaseName(values.releaseName);
+      setShowConfirmationDialog(true);
+      // Success/Close is handled by handleConfirmationClose
     } catch (error) {
       console.error("Error uploading release ZIP:", error);
-      toast({
-        title: "Upload Failed",
-        description: error instanceof Error ? error.message : "An unexpected error occurred during upload.",
-        variant: "destructive",
-      });
-      setIsSubmitting(false); // Only set submitting false on error here
+      toast({ title: "Upload Failed", description: error instanceof Error ? error.message : "An unexpected error occurred during upload.", variant: "destructive" });
+      setIsSubmitting(false); // Reset submitting state on error
     }
-    // finally block removed as submitting state is handled differently now
   }
 
-   // Handler for closing the confirmation dialog and triggering final actions
-   const handleConfirmationClose = () => {
+  const handleConfirmationClose = () => {
         setShowConfirmationDialog(false);
-        onSuccess(); // Call the success callback (refreshes list)
-        onClose();   // Close the main upload modal
-        // Reset submitting state after everything is done
-        // Resetting form happens in useEffect based on isOpen
-        setIsSubmitting(false);
-   }
-
+        onSuccess();
+        onClose();
+        // Resetting happens in useEffect
+  }
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-md md:max-w-lg bg-card/85 dark:bg-card/70 border-border/50"> {/* Adjusted opacity */}
+      <DialogContent className="sm:max-w-md md:max-w-lg bg-card/85 dark:bg-card/70 border-border/50 overflow-hidden"> {/* Added overflow-hidden */}
         <DialogHeader>
           <DialogTitle className="text-primary">Upload New Release</DialogTitle>
-          <DialogDescription className="text-muted-foreground">
-            Provide the release name, date, and upload a single ZIP file containing the audio and artwork.
+          {/* Dynamic Description (Optional) */}
+           <DialogDescription className="text-muted-foreground">
+             Step {currentStep} of {STEPS.length}: {STEPS[currentStep - 1].name}
           </DialogDescription>
+          {/* Progress Bar */}
+          <Progress value={(currentStep / STEPS.length) * 100} className="w-full h-1.5 mt-2" />
         </DialogHeader>
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit, (errors) => {
-                console.log("Form validation errors:", errors);
-                 toast({ title: "Validation Error", description: "Please check the form for errors.", variant: "destructive" });
-             })} className="space-y-4 pt-4">
+            {/* Form content is wrapped for animation */}
+            <div className="relative overflow-hidden min-h-[350px]"> {/* Container for steps */}
+              <form
+                 onSubmit={(e) => {
+                   e.preventDefault(); // Prevent default form submission
+                   handleNext(); // Trigger next/submit logic
+                  }}
+                  className="space-y-4 pt-4"
+                  aria-live="polite" // Announce step changes
+               >
 
-            {/* Release Name */}
-            <FormField
-              control={form.control}
-              name="releaseName"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Release Name</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Enter release name (e.g., album or single title)" {...field} className="focus:ring-accent" disabled={isSubmitting} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            {/* Release Date */}
-            <FormField
-              control={form.control}
-              name="releaseDate"
-              render={({ field }) => (
-                <FormItem className="flex flex-col">
-                  <FormLabel>Release Date</FormLabel>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <FormControl>
-                        <Button
-                          variant={"outline"}
-                          className={cn(
-                            "w-full justify-start text-left font-normal border-input focus:ring-accent",
-                            !field.value && "text-muted-foreground"
-                          )}
-                          disabled={isSubmitting}
-                        >
-                          <CalendarIcon className="mr-2 h-4 w-4 opacity-50" />
-                          {field.value && field.value instanceof Date && !isNaN(field.value.getTime()) ? (
-                            format(field.value, "PPP")
-                          ) : (
-                            <span>Pick a date</span>
-                          )}
-                        </Button>
-                      </FormControl>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0 bg-popover border-border" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={field.value instanceof Date && !isNaN(field.value.getTime()) ? field.value : undefined}
-                        onSelect={(date) => field.onChange(date || new Date())}
-                        disabled={(date) => date < new Date(new Date().setHours(0,0,0,0))} // Disable past dates
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
-                   <FormDescription className="text-xs">The date the release should go live.</FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-             {/* ZIP File Upload */}
-             <FormField
-                control={form.control}
-                name="releaseZip"
-                render={({ fieldState }) => (
-                  <FormItem>
-                    <div className="flex justify-between items-center mb-1"> {/* Container for label and help icon */}
-                        <FormLabel>Release Package (ZIP)</FormLabel>
-                        {/* Help Icon Dialog Trigger */}
-                        <Dialog>
-                            <DialogTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-primary p-0">
-                                    <HelpCircle className="h-4 w-4" />
-                                    <span className="sr-only">View Release File Guidelines</span>
+                {/* Step 1: Release Details */}
+                <div className={cn("space-y-4", getAnimationClasses(1))}>
+                   {currentStep === 1 && ( // Ensure fields are only interactive on the current step
+                    <>
+                    <FormField
+                      control={form.control}
+                      name="releaseName"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Release Name</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Enter release name" {...field} className="focus:ring-accent" disabled={isSubmitting} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="releaseDate"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-col">
+                          <FormLabel>Release Date</FormLabel>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <FormControl>
+                                <Button variant={"outline"} className={cn("w-full justify-start text-left font-normal border-input focus:ring-accent", !field.value && "text-muted-foreground")} disabled={isSubmitting}>
+                                  <CalendarIcon className="mr-2 h-4 w-4 opacity-50" />
+                                  {field.value && field.value instanceof Date && !isNaN(field.value.getTime()) ? format(field.value, "PPP") : <span>Pick a date</span>}
                                 </Button>
-                            </DialogTrigger>
-                            {/* Release Guidelines Dialog */}
-                            <DialogContent className="max-w-lg bg-card/90 dark:bg-card/80 border-border"> {/* Adjusted opacity */}
-                                <DialogHeader>
-                                    <DialogTitle className="text-primary">Release File Guidelines</DialogTitle>
-                                </DialogHeader>
-                                <ScrollArea className="max-h-[60vh] pr-4">
-                                    <div className="text-sm text-foreground space-y-4">
-                                        <p>
-                                            To speed up the release process and allow you to release via the artist app,
-                                            we have created ‘release files’ to help us get all the necessary information
-                                            we need to create your release.
-                                        </p>
-                                        <p>Here is a guide on how to structure a release file:</p>
-                                        <ol className="list-decimal list-inside space-y-3 pl-2">
-                                            <li>
-                                                <strong>Each track should be in its OWN folder</strong> (named after the track). The folder should contain the following files:
-                                                <ul className="list-disc list-inside space-y-1 pl-4 mt-2">
-                                                    <li>If you have an explicit version of your track, place that in a separate folder with <code className="bg-muted px-1 rounded">(Expl)</code> added to the folder name.</li>
-                                                    <li>Track file (<strong>24 Bit .WAV</strong> format).</li>
-                                                    <li>A short 1 to 8 second video for Spotify Canvas (if applicable).</li>
-                                                    <li>Brief text file (<code className="bg-muted px-1 rounded">.txt</code>) containing a description: BPM, Track Length, explicit status, and other relevant info.</li>
-                                                    <li>A document (<code className="bg-muted px-1 rounded">.txt</code>) containing the lyrics (if your track has lyrics).</li>
-                                                </ul>
-                                            </li>
-                                            <li>
-                                                <strong>Place the track folders into a single main folder</strong> (use your release name as the main folder name).
-                                                Place the <strong>album/release artwork</strong> directly inside this main folder:
-                                                <ul className="list-disc list-inside space-y-1 pl-4 mt-2">
-                                                    <li>Artwork must be <strong>3000×3000 pixels</strong> (JPG or PNG).</li>
-                                                    <li>Artwork must <strong>not</strong> contain social media/brand logos, social media handles, borders, or text other than your artist name or the album/track title.</li>
-                                                </ul>
-                                            </li>
-                                            <li>
-                                                Finally, <strong>compress this main folder into a single ZIP file</strong> for upload.
-                                            </li>
-                                        </ol>
-                                    </div>
-                                </ScrollArea>
-                                <DialogFooter className="mt-4">
-                                     <DialogClose asChild>
-                                         <Button type="button" variant="outline">Close</Button>
-                                     </DialogClose>
-                                </DialogFooter>
-                            </DialogContent>
-                        </Dialog>
-                    </div>
-                    <FormControl>
-                        <div className={cn(
-                             "mt-1 flex justify-center rounded-md border-2 border-dashed px-6 pb-6 pt-5 bg-muted/20",
-                             fieldState.error ? "border-destructive" : "border-input hover:border-accent",
-                             zipFileName ? "border-solid p-4 items-center" : "" // Adjust style when file selected
-                         )}>
-                            {zipFileName ? (
+                              </FormControl>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0 bg-popover border-border" align="start">
+                              <Calendar mode="single" selected={field.value instanceof Date && !isNaN(field.value.getTime()) ? field.value : undefined} onSelect={(date) => field.onChange(date || new Date())} disabled={(date) => date < new Date(new Date().setHours(0,0,0,0))} initialFocus />
+                            </PopoverContent>
+                          </Popover>
+                          <FormDescription className="text-xs">The date the release should go live.</FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    </>
+                   )}
+                </div>
+
+                {/* Step 2: Upload Package */}
+                 <div className={cn("space-y-4", getAnimationClasses(2))}>
+                   {currentStep === 2 && (
+                    <>
+                    <FormField
+                      control={form.control}
+                      name="releaseZip"
+                      render={({ fieldState }) => (
+                        <FormItem>
+                          <div className="flex justify-between items-center mb-1">
+                            <FormLabel>Release Package (ZIP)</FormLabel>
+                             <Dialog>
+                                 <DialogTrigger asChild>
+                                     <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-primary p-0">
+                                         <HelpCircle className="h-4 w-4" />
+                                         <span className="sr-only">View Release File Guidelines</span>
+                                     </Button>
+                                 </DialogTrigger>
+                                 <DialogContent className="max-w-lg bg-card/90 dark:bg-card/80 border-border">
+                                     <DialogHeader><DialogTitle className="text-primary">Release File Guidelines</DialogTitle></DialogHeader>
+                                     <ScrollArea className="max-h-[60vh] pr-4">
+                                         {/* Guidelines content */}
+                                         <div className="text-sm text-foreground space-y-4">
+                                            <p>To speed up the release process and allow you to release via the artist app, we have created ‘release files’ to help us get all the necessary information we need to create your release.</p>
+                                            <p>Here is a guide on how to structure a release file:</p>
+                                            <ol className="list-decimal list-inside space-y-3 pl-2">
+                                                <li><strong>Each track should be in its OWN folder</strong> (named after the track). The folder should contain the following files:
+                                                    <ul className="list-disc list-inside space-y-1 pl-4 mt-2">
+                                                        <li>If you have an explicit version of your track, place that in a separate folder with <code className="bg-muted px-1 rounded">(Expl)</code> added to the folder name.</li>
+                                                        <li>Track file (<strong>24 Bit .WAV</strong> format).</li>
+                                                        <li>A short 1 to 8 second video for Spotify Canvas (if applicable).</li>
+                                                        <li>Brief text file (<code className="bg-muted px-1 rounded">.txt</code>) containing a description: BPM, Track Length, explicit status, and other relevant info.</li>
+                                                        <li>A document (<code className="bg-muted px-1 rounded">.txt</code>) containing the lyrics (if your track has lyrics).</li>
+                                                    </ul>
+                                                </li>
+                                                <li><strong>Place the track folders into a single main folder</strong> (use your release name as the main folder name). Place the <strong>album/release artwork</strong> directly inside this main folder:
+                                                    <ul className="list-disc list-inside space-y-1 pl-4 mt-2">
+                                                        <li>Artwork must be <strong>3000×3000 pixels</strong> (JPG or PNG).</li>
+                                                        <li>Artwork must <strong>not</strong> contain social media/brand logos, social media handles, borders, or text other than your artist name or the album/track title.</li>
+                                                    </ul>
+                                                </li>
+                                                <li>Finally, <strong>compress this main folder into a single ZIP file</strong> for upload.</li>
+                                            </ol>
+                                         </div>
+                                     </ScrollArea>
+                                     <DialogFooter className="mt-4"><DialogClose asChild><Button type="button" variant="outline">Close</Button></DialogClose></DialogFooter>
+                                 </DialogContent>
+                             </Dialog>
+                          </div>
+                          <FormControl>
+                            <div className={cn("mt-1 flex justify-center rounded-md border-2 border-dashed px-6 pb-6 pt-5 bg-muted/20", fieldState.error ? "border-destructive" : "border-input hover:border-accent", zipFileName ? "border-solid p-4 items-center" : "")}>
+                              {zipFileName ? (
                                 <div className="flex items-center justify-between w-full">
-                                    <div className="flex items-center gap-2 text-sm font-medium text-foreground truncate mr-4">
-                                       <FileArchive className="h-5 w-5 text-muted-foreground" />
-                                       <span>{zipFileName}</span>
-                                    </div>
-                                    <Button
-                                        type="button"
-                                        variant="ghost"
-                                        size="icon"
-                                        className="h-6 w-6 text-muted-foreground hover:text-destructive rounded-full"
-                                        onClick={clearFile}
-                                        aria-label="Remove ZIP file"
-                                        disabled={isSubmitting} // Disable clear button while submitting
-                                    >
-                                        <X className="h-4 w-4" />
-                                    </Button>
+                                  <div className="flex items-center gap-2 text-sm font-medium text-foreground truncate mr-4"><FileArchive className="h-5 w-5 text-muted-foreground" /><span>{zipFileName}</span></div>
+                                  <Button type="button" variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-destructive rounded-full" onClick={clearFile} aria-label="Remove ZIP file" disabled={isSubmitting}><X className="h-4 w-4" /></Button>
                                 </div>
-                            ) : (
+                              ) : (
                                 <div className="space-y-1 text-center">
-                                    <UploadCloud className="mx-auto h-12 w-12 text-muted-foreground" aria-hidden="true" />
-                                    <div className="flex text-sm text-muted-foreground justify-center">
-                                        <label
-                                            htmlFor="releaseZip"
-                                            className="relative cursor-pointer rounded-md bg-background px-2 py-1 font-medium text-primary hover:text-primary/90 focus-within:outline-none focus-within:ring-2 focus-within:ring-accent focus-within:ring-offset-2"
-                                        >
-                                            <span>Select ZIP file</span>
-                                            <input id="releaseZip" name="releaseZip" type="file" className="sr-only" accept=".zip,application/zip,application/x-zip-compressed" onChange={handleFileChange} disabled={isSubmitting} />
-                                        </label>
-                                        <p className="pl-1">or drag and drop</p>
-                                    </div>
-                                    <p className="text-xs text-muted-foreground">ZIP archive up to 500MB</p>
+                                  <UploadCloud className="mx-auto h-12 w-12 text-muted-foreground" aria-hidden="true" />
+                                  <div className="flex text-sm text-muted-foreground justify-center">
+                                    <label htmlFor="releaseZip" className="relative cursor-pointer rounded-md bg-background px-2 py-1 font-medium text-primary hover:text-primary/90 focus-within:outline-none focus-within:ring-2 focus-within:ring-accent focus-within:ring-offset-2">
+                                      <span>Select ZIP file</span>
+                                      <input id="releaseZip" name="releaseZip" type="file" className="sr-only" accept=".zip,application/zip,application/x-zip-compressed" onChange={handleFileChange} disabled={isSubmitting} />
+                                    </label>
+                                    <p className="pl-1">or drag and drop</p>
+                                  </div>
+                                  <p className="text-xs text-muted-foreground">ZIP archive up to 500MB</p>
                                 </div>
-                            )}
-                        </div>
-                    </FormControl>
-                    <FormDescription className="text-xs">
-                        Must be a ZIP file containing audio & artwork structured according to the guidelines (click <HelpCircle className="inline h-3 w-3 align-text-bottom" /> icon above).
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-            />
+                              )}
+                            </div>
+                          </FormControl>
+                          <FormDescription className="text-xs">Must be a ZIP file containing audio & artwork structured according to the guidelines (click <HelpCircle className="inline h-3 w-3 align-text-bottom" /> icon above).</FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    </>
+                   )}
+                </div>
 
+                {/* Submit Button is outside the conditional rendering of steps */}
+                 {/* This button's action depends on the current step */}
+                 <button type="submit" style={{ display: 'none' }} aria-hidden="true"></button> {/* Hidden submit for Enter key */}
 
-            <DialogFooter className="pt-4">
-              <DialogClose asChild>
-                <Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting}>
-                  Cancel
-                </Button>
-              </DialogClose>
-              <Button
-                type="submit"
-                disabled={isSubmitting || !form.formState.isValid || !zipFileName} // Disable if submitting, invalid or no file
-                className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-md disabled:shadow-none disabled:bg-muted disabled:text-muted-foreground"
-              >
-                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {isSubmitting ? 'Uploading...' : 'Upload Release'}
-              </Button>
-            </DialogFooter>
-          </form>
+             </form>
+            </div>
         </Form>
 
-         {/* Upload Success Confirmation Dialog */}
-         <AlertDialog open={showConfirmationDialog} onOpenChange={setShowConfirmationDialog}>
+        <DialogFooter className="pt-4 border-t border-border/50">
+           {currentStep > 1 && (
+             <Button type="button" variant="outline" onClick={handlePrevious} disabled={isSubmitting}>
+                 <ArrowLeft className="mr-2 h-4 w-4" /> Previous
+             </Button>
+           )}
+          <div className="flex-grow"></div> {/* Spacer */}
+          <DialogClose asChild>
+            <Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting}>
+              Cancel
+            </Button>
+          </DialogClose>
+          <Button
+             type="button" // Change to type="button" and handle submit via onClick
+             onClick={handleNext} // Use handleNext which includes validation
+             disabled={isSubmitting || (currentStep === 2 && !zipFileName)} // Basic check for file on last step
+             className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-md disabled:shadow-none disabled:bg-muted disabled:text-muted-foreground"
+          >
+             {isSubmitting ? (
+                <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Submitting...</>
+             ) : currentStep === STEPS.length ? (
+                <>Upload Release</>
+             ) : (
+                <>Next <ArrowRight className="ml-2 h-4 w-4" /></>
+             )}
+           </Button>
+        </DialogFooter>
+
+        {/* Upload Success Confirmation Dialog */}
+        <AlertDialog open={showConfirmationDialog} onOpenChange={setShowConfirmationDialog}>
             <AlertDialogContent className="bg-card/85 dark:bg-card/70 border-border">
                 <AlertDialogHeader>
-                    <AlertDialogTitle className="text-primary flex items-center gap-2">
-                        <Info className="h-5 w-5" /> Upload Submitted Successfully
-                    </AlertDialogTitle>
+                    <AlertDialogTitle className="text-primary flex items-center gap-2"><Info className="h-5 w-5" /> Upload Submitted Successfully</AlertDialogTitle>
                     <AlertDialogDescription className="text-muted-foreground pt-2 space-y-3">
                          <p>Your release &quot;{confirmedReleaseName}&quot; has been submitted for processing.</p>
                          <p className="font-semibold">Please note:</p>
-                         <p>
-                             It can take up to <strong>10 business days</strong> for your release to appear on all streaming platforms
-                             after processing is complete. You can track its status on the releases page.
-                         </p>
+                         <p>It can take up to <strong>10 business days</strong> for your release to appear on all streaming platforms after processing is complete. You can track its status on the releases page.</p>
                      </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
-                     <AlertDialogAction
-                         onClick={handleConfirmationClose}
-                         className="bg-primary hover:bg-primary/90 text-primary-foreground"
-                     >
-                         OK, Got It
-                     </AlertDialogAction>
+                     <AlertDialogAction onClick={handleConfirmationClose} className="bg-primary hover:bg-primary/90 text-primary-foreground">OK, Got It</AlertDialogAction>
                 </AlertDialogFooter>
             </AlertDialogContent>
         </AlertDialog>

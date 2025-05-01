@@ -83,20 +83,47 @@ export default {
   					height: '0'
   				}
   			},
-            'fade-in-up': { // Added keyframe definition
+            'fade-in-up': {
                 '0%': { opacity: '0', transform: 'translateY(20px) scale(0.98)' },
                 '100%': { opacity: '1', transform: 'translateY(0) scale(1)' },
             },
-            'subtle-pulse': { // Added keyframe definition
+            'subtle-pulse': {
                 '0%, 100%': { transform: 'scale(1)' },
                 '50%': { transform: 'scale(1.03)' },
+            },
+            'progress-indeterminate': { // Indeterminate progress animation
+                '0%': { transform: 'translateX(-100%) scaleX(0.5)' },
+                '50%': { transform: 'translateX(0) scaleX(0.5)' },
+                '100%': { transform: 'translateX(100%) scaleX(0.5)' },
+             },
+            'slide-in-from-right': { // Step slide animation
+              '0%': { transform: 'translateX(100%)' },
+              '100%': { transform: 'translateX(0)' },
+            },
+            'slide-out-to-left': { // Step slide animation
+              '0%': { transform: 'translateX(0)' },
+              '100%': { transform: 'translateX(-100%)' },
+            },
+            'slide-in-from-left': { // Step slide animation
+              '0%': { transform: 'translateX(-100%)' },
+              '100%': { transform: 'translateX(0)' },
+            },
+            'slide-out-to-right': { // Step slide animation
+              '0%': { transform: 'translateX(0)' },
+              '100%': { transform: 'translateX(100%)' },
             },
   		},
   		animation: {
   			'accordion-down': 'accordion-down 0.2s ease-out',
   			'accordion-up': 'accordion-up 0.2s ease-out',
-            'fade-in-up': 'fade-in-up 0.5s ease-out forwards', // Added animation utility
-            'subtle-pulse': 'subtle-pulse 2.5s ease-in-out infinite', // Added animation utility
+            'fade-in-up': 'fade-in-up 0.5s ease-out forwards',
+            'subtle-pulse': 'subtle-pulse 2.5s ease-in-out infinite',
+            'progress-indeterminate': 'progress-indeterminate 1.5s ease-in-out infinite', // Added indeterminate progress animation
+             // Added step slide animations
+             'slide-in-from-right': 'slide-in-from-right 0.3s ease-out',
+             'slide-out-to-left': 'slide-out-to-left 0.3s ease-out forwards', // Use forwards to keep final state
+             'slide-in-from-left': 'slide-in-from-left 0.3s ease-out',
+             'slide-out-to-right': 'slide-out-to-right 0.3s ease-out forwards',
   		}
   	}
   },
