@@ -5,7 +5,7 @@ import Link from "next/link";
 import UserProfile from "@/components/common/user-profile"; // Keep UserProfile
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 // Import relevant icons
-import { LayoutDashboard, FileText, Home, ListMusic, CalendarClock } from "lucide-react"; // Import ListMusic and CalendarClock
+import { LayoutDashboard, FileText, Home, ListMusic, CalendarClock, Radio } from "lucide-react"; // Added Radio icon
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/auth-context"; // Import useAuth
 import { Skeleton } from "@/components/ui/skeleton"; // Import Skeleton
@@ -28,11 +28,12 @@ const PineappleIcon = () => (
 
 // Define the navigation items for the home screen launchpad
 const navItems = [
-  { title: "Dashboard", href: "/dashboard", icon: <LayoutDashboard className="h-10 w-10" />, description: "View your latest stats" }, // Updated description
-  { title: "My Releases", href: "/releases", icon: <ListMusic className="h-10 w-10" />, description: "Manage your music" },
-  { title: "Events", href: "/events", icon: <CalendarClock className="h-10 w-10" />, description: "Manage your events" }, // Added Events link
-  { title: "Documents", href: "/documents", icon: <FileText className="h-10 w-10" />, description: "Access agreements & handbooks" }, // Shortened description
-  { title: "Pineapple", href: "/pineapple", icon: <PineappleIcon />, description: "Connect & Collaborate" }, // Shortened description
+  { title: "Dashboard", href: "/dashboard", icon: <LayoutDashboard className="h-10 w-10" />, description: "View your latest stats", external: false }, // Updated description
+  { title: "My Releases", href: "/releases", icon: <ListMusic className="h-10 w-10" />, description: "Manage your music", external: false },
+  { title: "Events", href: "/events", icon: <CalendarClock className="h-10 w-10" />, description: "Manage your events", external: false }, // Added Events link
+  { title: "Documents", href: "/documents", icon: <FileText className="h-10 w-10" />, description: "Access agreements & handbooks", external: false }, // Shortened description
+  { title: "Pineapple", href: "/pineapple", icon: <PineappleIcon />, description: "Connect & Collaborate", external: false }, // Shortened description
+  { title: "Spotify for Artists", href: "https://accounts.spotify.com/en-GB/login?continue=https%3A%2F%2Faccounts.spotify.com%2Foauth2%2Fv2%2Fauth%3Fresponse_type%3Dnone%26client_id%3D6cf79a93be894c2086b8cbf737e0796b%26scope%3Duser-read-email%2Buser-read-private%2Bugc-image-upload%26redirect_uri%3Dhttps%253A%252F%252Fartists.spotify.com%252Fc%26acr_values%3Durn%253Aspotify%253Asso%253Aacr%253Aartist%253A2fa&flow_ctx=0bb76910-45f7-4890-9c65-90cebef63fd0%3A1746148618", icon: <Radio className="h-10 w-10" />, description: "Access your Spotify profile", external: true }, // Added Spotify link
 ];
 
 // List of informal greeting templates
@@ -48,7 +49,12 @@ const greetings = [
 
 // Function to get a random greeting
 const getRandomGreeting = (name: string) => {
-    const randomIndex = Math.floor(Math.random() * greetings.length);
+    // Use client-side logic for Math.random
+    const [randomIndex, setRandomIndex] = useState(0);
+    useEffect(() => {
+        setRandomIndex(Math.floor(Math.random() * greetings.length));
+    }, []); // Run only once on mount
+
     return greetings[randomIndex].replace("{{name}}", name);
 };
 
@@ -60,6 +66,7 @@ export default function HomePage() {
     const [greeting, setGreeting] = useState(""); // State for the greeting
     const [profileData, setProfileData] = useState<ProfileFormValues | null>(null);
     const [profileLoading, setProfileLoading] = useState(true); // State for profile data loading
+    const [clientGreeting, setClientGreeting] = useState(""); // State for client-side greeting generation
 
     // Fetch profile data from Firestore
     useEffect(() => {
@@ -105,7 +112,13 @@ export default function HomePage() {
             const nameFromAuth = user.displayName;
             const nameFromEmail = user.email?.split('@')[0];
             const finalName = nameFromProfile || nameFromAuth || nameFromEmail || 'Artist';
-            setGreeting(getRandomGreeting(finalName));
+
+            // Generate greeting on client side
+            const randomIndex = Math.floor(Math.random() * greetings.length);
+            setClientGreeting(greetings[randomIndex].replace("{{name}}", finalName));
+        } else {
+            // Provide a default or loading greeting
+            setClientGreeting("Welcome!");
         }
     }, [user, authLoading, profileLoading, profileData, router]); // Depend on profileData and profileLoading
 
@@ -144,7 +157,7 @@ export default function HomePage() {
                         <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="hsl(var(--primary))" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-8 w-8 hidden sm:block"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
                         <div className="text-center sm:text-left"> {/* Center align text */}
                             <CardTitle className="text-xl sm:text-3xl font-bold tracking-tight text-primary">
-                                {greeting} {/* Display the generated greeting */}
+                                {clientGreeting || "Loading greeting..."} {/* Display the client-side greeting */}
                             </CardTitle>
                             <CardDescription className="text-muted-foreground text-xs sm:text-sm">
                                 Your central hub for management and insights.
@@ -157,28 +170,45 @@ export default function HomePage() {
                 </Card>
 
                 {/* Navigation Grid - App Screen Style */}
-                 {/* Updated grid to accommodate 5 items - might need adjustment for very large screens */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-4 md:gap-6"> {/* Adjusted lg/xl columns */}
-                {navItems.map((item) => (
-                    <Link href={item.href} key={item.href} passHref legacyBehavior>
-                    <a className="block group"> {/* Use anchor tag for legacyBehavior */}
-                        <Card className={cn(
+                 {/* Updated grid to accommodate 6 items - adjust columns if needed */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6"> {/* Keep lg:grid-cols-3 */}
+                {navItems.map((item) => {
+                    const cardContent = (
+                         <Card className={cn(
                             "bg-card/50 dark:bg-card/40 border border-border/30 shadow-md rounded-lg transition-all duration-200 ease-in-out cursor-pointer text-center h-full flex flex-col justify-center items-center p-6", // Adjusted opacity
                             "hover:shadow-lg hover:border-primary/50 hover:-translate-y-1 hover-glow" // Hover effects
                         )}>
-                        <CardContent className="flex flex-col items-center justify-center space-y-3 p-0">
-                            <div className="p-3 rounded-full bg-primary/10 text-primary transition-colors group-hover:bg-primary/20 mb-2">
-                                {item.icon}
-                            </div>
-                            <CardTitle className="text-lg font-semibold text-foreground">{item.title}</CardTitle>
-                            <CardDescription className="text-sm text-muted-foreground">{item.description}</CardDescription>
-                        </CardContent>
+                            <CardContent className="flex flex-col items-center justify-center space-y-3 p-0">
+                                <div className="p-3 rounded-full bg-primary/10 text-primary transition-colors group-hover:bg-primary/20 mb-2">
+                                    {item.icon}
+                                </div>
+                                <CardTitle className="text-lg font-semibold text-foreground">{item.title}</CardTitle>
+                                <CardDescription className="text-sm text-muted-foreground">{item.description}</CardDescription>
+                            </CardContent>
                         </Card>
-                    </a>
-                    </Link>
-                ))}
+                    );
+
+                    return item.external ? (
+                        <a
+                            href={item.href}
+                            key={item.href}
+                            className="block group"
+                            target="_blank" // Open external links in new tab
+                            rel="noopener noreferrer"
+                         >
+                             {cardContent}
+                         </a>
+                    ) : (
+                        <Link href={item.href} key={item.href} passHref legacyBehavior>
+                            <a className="block group"> {/* Use anchor tag for legacyBehavior */}
+                                {cardContent}
+                            </a>
+                        </Link>
+                    );
+                })}
                 </div>
             </main>
         </div>
     );
 }
+
