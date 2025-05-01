@@ -1,7 +1,8 @@
+
 "use client";
 
 import { useState, useEffect } from 'react';
-import { Sun, Cloud, MapPin, Umbrella, Snowflake, LocateFixed, AlertTriangle } from 'lucide-react'; // Removed Clock, Added LocateFixed, AlertTriangle
+import { Sun, Cloud, MapPin, Umbrella, Snowflake, LocateFixed, AlertTriangle, CloudRain, CloudSnow, CloudLightning, Haze, Wind, HelpCircle } from 'lucide-react'; // Added more specific icons and HelpCircle
 import { useWeather, type WeatherCondition } from '@/context/weather-context'; // Import context hook and type
 import { useToast } from '@/hooks/use-toast'; // Import useToast for notifications
 
@@ -18,8 +19,8 @@ interface WeatherData {
 const mockWeatherDataCycle: WeatherData[] = [
     { temp: "25°C", description: "Sunny", icon: <Sun className="h-4 w-4 text-yellow-500" />, location: "Los Angeles", condition: 'sunny' },
     { temp: "18°C", description: "Cloudy", icon: <Cloud className="h-4 w-4 text-gray-400" />, location: "London", condition: 'cloudy' },
-    { temp: "15°C", description: "Rainy", icon: <Umbrella className="h-4 w-4 text-blue-400" />, location: "Seattle", condition: 'rainy' },
-    { temp: "-2°C", description: "Snowy", icon: <Snowflake className="h-4 w-4 text-blue-200" />, location: "Stockholm", condition: 'snowy' },
+    { temp: "15°C", description: "Rainy", icon: <CloudRain className="h-4 w-4 text-blue-400" />, location: "Seattle", condition: 'rainy' },
+    { temp: "-2°C", description: "Snowy", icon: <CloudSnow className="h-4 w-4 text-blue-200" />, location: "Stockholm", condition: 'snowy' },
 ];
 
 export function TimeWeather() {
@@ -48,75 +49,80 @@ export function TimeWeather() {
   useEffect(() => {
     const fetchRealWeather = async (latitude: number, longitude: number) => {
         console.log(`Geolocation successful: Lat: ${latitude}, Lon: ${longitude}`);
-        // --- API CALL WOULD GO HERE ---
-        // const apiKey = process.env.NEXT_PUBLIC_OPENWEATHERMAP_API_KEY;
-        // if (!apiKey) {
-        //     console.error("Weather API key not configured.");
-        //     setError("Weather service unavailable.");
-        //     setWeatherCondition(null);
-        //     setLoadingWeather(false);
-        //     setUsingMockData(true); // Fallback to mock if API key missing
-        //     toast({ title: "Weather Service", description: "API key missing. Falling back to mock data.", variant: "destructive" });
-        //     return;
-        // }
-        // const apiUrl = `https://api.openweathermap.org/data/2.5/weather?lat=${latitude}&lon=${longitude}&appid=${apiKey}&units=metric`;
-        // try {
-        //     const response = await fetch(apiUrl);
-        //     if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-        //     const data = await response.json();
-        //     // --- PARSE API RESPONSE AND SET STATE ---
-        //     // Example parsing (adjust based on actual API response structure):
-        //     const temp = `${Math.round(data.main.temp)}°C`;
-        //     const description = data.weather[0]?.description || 'Unknown';
-        //     const condition = mapApiConditionToLocal(data.weather[0]?.main); // Helper needed
-        //     const locationName = data.name;
-        //     setWeather({
-        //          temp,
-        //          description,
-        //          icon: getWeatherIcon(condition), // Helper needed
-        //          location: locationName,
-        //          condition,
-        //     });
-        //     setWeatherCondition(condition);
-        //     setError(null);
-        //     setUsingMockData(false);
-        // } catch (fetchError) {
-        //     console.error("Error fetching real weather:", fetchError);
-        //     setError("Could not fetch weather.");
-        //     setWeatherCondition(null);
-        //     setUsingMockData(true); // Fallback to mock on fetch error
-        //     toast({ title: "Weather Error", description: "Could not fetch real weather. Falling back to mock data.", variant: "destructive" });
-        // } finally {
-        //     setLoadingWeather(false);
-        // }
+        setLoadingWeather(true);
+        setError(null);
+        setUsingMockData(false); // Assume real data initially
 
-        // --- Placeholder Implementation (Remove when API call is added) ---
-        await new Promise(resolve => setTimeout(resolve, 300)); // Simulate short delay
-        console.warn("Real weather fetch not implemented. Using placeholder/mock fallback.");
-        setWeather({
-            temp: "N/A",
-            description: "Real weather requires API key",
-            icon: <AlertTriangle className="h-4 w-4 text-orange-500" />,
-            location: "Your Location",
-            condition: null
-        });
-        setWeatherCondition(null); // Set context condition to null
-        setError("Real weather needs setup."); // Indicate setup needed
-        setLoadingWeather(false);
-        setUsingMockData(true); // Technically falling back
-        // toast({ title: "Weather Info", description: "Real weather fetch needs API configuration.", variant: "default" });
-         // --- End Placeholder ---
+        const apiKey = process.env.NEXT_PUBLIC_OPENWEATHERMAP_API_KEY;
+        if (!apiKey) {
+            console.error("Weather API key not configured (NEXT_PUBLIC_OPENWEATHERMAP_API_KEY).");
+            setError("Weather unavailable.");
+            setWeatherCondition(null);
+            setLoadingWeather(false);
+            setUsingMockData(true); // Fallback to mock if API key missing
+            toast({ title: "Weather Service Error", description: "API key missing. Using mock data.", variant: "destructive" });
+            return;
+        }
+        const apiUrl = `https://api.openweathermap.org/data/2.5/weather?lat=${latitude}&lon=${longitude}&appid=${apiKey}&units=metric`;
+        try {
+            const response = await fetch(apiUrl);
+            if (!response.ok) {
+                 const errorData = await response.json().catch(() => ({ message: `HTTP error! status: ${response.status}` }));
+                 throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+            }
+            const data = await response.json();
+
+            // --- PARSE API RESPONSE AND SET STATE ---
+            if (!data.main || !data.weather || !data.weather[0]) {
+                throw new Error("Invalid API response structure.");
+            }
+
+            const temp = `${Math.round(data.main.temp)}°C`;
+            // Capitalize first letter of description
+            const description = data.weather[0].description
+                                 ? data.weather[0].description.charAt(0).toUpperCase() + data.weather[0].description.slice(1)
+                                 : 'Unknown';
+            const condition = mapApiConditionToLocal(data.weather[0].main); // Use helper
+            const locationName = data.name; // City name from API
+
+            setWeather({
+                 temp,
+                 description,
+                 icon: getWeatherIcon(condition), // Use helper
+                 location: locationName, // Store location name
+                 condition,
+            });
+            setWeatherCondition(condition); // Update context
+            setError(null); // Clear any previous error
+            setUsingMockData(false);
+            console.log("Real weather fetched successfully:", { temp, description, locationName, condition });
+
+        } catch (fetchError) {
+            console.error("Error fetching real weather:", fetchError);
+            setError("Weather unavailable."); // Keep error simple for UI
+            setWeatherCondition(null);
+            setUsingMockData(true); // Fallback to mock on fetch error
+            toast({ title: "Weather Error", description: `Could not fetch weather. ${fetchError instanceof Error ? fetchError.message : ''}. Using mock data.`, variant: "destructive" });
+        } finally {
+            setLoadingWeather(false);
+        }
     };
 
     const handleGeolocationError = (error: GeolocationPositionError) => {
-      console.warn("Geolocation error:", error.message);
+      console.warn("Geolocation error:", error.message, `Code: ${error.code}`);
       let message = "Could not get location. ";
       if (error.code === error.PERMISSION_DENIED) {
-          message += "Location permission denied.";
+          message += "Please enable location permissions in your browser settings.";
+      } else if (error.code === error.POSITION_UNAVAILABLE) {
+          message += "Location information is unavailable.";
+      } else if (error.code === error.TIMEOUT) {
+           message += "Request timed out.";
       } else {
-          message += "Falling back to mock weather.";
+          message += "An unknown error occurred.";
       }
-      setError(message);
+      message += " Using mock weather.";
+
+      setError(message.split(" Using mock weather.")[0]); // Show only the location error part initially
       toast({ title: "Location Error", description: message, variant: "destructive" });
       setWeatherCondition(null); // Clear condition on error
       setLoadingWeather(false);
@@ -124,25 +130,27 @@ export function TimeWeather() {
     };
 
     // Check for geolocation support
-    if (!navigator.geolocation) {
-      setError("Geolocation is not supported by your browser. Falling back to mock weather.");
-      toast({ title: "Compatibility Issue", description: "Geolocation not supported. Using mock weather.", variant: "destructive" });
+    if (typeof window !== 'undefined' && !navigator.geolocation) {
+      setError("Geolocation not supported.");
+      toast({ title: "Compatibility Issue", description: "Geolocation not supported by this browser. Using mock weather.", variant: "destructive" });
       setWeatherCondition(null);
       setLoadingWeather(false);
       setUsingMockData(true);
       return;
     }
 
-    // Request location
-    setLoadingWeather(true);
-    setError(null); // Clear previous errors
-    setUsingMockData(false); // Assume real data initially
-    navigator.geolocation.getCurrentPosition(
-      (position) => fetchRealWeather(position.coords.latitude, position.coords.longitude),
-      handleGeolocationError,
-      { timeout: 10000 } // Add a timeout
-    );
+    // Request location only on client-side after mount
+    if (typeof window !== 'undefined') {
+        console.log("Requesting geolocation...");
+        navigator.geolocation.getCurrentPosition(
+        (position) => fetchRealWeather(position.coords.latitude, position.coords.longitude),
+        handleGeolocationError,
+        { enableHighAccuracy: false, timeout: 10000, maximumAge: 600000 } // Use standard accuracy, 10s timeout, cache for 10 min
+        );
+    }
 
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [setWeatherCondition, toast]); // Run once on mount
 
    // --- Effect for Mock Data Cycle (ONLY RUNS if usingMockData is true) ---
@@ -153,7 +161,6 @@ export function TimeWeather() {
 
      const fetchMockWeather = async () => {
        setLoadingWeather(true); // Show loading briefly for mock change
-       // Simulate API call delay
        await new Promise(resolve => setTimeout(resolve, 200)); // Short delay
 
        const currentMockWeather = mockWeatherDataCycle[weatherIndex];
@@ -182,7 +189,6 @@ export function TimeWeather() {
     <div className="flex items-center gap-3 sm:gap-4 text-xs sm:text-sm text-muted-foreground">
       {/* Time Display (No Icon) */}
       <div className="flex items-center gap-1">
-        {/* <Clock className="h-4 w-4" /> Removed */}
         {currentTime !== null ? (
           <span>{currentTime}</span>
         ) : (
@@ -208,8 +214,9 @@ export function TimeWeather() {
         ) : weather ? (
           <>
             {weather.icon}
+            {/* Only show temp and description */}
             <span>{weather.temp}, {weather.description}</span>
-            {/* Optionally show location if available and desired */}
+            {/* Optionally show location from API */}
             {/* {weather.location && <span className="hidden md:inline"> - {weather.location}</span>} */}
           </>
         ) : (
@@ -225,22 +232,44 @@ export function TimeWeather() {
 
 // --- Helper functions needed for real API integration ---
 
-// function mapApiConditionToLocal(apiCondition: string): WeatherCondition {
-//     // Map API condition strings (e.g., "Clear", "Clouds", "Rain", "Snow") to your local types
-//     const lowerCaseCondition = apiCondition.toLowerCase();
-//     if (lowerCaseCondition.includes('clear')) return 'sunny';
-//     if (lowerCaseCondition.includes('cloud')) return 'cloudy';
-//     if (lowerCaseCondition.includes('rain') || lowerCaseCondition.includes('drizzle')) return 'rainy';
-//     if (lowerCaseCondition.includes('snow') || lowerCaseCondition.includes('sleet')) return 'snowy';
-//     return null; // Default or unknown
-// }
+/**
+ * Maps OpenWeatherMap main condition strings to local WeatherCondition types.
+ * @param apiCondition - The main weather condition string from OpenWeatherMap (e.g., "Clear", "Clouds", "Rain").
+ * @returns The corresponding local WeatherCondition type or null if unknown.
+ */
+function mapApiConditionToLocal(apiCondition: string | undefined): WeatherCondition {
+    if (!apiCondition) return null;
+    const lowerCaseCondition = apiCondition.toLowerCase();
 
-// function getWeatherIcon(condition: WeatherCondition): React.ReactNode {
-//     switch (condition) {
-//         case 'sunny': return <Sun className="h-4 w-4 text-yellow-500" />;
-//         case 'cloudy': return <Cloud className="h-4 w-4 text-gray-400" />;
-//         case 'rainy': return <Umbrella className="h-4 w-4 text-blue-400" />;
-//         case 'snowy': return <Snowflake className="h-4 w-4 text-blue-200" />;
-//         default: return <HelpCircle className="h-4 w-4 text-muted-foreground" />; // Or some default icon
-//     }
-// }
+    // Map based on OpenWeatherMap main conditions
+    // See: https://openweathermap.org/weather-conditions#Weather-Condition-Codes-2
+    if (lowerCaseCondition.includes('clear')) return 'sunny';
+    if (lowerCaseCondition.includes('cloud')) return 'cloudy';
+    if (lowerCaseCondition.includes('rain') || lowerCaseCondition.includes('drizzle')) return 'rainy';
+    if (lowerCaseCondition.includes('snow') || lowerCaseCondition.includes('sleet')) return 'snowy';
+    // Add more specific conditions if needed for animations
+    if (lowerCaseCondition.includes('thunderstorm')) return 'rainy'; // Group thunderstorm with rainy for now
+    if (lowerCaseCondition.includes('mist') || lowerCaseCondition.includes('fog') || lowerCaseCondition.includes('haze')) return 'cloudy'; // Group atmospheric conditions with cloudy
+    if (lowerCaseCondition.includes('squall') || lowerCaseCondition.includes('tornado')) return 'cloudy'; // Group extreme weather with cloudy for now
+
+    console.warn("Unmapped API weather condition:", apiCondition);
+    return null; // Default or unknown
+}
+
+/**
+ * Returns the appropriate icon component based on the local WeatherCondition type.
+ * @param condition - The local WeatherCondition type.
+ * @returns A ReactNode representing the icon.
+ */
+function getWeatherIcon(condition: WeatherCondition): React.ReactNode {
+    switch (condition) {
+        case 'sunny': return <Sun className="h-4 w-4 text-yellow-500" />;
+        case 'cloudy': return <Cloud className="h-4 w-4 text-gray-400" />;
+        case 'rainy': return <CloudRain className="h-4 w-4 text-blue-400" />; // More specific rain icon
+        case 'snowy': return <CloudSnow className="h-4 w-4 text-blue-200" />; // More specific snow icon
+        // Add other icons if mapApiConditionToLocal is expanded
+        // case 'windy': return <Wind className="h-4 w-4 text-gray-500" />;
+        // case 'stormy': return <CloudLightning className="h-4 w-4 text-yellow-600" />;
+        default: return <HelpCircle className="h-4 w-4 text-muted-foreground" />; // Default icon for null or unmapped
+    }
+}
