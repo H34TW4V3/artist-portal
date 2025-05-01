@@ -53,8 +53,10 @@ interface LoginFormProps {
     onLoginSuccess: (name: string, imageUrl: string | null) => void;
 }
 
-// TODO: Place your login sound file at /public/sounds/login-jingle.mp3
+// IMPORTANT: Place your login sound file at /public/sounds/login-jingle.mp3
+// Linking directly to Google Drive is unreliable. Download the file and place it locally.
 const LOGIN_JINGLE_PATH = '/sounds/login-jingle.mp3';
+
 
 // Helper to get initials
 const getInitials = (name: string | undefined | null) => {
