@@ -12,8 +12,8 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 
-// Placeholder version - In a real app, you might fetch this dynamically or inject it at build time.
-const APP_VERSION = "1.0.0"; // TODO: Replace with dynamic version if possible
+// Placeholder version - Getting the commit ID requires build-time configuration.
+const APP_VERSION = process.env.NEXT_PUBLIC_COMMIT_SHA || "Development Build"; // Use env var if available, else placeholder
 
 interface AboutModalProps {
   isOpen: boolean;
@@ -32,7 +32,12 @@ export function AboutModal({ isOpen, onClose }: AboutModalProps) {
         </DialogHeader>
 
         <div className="py-4 text-center text-foreground">
-          <p className="text-lg font-semibold">Version {APP_VERSION}</p>
+          <p className="text-lg font-semibold">Version: {APP_VERSION}</p>
+           {APP_VERSION === "Development Build" && (
+             <p className="text-xs text-muted-foreground mt-1">
+                 (Set NEXT_PUBLIC_COMMIT_SHA at build time for commit ID)
+             </p>
+           )}
           <p className="text-sm text-muted-foreground mt-2">
             © {new Date().getFullYear()} Oxygen Group PLC. All rights reserved.
           </p>
@@ -49,3 +54,4 @@ export function AboutModal({ isOpen, onClose }: AboutModalProps) {
     </Dialog>
   );
 }
+
