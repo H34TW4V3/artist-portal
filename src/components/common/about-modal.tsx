@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 
 // Placeholder version - Getting the commit ID requires build-time configuration.
 const APP_VERSION = process.env.NEXT_PUBLIC_COMMIT_SHA || "Development Build"; // Use env var if available, else placeholder
+const APP_CODENAME = process.env.NEXT_PUBLIC_CODENAME || "Unspecified"; // Get codename from env var
 
 interface AboutModalProps {
   isOpen: boolean;
@@ -31,14 +32,20 @@ export function AboutModal({ isOpen, onClose }: AboutModalProps) {
           </DialogDescription>
         </DialogHeader>
 
-        <div className="py-4 text-center text-foreground">
-          <p className="text-lg font-semibold">Version: {APP_VERSION}</p>
+        <div className="py-4 text-center text-foreground space-y-1">
+          <p className="text-base font-medium">Codename: {APP_CODENAME}</p>
+          <p className="text-base font-medium">Version: {APP_VERSION}</p>
            {APP_VERSION === "Development Build" && (
              <p className="text-xs text-muted-foreground mt-1">
                  (Set NEXT_PUBLIC_COMMIT_SHA at build time for commit ID)
              </p>
            )}
-          <p className="text-sm text-muted-foreground mt-2">
+            {APP_CODENAME === "Unspecified" && (
+             <p className="text-xs text-muted-foreground mt-1">
+                 (Set NEXT_PUBLIC_CODENAME at build time for codename)
+             </p>
+           )}
+          <p className="text-sm text-muted-foreground pt-2">
             © {new Date().getFullYear()} Oxygen Group PLC. All rights reserved.
           </p>
         </div>
