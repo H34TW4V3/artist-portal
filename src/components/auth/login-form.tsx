@@ -49,6 +49,9 @@ interface LoginFormProps {
     onLoginSuccess: () => void;
 }
 
+// TODO: Place your login sound file at /public/sounds/login-jingle.mp3
+const LOGIN_JINGLE_PATH = '/sounds/login-jingle.mp3';
+
 export function LoginForm({ onLoginSuccess }: LoginFormProps) {
   const { login, loading: authLoading } = useAuth(); // Get login function and loading state from context
   const { toast } = useToast();
@@ -57,7 +60,16 @@ export function LoginForm({ onLoginSuccess }: LoginFormProps) {
   const [currentStep, setCurrentStep] = useState(1);
   const [previousStep, setPreviousStep] = useState(1); // For animation direction
   const [enteredEmail, setEnteredEmail] = useState(""); // Store email from step 1
+  const [audio, setAudio] = useState<HTMLAudioElement | null>(null); // State for audio element
 
+  useEffect(() => {
+    // Preload audio element on the client side
+    if (typeof window !== 'undefined') {
+      const audioInstance = new Audio(LOGIN_JINGLE_PATH);
+      audioInstance.preload = 'auto';
+      setAudio(audioInstance);
+    }
+  }, []);
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema), // Use combined schema for full validation context if needed
@@ -102,7 +114,7 @@ export function LoginForm({ onLoginSuccess }: LoginFormProps) {
 
      const isValid = await form.trigger(fieldsToValidate);
      if (!isValid) {
-          toast({ title: "Validation Error", description: "Please fix the errors before proceeding.", variant: "destructive" });
+          toast({ title: "Validation Error", description: "Please fix the errors before proceeding.", variant: "destructive", duration: 2000 });
      }
      return isValid;
    };
@@ -129,11 +141,21 @@ export function LoginForm({ onLoginSuccess }: LoginFormProps) {
     }
   };
 
+  // Play login sound function
+  const playLoginSound = () => {
+    if (audio) {
+      audio.play().catch(error => console.error("Error playing login sound:", error));
+    } else {
+       console.warn("Login sound audio element not ready.");
+    }
+  };
+
 
   async function onSubmit(values: LoginFormValues) {
     // Login logic now uses the values directly from the form state
     try {
       await login(values.artistId, values.password); // Use the validated values
+       playLoginSound(); // Play sound on success
        onLoginSuccess(); // Call the success handler passed from parent
     } catch (error) {
       console.error("Login failed:", error);
@@ -151,6 +173,7 @@ export function LoginForm({ onLoginSuccess }: LoginFormProps) {
             title: "Login Failed",
             description: error instanceof Error ? error.message : "An unexpected error occurred.",
             variant: "destructive",
+            duration: 2000
           });
       }
     }
@@ -284,4 +307,5 @@ export function LoginForm({ onLoginSuccess }: LoginFormProps) {
     </>
   );
 }
+
 
