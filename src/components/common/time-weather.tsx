@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { Clock, Sun, Cloud, MapPin, Umbrella, Snowflake } from 'lucide-react'; // Import more icons
+import { Clock, Sun, Cloud, MapPin, Umbrella, Snowflake } from 'lucide-react'; // MapPin no longer used directly, keep for potential future use
 import { useWeather, type WeatherCondition } from '@/context/weather-context'; // Import context hook and type
 
 // Extended Placeholder weather data structure matching WeatherContext
@@ -10,17 +10,17 @@ interface WeatherData {
   temp: string;
   description: string;
   icon: React.ReactNode;
-  location: string;
+  location: string; // Location kept in mock data structure for cycle logic, but not displayed
   condition: WeatherCondition; // Add condition field
 }
 
-// Mock weather cycle
+// Mock weather cycle (Kept for demonstration as real weather requires API key)
 const mockWeatherConditions: WeatherCondition[] = ['sunny', 'cloudy', 'rainy', 'snowy'];
 const mockWeatherDataCycle: WeatherData[] = [
     { temp: "25°C", description: "Sunny", icon: <Sun className="h-4 w-4 text-yellow-500" />, location: "Los Angeles", condition: 'sunny' },
-    { temp: "18°C", description: "Partly Cloudy", icon: <Cloud className="h-4 w-4 text-gray-400" />, location: "London", condition: 'cloudy' },
-    { temp: "15°C", description: "Light Rain", icon: <Umbrella className="h-4 w-4 text-blue-400" />, location: "Seattle", condition: 'rainy' },
-    { temp: "-2°C", description: "Snowing", icon: <Snowflake className="h-4 w-4 text-blue-200" />, location: "Stockholm", condition: 'snowy' },
+    { temp: "18°C", description: "Cloudy", icon: <Cloud className="h-4 w-4 text-gray-400" />, location: "London", condition: 'cloudy' }, // Changed description slightly for variety
+    { temp: "15°C", description: "Rainy", icon: <Umbrella className="h-4 w-4 text-blue-400" />, location: "Seattle", condition: 'rainy' }, // Changed description slightly
+    { temp: "-2°C", description: "Snowy", icon: <Snowflake className="h-4 w-4 text-blue-200" />, location: "Stockholm", condition: 'snowy' }, // Changed description slightly
 ];
 
 export function TimeWeather() {
@@ -43,9 +43,13 @@ export function TimeWeather() {
     return () => clearInterval(intervalId); // Cleanup interval on unmount
   }, []);
 
-  // Fetch location and weather (using mock cycle for now)
+  // Fetch location and weather (using mock cycle for demonstration)
+  // NOTE: To use browser location, you'd replace the mock logic below with:
+  // 1. navigator.geolocation.getCurrentPosition to get lat/lon.
+  // 2. Fetch request to a weather API (like OpenWeatherMap - requires API key) using the coordinates.
+  // 3. Update state with real weather data and call setWeatherCondition.
   useEffect(() => {
-    const fetchLocationAndWeather = async () => {
+    const fetchMockWeather = async () => {
       setLoadingWeather(true);
       setError(null);
 
@@ -70,8 +74,9 @@ export function TimeWeather() {
       }
     };
 
-    fetchLocationAndWeather();
-  }, [weatherIndex, setWeatherCondition]); // Rerun when weatherIndex or setWeatherCondition changes
+    fetchMockWeather();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [weatherIndex]); // Rerun when weatherIndex changes
 
    // Effect to cycle through mock weather every 15 seconds
    useEffect(() => {
@@ -98,7 +103,7 @@ export function TimeWeather() {
       {/* Separator */}
       <div className="h-4 w-px bg-border/50 hidden sm:block"></div>
 
-      {/* Weather Display */}
+      {/* Weather Display (Updated - No Location) */}
       <div className="flex items-center gap-1">
         {loadingWeather ? (
           <span className="opacity-50">Loading weather...</span>
@@ -107,10 +112,10 @@ export function TimeWeather() {
         ) : weather ? (
           <>
             {weather.icon}
-            <span className="hidden sm:inline">{weather.temp}, {weather.description}</span>
-            <span className="sm:hidden">{weather.temp}</span> {/* Show temp only on small screens */}
-            <MapPin className="h-4 w-4 ml-1 hidden md:inline" />
-            <span className="hidden md:inline">{weather.location}</span>
+            <span className="">{weather.temp}, {weather.description}</span>
+            {/* Location Removed */}
+            {/* <MapPin className="h-4 w-4 ml-1 hidden md:inline" /> */}
+            {/* <span className="hidden md:inline">{weather.location}</span> */}
           </>
         ) : (
           <span className="opacity-50">Weather unavailable</span>
