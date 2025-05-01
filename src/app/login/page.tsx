@@ -7,39 +7,10 @@ import { cn } from '@/lib/utils';
 import { useAuth } from '@/context/auth-context';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react'; // Import useState
-// Removed Loader2 import
 import { SplashScreen } from '@/components/common/splash-screen'; // Import SplashScreen
 
 // Placeholder URL for the GIF - replace with actual URL
 const LOGIN_BACKGROUND_GIF_URL = "https://giffiles.alphacoders.com/173/173157.gif"; // Updated GIF URL
-
-// Custom Login Icon based on the provided image - ONLY for Step 1
-const LoginIconStep1 = () => (
-    // Add subtle pulse animation to the icon
-    <svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 100 100" className="h-32 w-32 mb-8 text-primary animate-subtle-pulse"> {/* Increased size & adjusted margin */}
-      <defs>
-        <linearGradient id="oxygenGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" style={{stopColor: 'hsl(180, 100%, 70%)', stopOpacity: 1}} /> {/* Cyan-ish */}
-          <stop offset="50%" style={{stopColor: 'hsl(300, 100%, 80%)', stopOpacity: 1}} /> {/* Magenta-ish */}
-          <stop offset="100%" style={{stopColor: 'hsl(35, 100%, 75%)', stopOpacity: 1}} /> {/* Orange-ish */}
-        </linearGradient>
-      </defs>
-      {/* Outer circle with gradient stroke */}
-      <circle cx="50" cy="50" r="45" fill="none" stroke="url(#oxygenGradient)" strokeWidth="3" />
-      {/* Stylized 'X' with gradient stroke */}
-      <path
-        d="M30 30 L70 70 M70 30 L30 70"
-        stroke="url(#oxygenGradient)"
-        strokeWidth="10" // Adjust thickness as needed
-        strokeLinecap="round"
-        fill="none" // Use stroke instead of fill for the X lines if preferred
-      />
-        {/* If fill is desired for the X:
-         <path d="M30 30 L50 50 L70 30 L50 50 L70 70 L50 50 L30 70 L50 50 Z" fill="url(#oxygenGradient)" />
-        */}
-    </svg>
-);
-
 
 export default function LoginPage() {
     const { user, loading } = useAuth();
@@ -53,11 +24,6 @@ export default function LoginPage() {
     useEffect(() => {
         // Redirect authenticated users away from login page
         if (!loading && user) {
-             // Check if splash screen should be shown (only immediately after login success)
-             // We need a mechanism to know if the redirection is due to a fresh successful login.
-             // This might involve query params or a temporary state, but for now, let's assume
-             // if user exists and we are on login, we redirect without splash here.
-             // The splash logic is now primarily handled by the HomePage itself.
             router.replace('/'); // Redirect to home page immediately
         }
     }, [user, loading, router]);
@@ -116,17 +82,7 @@ export default function LoginPage() {
                     "relative z-10 w-full max-w-md rounded-xl border border-border/30 shadow-xl overflow-hidden animate-fade-in-up bg-card/20 dark:bg-card/10", // Added background opacity, ensure relative and z-10
                     !isCardVisible && "animate-fade-out" // Apply fade-out when card should hide
                  )}>
-                    {/* Card Header - Only shown effectively for Step 1 */}
-                     <CardHeader className="items-center text-center p-6 border-b border-border/30">
-                        {/* Use custom icon - Display only on step 1 logic handled within LoginForm? No, keep here */}
-                        {/* Conditionally render header content based on step? Or simplify? Let's simplify. */}
-                        {/* The header might be persistent, but step 2 content changes */}
-                        <LoginIconStep1 /> {/* Always show the main logo */}
-                        <CardTitle className="text-2xl font-semibold tracking-tight text-primary">Artist Hub Login</CardTitle>
-                        <CardDescription className="text-muted-foreground text-sm">
-                           Enter your credentials to access your dashboard.
-                        </CardDescription>
-                    </CardHeader>
+                    {/* Removed CardHeader - It's now inside LoginForm and conditional */}
 
                     {/* Card Content - LoginForm (Now multi-step) */}
                      {/* Pass handleLoginSuccess to LoginForm */}
@@ -141,4 +97,3 @@ export default function LoginPage() {
         </div>
     );
 }
-

@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"; // Import Avatar components
+import { CardDescription, CardHeader, CardTitle } from "@/components/ui/card"; // Import Card components for header
 import { useToast } from "@/hooks/use-toast";
 import { ForgotPasswordModal } from "./forgot-password-modal"; // Import the modal
 import { useAuth } from "@/context/auth-context"; // Import useAuth hook
@@ -59,6 +60,30 @@ const LOGIN_JINGLE_PATH = '/sounds/login-jingle.mp3';
 const getInitials = (name: string | undefined | null) => {
     return name?.split(' ').map(n => n[0]).join('').toUpperCase() || '?'; // Default to '?'
 };
+
+// Custom Login Icon based on the provided image - Moved here
+const LoginIconStep1 = () => (
+    // Add subtle pulse animation to the icon
+    <svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 100 100" className="h-32 w-32 mb-4 text-primary animate-subtle-pulse"> {/* Adjusted margin */}
+      <defs>
+        <linearGradient id="oxygenGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" style={{stopColor: 'hsl(180, 100%, 70%)', stopOpacity: 1}} /> {/* Cyan-ish */}
+          <stop offset="50%" style={{stopColor: 'hsl(300, 100%, 80%)', stopOpacity: 1}} /> {/* Magenta-ish */}
+          <stop offset="100%" style={{stopColor: 'hsl(35, 100%, 75%)', stopOpacity: 1}} /> {/* Orange-ish */}
+        </linearGradient>
+      </defs>
+      {/* Outer circle with gradient stroke */}
+      <circle cx="50" cy="50" r="45" fill="none" stroke="url(#oxygenGradient)" strokeWidth="3" />
+      {/* Stylized 'X' with gradient stroke */}
+      <path
+        d="M30 30 L70 70 M70 30 L30 70"
+        stroke="url(#oxygenGradient)"
+        strokeWidth="10" // Adjust thickness as needed
+        strokeLinecap="round"
+        fill="none" // Use stroke instead of fill for the X lines if preferred
+      />
+    </svg>
+);
 
 
 export function LoginForm({ onLoginSuccess }: LoginFormProps) {
@@ -148,8 +173,6 @@ export function LoginForm({ onLoginSuccess }: LoginFormProps) {
             } catch (error) {
                 console.warn("Could not fetch profile by email:", error);
                 setProfileData(null); // Ensure profile data is null on error
-                 // Optionally inform user profile couldn't load, but proceed anyway
-                 // toast({ title: "Profile Info", description: "Could not load profile details.", variant: "default", duration: 2000});
             } finally {
                  setIsFetchingProfile(false);
                  goToStep(currentStep + 1); // Move to next step regardless of profile fetch result
@@ -186,7 +209,6 @@ export function LoginForm({ onLoginSuccess }: LoginFormProps) {
 
   async function onSubmit(values: LoginFormValues) {
     // Determine name and image URL *before* calling login/onLoginSuccess
-    // These were determined when moving from step 1 to 2
     const nameForSplash = profileData?.name || enteredEmail?.split('@')[0] || "User";
     const imageUrlForSplash = profileData?.imageUrl || null;
 
@@ -228,17 +250,28 @@ export function LoginForm({ onLoginSuccess }: LoginFormProps) {
 
         {/* Use relative container for step animations - Adjusted min-height */}
         <div className="relative overflow-hidden">
+
+             {/* Step 1 Header (Only shown on step 1) */}
+             {currentStep === 1 && (
+                <CardHeader className="items-center text-center p-6 border-b border-border/30">
+                    <LoginIconStep1 /> {/* Always show the main logo */}
+                    <CardTitle className="text-2xl font-semibold tracking-tight text-primary">Artist Hub Login</CardTitle>
+                    <CardDescription className="text-muted-foreground text-sm">
+                        Enter your credentials to access your dashboard.
+                    </CardDescription>
+                </CardHeader>
+             )}
+
              <form
                onSubmit={(e) => {
                  e.preventDefault();
                  handleNext(); // Trigger next/submit logic
                 }}
-                className="space-y-4 px-6 pb-6" // Add padding
+                className="space-y-4 px-6 pb-6 pt-6" // Add padding (removed pb-6 initially, added back with pt-6)
                 aria-live="polite"
              >
               {/* Step 1: Email */}
-               {/* Adjusted min-height */}
-              <div className={cn("space-y-4 min-h-[100px]", getAnimationClasses(1))}>
+              <div className={cn("space-y-4 min-h-[80px]", getAnimationClasses(1))}> {/* Reduced min-height */}
                 {currentStep === 1 && (
                   <FormField
                     control={form.control}
@@ -264,8 +297,7 @@ export function LoginForm({ onLoginSuccess }: LoginFormProps) {
               </div>
 
               {/* Step 2: Password */}
-               {/* Adjusted min-height */}
-              <div className={cn("space-y-4 flex flex-col items-center min-h-[200px]", getAnimationClasses(2))}>
+              <div className={cn("space-y-4 flex flex-col items-center min-h-[180px]", getAnimationClasses(2))}> {/* Reduced min-height */}
                 {currentStep === 2 && (
                   <>
                     {/* Show Avatar and Name */}
@@ -285,7 +317,6 @@ export function LoginForm({ onLoginSuccess }: LoginFormProps) {
                              <p className="text-lg font-medium text-foreground">
                                 {artistNameStep2} {/* Display artist name */}
                              </p>
-                             {/* Removed redundant "Enter your password" text */}
                          </div>
                      )}
 
@@ -294,8 +325,8 @@ export function LoginForm({ onLoginSuccess }: LoginFormProps) {
                       control={form.control}
                       name="password"
                       render={({ field }) => (
-                        <FormItem className="w-full"> {/* Ensure field takes full width */}
-                          <FormLabel className="sr-only">Password</FormLabel> {/* Hide label visually */}
+                        <FormItem className="w-full">
+                          <FormLabel className="sr-only">Password</FormLabel>
                           <FormControl>
                             <Input
                               type="password"
@@ -303,7 +334,7 @@ export function LoginForm({ onLoginSuccess }: LoginFormProps) {
                               {...field}
                               disabled={authLoading || isFetchingProfile}
                               autoComplete="current-password"
-                              className="bg-background/50 dark:bg-background/30 border-input focus:ring-accent w-full" // Ensure input takes full width
+                              className="bg-background/50 dark:bg-background/30 border-input focus:ring-accent w-full"
                             />
                           </FormControl>
                           <FormMessage />
@@ -338,14 +369,14 @@ export function LoginForm({ onLoginSuccess }: LoginFormProps) {
                      <ArrowLeft className="mr-2 h-4 w-4" /> Previous
                   </Button>
                   <Button
-                      type="button" // Important: Use type="button" to prevent default form submission
+                      type="button"
                       onClick={handleNext}
-                      disabled={authLoading || isFetchingProfile || (currentStep === 1 && !form.watch('artistId')) || (currentStep === 2 && !form.watch('password'))} // Disable during profile fetch
+                      disabled={authLoading || isFetchingProfile || (currentStep === 1 && !form.watch('artistId')) || (currentStep === 2 && !form.watch('password'))}
                       className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-md disabled:shadow-none disabled:bg-muted disabled:text-muted-foreground"
                   >
-                      {(authLoading || isFetchingProfile) && currentStep === 1 ? ( // Show processing only when fetching profile on step 1
+                      {(authLoading || isFetchingProfile) && currentStep === 1 ? (
                         <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Processing...</>
-                      ) : authLoading && currentStep === 2 ? ( // Show processing on step 2 only during auth check
+                      ) : authLoading && currentStep === 2 ? (
                          <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Processing...</>
                       ) : currentStep === STEPS.length ? (
                          'Login'
@@ -368,4 +399,3 @@ export function LoginForm({ onLoginSuccess }: LoginFormProps) {
     </>
   );
 }
-
