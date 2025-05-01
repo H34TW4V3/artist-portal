@@ -13,8 +13,8 @@ import { SplashScreen } from '@/components/common/splash-screen'; // Import Spla
 // Placeholder URL for the GIF - replace with actual URL
 const LOGIN_BACKGROUND_GIF_URL = "https://giffiles.alphacoders.com/173/173157.gif"; // Updated GIF URL
 
-// Custom Login Icon based on the provided image
-const LoginIcon = () => (
+// Custom Login Icon based on the provided image - ONLY for Step 1
+const LoginIconStep1 = () => (
     // Add subtle pulse animation to the icon
     <svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 100 100" className="h-32 w-32 mb-8 text-primary animate-subtle-pulse"> {/* Increased size & adjusted margin */}
       <defs>
@@ -116,9 +116,12 @@ export default function LoginPage() {
                     "relative z-10 w-full max-w-md rounded-xl border border-border/30 shadow-xl overflow-hidden animate-fade-in-up bg-card/20 dark:bg-card/10", // Added background opacity, ensure relative and z-10
                     !isCardVisible && "animate-fade-out" // Apply fade-out when card should hide
                  )}>
-                    {/* Card Header */}
-                     <CardHeader className="items-center text-center p-6 border-b border-border/30"> {/* Removed background */}
-                        <LoginIcon /> {/* Use custom icon */}
+                    {/* Card Header - Only shown effectively for Step 1 */}
+                     <CardHeader className="items-center text-center p-6 border-b border-border/30">
+                        {/* Use custom icon - Display only on step 1 logic handled within LoginForm? No, keep here */}
+                        {/* Conditionally render header content based on step? Or simplify? Let's simplify. */}
+                        {/* The header might be persistent, but step 2 content changes */}
+                        <LoginIconStep1 /> {/* Always show the main logo */}
                         <CardTitle className="text-2xl font-semibold tracking-tight text-primary">Artist Hub Login</CardTitle>
                         <CardDescription className="text-muted-foreground text-sm">
                            Enter your credentials to access your dashboard.
@@ -126,12 +129,8 @@ export default function LoginPage() {
                     </CardHeader>
 
                     {/* Card Content - LoginForm (Now multi-step) */}
-                     {/* Removed CardContent wrapper */}
                      {/* Pass handleLoginSuccess to LoginForm */}
                      <LoginForm onLoginSuccess={handleLoginSuccess} />
-                     {/* <CardContent className="p-6"> NO LONGER WRAPS LoginForm */}
-                         {/* <LoginForm onLoginSuccess={handleLoginSuccess} /> */}
-                     {/* </CardContent> */}
 
                     {/* Footer - Optional */}
                     <div className="p-4 text-center text-xs text-muted-foreground border-t border-border/30 bg-muted/10 dark:bg-muted/5"> {/* Adjusted footer bg */}
@@ -142,3 +141,4 @@ export default function LoginPage() {
         </div>
     );
 }
+

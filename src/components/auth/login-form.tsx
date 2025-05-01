@@ -226,8 +226,8 @@ export function LoginForm({ onLoginSuccess }: LoginFormProps) {
     <>
       <Form {...form}>
 
-        {/* Use relative container for step animations */}
-        <div className="relative overflow-hidden min-h-[280px]"> {/* Increased min-height */}
+        {/* Use relative container for step animations - Removed min-height */}
+        <div className="relative overflow-hidden">
              <form
                onSubmit={(e) => {
                  e.preventDefault();
@@ -237,7 +237,7 @@ export function LoginForm({ onLoginSuccess }: LoginFormProps) {
                 aria-live="polite"
              >
               {/* Step 1: Email */}
-              <div className={cn("space-y-4", getAnimationClasses(1))}>
+              <div className={cn("space-y-4 min-h-[150px]", getAnimationClasses(1))}> {/* Added min-height for step 1 */}
                 {currentStep === 1 && (
                   <FormField
                     control={form.control}
@@ -263,7 +263,8 @@ export function LoginForm({ onLoginSuccess }: LoginFormProps) {
               </div>
 
               {/* Step 2: Password */}
-              <div className={cn("space-y-4 flex flex-col items-center", getAnimationClasses(2))}> {/* Center content */}
+               {/* Added min-height for step 2 */}
+              <div className={cn("space-y-4 flex flex-col items-center min-h-[230px]", getAnimationClasses(2))}>
                 {currentStep === 2 && (
                   <>
                     {/* Show Avatar and Name */}
@@ -283,7 +284,7 @@ export function LoginForm({ onLoginSuccess }: LoginFormProps) {
                              <p className="text-lg font-medium text-foreground">
                                 {artistNameStep2} {/* Display artist name */}
                              </p>
-                             <p className="text-xs text-muted-foreground">Enter your password</p>
+                             {/* Removed redundant "Enter your password" text */}
                          </div>
                      )}
 
