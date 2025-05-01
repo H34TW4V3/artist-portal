@@ -17,6 +17,7 @@ import { usePathname } from 'next/navigation'; // Import usePathname
 const DEFAULT_WALLPAPER_URL = "https://t4.ftcdn.net/jpg/08/62/54/35/360_F_862543518_D0LQEQDZqkbTNM8CMB6iuiauhfaj4wr6.jpg";
 const LOCAL_STORAGE_WALLPAPER_KEY = 'artistHubWallpaperUrl';
 const LOCAL_STORAGE_THEME_KEY = 'artistHubTheme';
+const LOCAL_STORAGE_WEATHER_ANIMATION_KEY = 'artistHubWeatherAnimationEnabled'; // Key for weather animation setting
 
 // Basic metadata structure - Note: 'use client' components cannot export metadata directly
 // export const metadata: Metadata = {
@@ -37,6 +38,7 @@ export default function RootLayout({
   const [wallpaperUrl, setWallpaperUrl] = useState(DEFAULT_WALLPAPER_URL);
   // Set initial state to 'dark'
   const [theme, setTheme] = useState<'light' | 'dark'>('dark');
+  const [showWeatherAnimations, setShowWeatherAnimations] = useState(true); // State for weather animations
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
   const pathname = usePathname(); // Get current pathname
@@ -59,6 +61,12 @@ export default function RootLayout({
        // No need to check prefers-color-scheme unless you want it to override default
        setTheme('dark'); // Explicitly set dark as fallback if needed
     }
+
+    // Check local storage for weather animation preference
+    const savedWeatherAnimationPref = localStorage.getItem(LOCAL_STORAGE_WEATHER_ANIMATION_KEY);
+    // Default to true if not found or invalid value
+    setShowWeatherAnimations(savedWeatherAnimationPref === 'false' ? false : true);
+
   }, [pathname]); // Re-run when pathname changes to update wallpaper logic
 
   useEffect(() => {
@@ -87,6 +95,15 @@ export default function RootLayout({
     setTheme((prevTheme) => (prevTheme === 'dark' ? 'light' : 'dark'));
   };
 
+   const handleToggleWeatherAnimations = () => {
+    setShowWeatherAnimations((prev) => {
+        const newState = !prev;
+        localStorage.setItem(LOCAL_STORAGE_WEATHER_ANIMATION_KEY, String(newState));
+        return newState;
+    });
+  };
+
+
   // Apply 'dark' class by default before mounting
   return (
     <html lang="en" className={`${GeistSans.variable} ${isMounted ? theme : 'dark'}`}>
@@ -107,8 +124,8 @@ export default function RootLayout({
                 />
              )}
 
-            {/* Weather Animation Overlay - Rendered between wallpaper and content */}
-            {pathname !== '/login' && <WeatherAnimationOverlay />}
+            {/* Weather Animation Overlay - Rendered between wallpaper and content, conditionally */}
+             {pathname !== '/login' && showWeatherAnimations && <WeatherAnimationOverlay />}
 
             {/* Content wrapper */}
             <div className="relative z-10 min-h-screen flex flex-col">
@@ -123,6 +140,8 @@ export default function RootLayout({
                     onOpenWallpaperModal={() => setIsModalOpen(true)}
                     onToggleTheme={handleToggleTheme}
                     currentTheme={theme}
+                    onToggleWeatherAnimations={handleToggleWeatherAnimations} // Pass handler
+                    weatherAnimationsEnabled={showWeatherAnimations} // Pass current state
                 />
                 <WallpaperCustomizerModal
                   isOpen={isModalOpen}
@@ -142,3 +161,4 @@ export default function RootLayout({
     </html>
   );
 }
+
