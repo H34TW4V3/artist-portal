@@ -13,12 +13,12 @@ import { useAuth } from "@/context/auth-context"; // Import useAuth
 import { Skeleton } from "@/components/ui/skeleton"; // Import Skeleton
 import { useRouter } from 'next/navigation'; // Import useRouter
 import { useEffect, useState } from 'react'; // Import useEffect and useState
-import { Loader2 } from 'lucide-react'; // Import Loader2 for loading animation
+import { SplashScreen } from '@/components/common/splash-screen'; // Import SplashScreen
 import { Button } from "@/components/ui/button"; // Keep button for potential future use or structure
 import { getFirestore, doc, getDoc } from "firebase/firestore"; // Import Firestore functions
 import { app } from "@/services/firebase-config"; // Import Firebase app config
 import type { ProfileFormValues } from "@/components/profile/profile-form"; // Import profile type
-import { SplashScreen } from "@/components/common/splash-screen"; // Import SplashScreen
+
 
 // Pineapple Icon Component (retained from previous state)
 const PineappleIcon = () => (
@@ -145,30 +145,29 @@ export default function HomePage() {
     // Combined loading state
     const isLoading = authLoading || profileLoading;
 
-    // Show initial loading indicator *before* splash screen logic kicks in
+    // Show initial loading indicator (now handled by AuthProvider) *before* splash screen logic kicks in
     // This handles the very first auth check
-    if (isLoading && showSplash) { // Only show full page loader if auth/profile loading AND splash hasn't timed out yet
-         return (
-              <div className="flex min-h-screen w-full items-center justify-center bg-background p-4">
-                <Loader2 className="h-16 w-16 animate-spin text-primary" />
-             </div>
-         );
-    }
+    // if (isLoading && showSplash) { // Only show full page loader if auth/profile loading AND splash hasn't timed out yet
+    //      return <SplashScreen />; // Use the consistent splash screen
+    // }
 
-    // Show Splash Screen
-    if (showSplash) {
+    // Show Splash Screen only if not loading and splash hasn't timed out
+    if (!isLoading && showSplash) {
         return <SplashScreen />;
     }
 
 
-    // If not loading and no user, let useEffect handle redirect (or show loader if redirect hasn't happened)
-     if (!user) {
-         return (
-              <div className="flex min-h-screen w-full items-center justify-center bg-background p-4">
-                 <Loader2 className="h-16 w-16 animate-spin text-primary" />
-             </div>
-         );
+    // If not loading and no user, let useEffect handle redirect (AuthProvider shows splash/loader)
+     if (!user && !authLoading) {
+         // AuthProvider handles loading state display
+         return null; // Return null while redirecting or if stuck
      }
+
+     // If still loading (after splash timeout), show the splash screen
+     if (isLoading) {
+         return <SplashScreen />;
+     }
+
 
     // Render the Home/Landing page for authenticated users
     return (
@@ -303,3 +302,4 @@ export default function HomePage() {
         </div>
     );
 }
+

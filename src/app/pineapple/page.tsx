@@ -14,7 +14,7 @@ import { Home, Users, Send, PlusCircle } from "lucide-react"; // Removed Message
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/context/auth-context"; // Import useAuth
 import { useRouter } from 'next/navigation'; // Import useRouter
-import { Loader2 } from 'lucide-react'; // Import Loader2 for loading animation
+import { SplashScreen } from '@/components/common/splash-screen'; // Import SplashScreen
 import { CreatePostModal } from "@/components/pineapple/create-post-modal"; // Import the new modal component
 import { cn } from "@/lib/utils"; // Import cn for conditional classes
 
@@ -55,12 +55,9 @@ export default function PineapplePage() {
     };
 
     // Show loading indicator while checking auth state or if user is not yet available
+    // Use SplashScreen instead of Loader2
     if (loading || !user) {
-        return (
-             <div className="flex min-h-screen w-full items-center justify-center bg-background p-4">
-                 <Loader2 className="h-16 w-16 animate-spin text-primary" />
-            </div>
-        );
+         return <SplashScreen />; // Use the consistent splash screen
     }
 
 
@@ -153,3 +150,4 @@ export default function PineapplePage() {
         </div>
     );
 }
+

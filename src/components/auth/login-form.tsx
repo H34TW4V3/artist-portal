@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState } from "react";
+import React, { useState } from "react"; // Import React
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
@@ -31,7 +31,12 @@ const loginSchema = z.object({
 
 type LoginFormValues = z.infer<typeof loginSchema>;
 
-export function LoginForm() {
+// Add onLoginSuccess prop
+interface LoginFormProps {
+    onLoginSuccess: () => void;
+}
+
+export function LoginForm({ onLoginSuccess }: LoginFormProps) {
   const { login, loading: authLoading } = useAuth(); // Get login function and loading state from context
   const { toast } = useToast();
   const router = useRouter(); // Keep for potential future use (e.g., reading redirect param)
@@ -54,13 +59,15 @@ export function LoginForm() {
     try {
       // Use the login function from the auth context
       await login(values.artistId, values.password);
-      toast({
-        title: "Login Successful",
-        description: "Welcome back!",
-        variant: "default",
-         duration: 2000, // Show for 2 seconds
-      });
+      // Removed toast message for successful login
+      // toast({
+      //   title: "Login Successful",
+      //   description: "Welcome back!",
+      //   variant: "default",
+      //    duration: 2000, // Show for 2 seconds
+      // });
       // Redirect is handled by middleware/AuthProvider state change
+       onLoginSuccess(); // Call the success handler passed from parent
 
     } catch (error) {
       console.error("Login failed:", error);
@@ -153,3 +160,4 @@ export function LoginForm() {
     </>
   );
 }
+

@@ -15,7 +15,7 @@ import { BarChart3, Home } from "lucide-react"; // Keep BarChart3 and Home icon
 import { Button } from "@/components/ui/button"; // Import Button
 import { useAuth } from "@/context/auth-context"; // Import useAuth
 import { useRouter } from 'next/navigation'; // Import useRouter
-import { Loader2 } from 'lucide-react'; // Import Loader2 for loading animation
+import { SplashScreen } from '@/components/common/splash-screen'; // Import SplashScreen
 
 // Define content for each tab's header - Only Statistics needed now
 const tabHeaders = {
@@ -43,16 +43,10 @@ export default function DashboardPage() {
     }
   }, [user, loading, router]);
 
-  // Get the current header content based on activeTab
-  const currentHeader = tabHeaders[activeTab];
-
-   // Show loading indicator while checking auth state or if user is not yet available
-   if (loading || !user) {
-    return (
-         <div className="flex min-h-screen w-full items-center justify-center bg-background p-4">
-             <Loader2 className="h-16 w-16 animate-spin text-primary" />
-        </div>
-    );
+  // Show loading indicator while checking auth state or if user is not yet available
+  // Use SplashScreen instead of Loader2
+  if (loading || !user) {
+    return <SplashScreen />; // Use the consistent splash screen
   }
 
 
@@ -125,3 +119,4 @@ export default function DashboardPage() {
     </div>
   );
 }
+

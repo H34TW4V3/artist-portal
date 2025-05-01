@@ -5,7 +5,7 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { User as FirebaseUser } from 'firebase/auth';
 // Import specific functions needed: login, logout, onAuthStateChange
 import { onAuthStateChange, login as fbLogin, logout as fbLogout } from '@/services/auth';
-import { Loader2 } from 'lucide-react'; // Import Loader2
+import { SplashScreen } from '@/components/common/splash-screen'; // Import SplashScreen
 
 interface AuthContextType {
   user: FirebaseUser | null;
@@ -63,13 +63,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   // Display loading indicator whenever the loading state is true.
-  // This covers initial auth check and the transition period during login/logout attempts.
+  // Use the SplashScreen component for the initial load.
   if (loading) {
-    return (
-      <div className="flex min-h-screen w-full items-center justify-center bg-background p-4">
-        <Loader2 className="h-16 w-16 animate-spin text-primary" />
-      </div>
-    );
+    // Fade out the splash screen after a short delay to avoid abrupt transitions during fast auth checks
+    return <SplashScreen className="animate-fade-out" style={{ animationDelay: '0.5s' }} />;
   }
 
 

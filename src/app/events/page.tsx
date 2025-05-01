@@ -10,7 +10,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/auth-context";
 import { useRouter } from 'next/navigation';
-import { Loader2 } from 'lucide-react';
+import { SplashScreen } from '@/components/common/splash-screen'; // Import SplashScreen
 import { Calendar } from "@/components/ui/calendar"; // Import Calendar component
 import { EventList } from "@/components/events/event-list"; // Import EventList (will create)
 import { CreateEventModal } from "@/components/events/create-event-modal"; // Import CreateEventModal (will create)
@@ -67,12 +67,9 @@ export default function EventsPage() {
 
 
   // Show loading indicator
+  // Use SplashScreen instead of Loader2
   if (loading || (!user && !loading)) { // Show loader if initial auth check ongoing OR if determined no user
-    return (
-      <div className="flex min-h-screen w-full items-center justify-center bg-background p-4">
-        <Loader2 className="h-16 w-16 animate-spin text-primary" />
-      </div>
-    );
+    return <SplashScreen />; // Use the consistent splash screen
   }
 
    // Calculate event dates for calendar highlighting
@@ -189,3 +186,4 @@ export default function EventsPage() {
     </div>
   );
 }
+

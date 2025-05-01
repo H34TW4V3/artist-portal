@@ -6,8 +6,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/context/auth-context';
 import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react'; // Import useState
 import { Loader2 } from 'lucide-react'; // Import Loader2 for loading animation
+import { SplashScreen } from '@/components/common/splash-screen'; // Import SplashScreen
 
 // Placeholder URL for the GIF - replace with actual URL
 const LOGIN_BACKGROUND_GIF_URL = "https://giffiles.alphacoders.com/173/173157.gif"; // Updated GIF URL
@@ -43,22 +44,37 @@ const LoginIcon = () => (
 export default function LoginPage() {
     const { user, loading } = useAuth();
     const router = useRouter();
+    const [showSplash, setShowSplash] = useState(false); // State to control splash visibility *after* login
+    const [isCardVisible, setIsCardVisible] = useState(true); // State to control login card visibility
 
     useEffect(() => {
         // Redirect authenticated users away from login page
         if (!loading && user) {
-            router.replace('/'); // Redirect to home page
+             // Check if splash screen should be shown (only immediately after login success)
+             // We need a mechanism to know if the redirection is due to a fresh successful login.
+             // This might involve query params or a temporary state, but for now, let's assume
+             // if user exists and we are on login, we redirect without splash here.
+             // The splash logic is now primarily handled by the HomePage itself.
+            router.replace('/'); // Redirect to home page immediately
         }
     }, [user, loading, router]);
 
+    const handleLoginSuccess = () => {
+         // Trigger animation: hide card, show splash
+         setIsCardVisible(false);
+         setShowSplash(true);
 
-    // Show loading state while checking auth status initially
+        // Set timer to redirect after splash animation completes
+        setTimeout(() => {
+            router.replace('/'); // Redirect to home page
+        }, 1500); // Match splash screen fade-out duration + delay
+    };
+
+
+    // Show loading state (handled by AuthProvider now)
     if (loading) {
-        return (
-             <div className="flex min-h-screen w-full items-center justify-center bg-gradient-to-br from-background via-muted/20 to-background p-4">
-                 <Loader2 className="h-16 w-16 animate-spin text-primary" />
-            </div>
-        )
+         // AuthProvider shows the splash screen during initial loading
+         return null; // Return null or a minimal placeholder if needed
     }
 
      // If user is already determined and exists, let useEffect handle redirect
@@ -67,7 +83,7 @@ export default function LoginPage() {
      }
 
 
-    // If not loading and no user, show the login form
+    // If not loading and no user, show the login form or splash screen
     return (
         <div className="flex min-h-screen w-full items-center justify-center p-4 relative"> {/* Removed bg-transparent, z-10 */}
              {/* Specific Background for Login Page */}
@@ -76,29 +92,35 @@ export default function LoginPage() {
                  style={{ backgroundImage: `url('${LOGIN_BACKGROUND_GIF_URL}')` }}
              />
 
-            {/* Card container - Ensure it sits above the background */}
-            <div className={cn(
-                "relative z-10 w-full max-w-md rounded-xl border border-border/30 shadow-xl overflow-hidden animate-fade-in-up bg-card/20 dark:bg-card/10" // Added background opacity, ensure relative and z-10
-            )}>
-                {/* Card Header */}
-                 <CardHeader className="items-center text-center p-6 border-b border-border/30"> {/* Removed background */}
-                    <LoginIcon /> {/* Use custom icon */}
-                    <CardTitle className="text-2xl font-semibold tracking-tight text-primary">Artist Hub Login</CardTitle>
-                    <CardDescription className="text-muted-foreground text-sm">
-                       Enter your credentials to access your dashboard.
-                    </CardDescription>
-                </CardHeader>
+             {/* Show splash screen if triggered */}
+             {showSplash && <SplashScreen />}
 
-                {/* Card Content - LoginForm */}
-                 <CardContent className="p-6">
-                     <LoginForm />
-                 </CardContent>
+            {/* Card container - Conditionally render based on visibility */}
+            {isCardVisible && (
+                 <div className={cn(
+                    "relative z-10 w-full max-w-md rounded-xl border border-border/30 shadow-xl overflow-hidden animate-fade-in-up bg-card/20 dark:bg-card/10" // Added background opacity, ensure relative and z-10
+                 )}>
+                    {/* Card Header */}
+                     <CardHeader className="items-center text-center p-6 border-b border-border/30"> {/* Removed background */}
+                        <LoginIcon /> {/* Use custom icon */}
+                        <CardTitle className="text-2xl font-semibold tracking-tight text-primary">Artist Hub Login</CardTitle>
+                        <CardDescription className="text-muted-foreground text-sm">
+                           Enter your credentials to access your dashboard.
+                        </CardDescription>
+                    </CardHeader>
 
-                {/* Footer - Optional */}
-                <div className="p-4 text-center text-xs text-muted-foreground border-t border-border/30 bg-muted/10 dark:bg-muted/5"> {/* Adjusted footer bg */}
-                    © {new Date().getFullYear()} Oxygen Group PLC. All rights reserved.
-                </div>
-            </div>
+                    {/* Card Content - LoginForm */}
+                     <CardContent className="p-6">
+                         {/* Pass handleLoginSuccess to LoginForm */}
+                         <LoginForm onLoginSuccess={handleLoginSuccess} />
+                     </CardContent>
+
+                    {/* Footer - Optional */}
+                    <div className="p-4 text-center text-xs text-muted-foreground border-t border-border/30 bg-muted/10 dark:bg-muted/5"> {/* Adjusted footer bg */}
+                        © {new Date().getFullYear()} Oxygen Group PLC. All rights reserved.
+                    </div>
+                 </div>
+             )}
         </div>
     );
 }

@@ -11,7 +11,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/auth-context";
 import { useRouter } from 'next/navigation';
-import { Loader2 } from 'lucide-react';
+import { SplashScreen } from '@/components/common/splash-screen'; // Import SplashScreen
 
 export default function ReleasesPage() {
   const { user, loading } = useAuth();
@@ -25,12 +25,9 @@ export default function ReleasesPage() {
   }, [user, loading, router]);
 
   // Show loading indicator
+  // Use SplashScreen instead of Loader2
   if (loading || !user) {
-    return (
-      <div className="flex min-h-screen w-full items-center justify-center bg-background p-4">
-        <Loader2 className="h-16 w-16 animate-spin text-primary" />
-      </div>
-    );
+     return <SplashScreen />; // Use the consistent splash screen
   }
 
   return (
@@ -80,3 +77,4 @@ export default function ReleasesPage() {
     </div>
   );
 }
+
