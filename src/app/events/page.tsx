@@ -69,7 +69,7 @@ export default function EventsPage() {
   // Show loading indicator
   // Use SplashScreen instead of Loader2
   if (loading || (!user && !loading)) { // Show loader if initial auth check ongoing OR if determined no user
-    return <SplashScreen />; // Use the consistent splash screen
+    return <SplashScreen loadingText="Loading Events..." />; // Pass custom text
   }
 
    // Calculate event dates for calendar highlighting
@@ -186,4 +186,3 @@ export default function EventsPage() {
     </div>
   );
 }
-

@@ -27,7 +27,7 @@ export default function ReleasesPage() {
   // Show loading indicator
   // Use SplashScreen instead of Loader2
   if (loading || !user) {
-     return <SplashScreen />; // Use the consistent splash screen
+     return <SplashScreen loadingText="Loading Releases..." />; // Pass custom text
   }
 
   return (
@@ -77,4 +77,3 @@ export default function ReleasesPage() {
     </div>
   );
 }
-

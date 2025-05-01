@@ -5,13 +5,15 @@ import { cn } from '@/lib/utils';
 
 interface SplashScreenProps {
     className?: string;
+    style?: React.CSSProperties; // Allow passing style, e.g., for animation delay
+    loadingText?: string; // Optional prop for custom loading text
 }
 
 // Placeholder URL for the GIF - consistent with login page
 // Ensure this constant is defined or accessible if needed elsewhere
 const LOGIN_BACKGROUND_GIF_URL = "https://giffiles.alphacoders.com/173/173157.gif";
 
-export const SplashScreen: React.FC<SplashScreenProps> = ({ className }) => {
+export const SplashScreen: React.FC<SplashScreenProps> = ({ className, style, loadingText }) => {
     return (
         <div
             className={cn(
@@ -19,7 +21,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ className }) => {
                 "transition-opacity duration-500 ease-in-out", // Ensure opacity transition
                 className
             )}
-            style={{ animationDelay: '1s', animationFillMode: 'forwards' }} // Delay fade-out, keep final state
+            style={{ animationDelay: '1s', animationFillMode: 'forwards', ...style }} // Delay fade-out, keep final state, merge styles
         >
             {/* Background GIF - Same as login page */}
             <div
@@ -43,7 +45,10 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ className }) => {
                 </svg>
                 {/* Loading Indicator */}
                 <Loader2 className="h-8 w-8 animate-spin text-primary mt-4" />
-                <p className="mt-4 text-lg text-foreground font-semibold">Loading Artist Hub...</p>
+                 {/* Use loadingText prop or default */}
+                <p className="mt-4 text-lg text-foreground font-semibold">
+                    {loadingText || 'Loading Artist Hub...'}
+                </p>
             </div>
         </div>
     );

@@ -93,7 +93,7 @@ export default function LoginPage() {
              />
 
              {/* Show splash screen if triggered */}
-             {showSplash && <SplashScreen />}
+             {showSplash && <SplashScreen loadingText="Logging in..." style={{ animationDelay: '0s' }} />} {/* Pass custom text, remove delay for instant show */}
 
             {/* Card container - Conditionally render based on visibility */}
             {isCardVisible && (
@@ -124,4 +124,3 @@ export default function LoginPage() {
         </div>
     );
 }
-

@@ -57,7 +57,7 @@ export default function PineapplePage() {
     // Show loading indicator while checking auth state or if user is not yet available
     // Use SplashScreen instead of Loader2
     if (loading || !user) {
-         return <SplashScreen />; // Use the consistent splash screen
+         return <SplashScreen loadingText="Loading Pineapple..." />; // Pass custom text
     }
 
 
@@ -150,4 +150,3 @@ export default function PineapplePage() {
         </div>
     );
 }
-

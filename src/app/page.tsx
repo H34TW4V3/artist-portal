@@ -153,7 +153,8 @@ export default function HomePage() {
 
     // Show Splash Screen only if not loading and splash hasn't timed out
     if (!isLoading && showSplash) {
-        return <SplashScreen />;
+        // Pass the generated greeting as part of the loading text
+        return <SplashScreen loadingText={`Loading Hub for ${clientGreeting.split(', ')[1] || 'Artist'}...`} />;
     }
 
 
@@ -165,7 +166,8 @@ export default function HomePage() {
 
      // If still loading (after splash timeout), show the splash screen
      if (isLoading) {
-         return <SplashScreen />;
+          // Pass the generated greeting as part of the loading text
+          return <SplashScreen loadingText={`Loading Hub for ${clientGreeting.split(', ')[1] || 'Artist'}...`} />;
      }
 
 
@@ -302,4 +304,3 @@ export default function HomePage() {
         </div>
     );
 }
-

@@ -60,7 +60,7 @@ export default function DocumentsPage() {
    // Show loading indicator while checking auth state or if user is not yet available
    // Use SplashScreen instead of Loader2
    if (loading || !user) {
-     return <SplashScreen />; // Use the consistent splash screen
+     return <SplashScreen loadingText="Loading Documents..." />; // Pass custom text
    }
 
 
@@ -168,4 +168,3 @@ export default function DocumentsPage() {
     </div>
   );
 }
-

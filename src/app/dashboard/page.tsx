@@ -43,10 +43,13 @@ export default function DashboardPage() {
     }
   }, [user, loading, router]);
 
+  // Get current header based on active tab (simplified as only one tab now)
+  const currentHeader = tabHeaders[activeTab];
+
   // Show loading indicator while checking auth state or if user is not yet available
   // Use SplashScreen instead of Loader2
   if (loading || !user) {
-    return <SplashScreen />; // Use the consistent splash screen
+    return <SplashScreen loadingText="Loading Dashboard..." />; // Pass custom text
   }
 
 
@@ -119,4 +122,3 @@ export default function DashboardPage() {
     </div>
   );
 }
-

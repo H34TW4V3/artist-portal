@@ -66,7 +66,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // Use the SplashScreen component for the initial load.
   if (loading) {
     // Fade out the splash screen after a short delay to avoid abrupt transitions during fast auth checks
-    return <SplashScreen className="animate-fade-out" style={{ animationDelay: '0.5s' }} />;
+    // Pass the default text when only auth is loading
+    return <SplashScreen loadingText="Loading Artist Hub..." className="animate-fade-out" style={{ animationDelay: '0.5s' }} />;
   }
 
 
@@ -86,4 +87,3 @@ export const useAuth = (): AuthContextType => {
   }
   return context;
 };
-
