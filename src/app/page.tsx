@@ -27,13 +27,14 @@ const PineappleIcon = () => (
   />
 );
 
-// Spotify Icon Component - Updated to standard green logo
+// Spotify Icon Component - Updated to a purple logo
 const SpotifyIcon = () => (
     <img
-        src="https://upload.wikimedia.org/wikipedia/commons/thumb/1/19/Spotify_logo_without_text.svg/1024px-Spotify_logo_without_text.svg.png" // Standard green logo URL
+        src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/74/Spotify_App_Logo.svg/1200px-Spotify_App_Logo.svg.png" // Purple logo URL (example, might need adjustment)
+        // Found a better URL: https://imgs.search.brave.com/9M7mGvN5Zp-zWJ6y6o4F-jX3o-9U1M_8wV7XlJ6iP6g/rs:fit:860:0:0/g:ce/aHR0cHM6Ly9jZG4u/aWNvbi1pY29ucy5j/b20vaWNvbnMyLzI2/OTkvUE5HLzUxMi9z/cG90aWZ5X2xvZ29f/aWNvbl8xNzExODYu/cG5n
         alt="Spotify Logo"
         className="h-12 w-12 object-contain" // Increased size, maintain aspect ratio
-        data-ai-hint="spotify logo icon"
+        data-ai-hint="spotify logo icon purple" // Updated hint
     />
 );
 
