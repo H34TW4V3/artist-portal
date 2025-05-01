@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
@@ -77,8 +76,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             userImageUrl={userImageUrl} // Pass user info if available during logout transition
             userName={userName}
             // Fade out the splash screen after a short delay
-            className="animate-fade-out"
-            style={{ animationDelay: '0.5s' }}
+            // className="animate-fade-out" // Keep splash visible while loading
+            // style={{ animationDelay: '0.5s' }}
          />
     );
   }

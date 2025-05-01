@@ -7,7 +7,7 @@ import UserProfile from "@/components/common/user-profile"; // Keep UserProfile
 import { TimeWeather } from "@/components/common/time-weather"; // Import TimeWeather - Re-enabled
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 // Import relevant icons
-import { LayoutDashboard, FileText, Home, ListMusic, CalendarClock } from "lucide-react"; // Removed Radio icon
+import { LayoutDashboard, FileText, Home, ListMusic, CalendarClock, Loader2 } from "lucide-react"; // Removed Radio icon, added Loader2
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/auth-context"; // Import useAuth
 import { Skeleton } from "@/components/ui/skeleton"; // Import Skeleton
@@ -174,12 +174,14 @@ export default function HomePage() {
     // Show Splash Screen only if loading OR if it's the initial timed splash display
      if (isLoading) { // Simplified: Show loader only during actual loading phases
         // Pass the generated greeting and user info
-        // No splash screen needed here as per requirement removal
+        // Use SplashScreen instead of Loader2
         return (
-             <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-background/50 backdrop-blur-sm">
-                <Loader2 className="h-12 w-12 animate-spin text-primary" />
-                 <p className="mt-4 text-lg text-foreground font-semibold">Loading Hub...</p>
-             </div>
+             <SplashScreen
+                 loadingText="Loading Hub..."
+                 userImageUrl={displayImageUrl} // Pass potential image url
+                 userName={displayName} // Pass potential name
+                 // Add other props as needed
+             />
         );
     }
 
@@ -322,4 +324,3 @@ export default function HomePage() {
         </div>
     );
 }
-

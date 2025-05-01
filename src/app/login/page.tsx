@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils';
 import { useAuth } from '@/context/auth-context';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react'; // Import useState
-import { Loader2 } from 'lucide-react'; // Import Loader2 for loading animation
+// Import Loader2 for loading animation - Removed
 import { SplashScreen } from '@/components/common/splash-screen'; // Import SplashScreen
 
 // Placeholder URL for the GIF - replace with actual URL
@@ -126,4 +126,3 @@ export default function LoginPage() {
         </div>
     );
 }
-

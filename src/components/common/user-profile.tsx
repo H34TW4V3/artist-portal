@@ -28,6 +28,7 @@ import { useToast } from "@/hooks/use-toast";
 import { LogOut, UserCog, KeyRound, Loader2 } from "lucide-react"; // Removed FileText icon
 import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation"; // Import useRouter from next/navigation
+import { SplashScreen } from '@/components/common/splash-screen'; // Import SplashScreen
 
 // --- Zod Schema for User Profile Data (Matches ProfileForm) ---
 const profileSchema = z.object({
@@ -260,7 +261,7 @@ export default function UserProfile() {
                    </DialogDescription>
                </DialogHeader>
                 {/* Pass profile data and update function to the form */}
-                {profileData && !isProfileLoading && ( // Render form only when profile data is loaded
+                {profileData && !isProfileLoading ? ( // Render form only when profile data is loaded
                     <ProfileForm
                         key={user?.uid || 'profile-form'} // Ensure remount on user change if needed
                         initialData={profileData}
@@ -271,11 +272,19 @@ export default function UserProfile() {
                          }}
                          className="bg-transparent shadow-none border-0 p-0 mt-2" // Adjust styles for modal
                     />
-                )}
-                 {/* Show loading indicator inside modal while profile data loads initially */}
-                 {isProfileLoading && ( // Use profile-specific loading state here
+                ) : (
+                 // Show loading indicator inside modal while profile data loads initially
+                 // Use SplashScreen for consistency if preferred over Loader2
                      <div className="flex justify-center items-center p-10">
-                        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                         {/* Using Skeleton as a simpler placeholder inside the modal */}
+                         <div className="flex flex-col items-center gap-4">
+                              <Skeleton className="h-24 w-24 rounded-full" />
+                              <Skeleton className="h-4 w-32" />
+                              <Skeleton className="h-4 w-48" />
+                         </div>
+                         {/* Or use SplashScreen:
+                         <SplashScreen loadingText="Loading Profile..." />
+                         */}
                      </div>
                  )}
            </DialogContent>
@@ -301,4 +310,3 @@ export default function UserProfile() {
     </div>
   );
 }
-
