@@ -6,7 +6,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { format } from "date-fns";
-import { Loader2, UploadCloud, X, CalendarIcon, FileArchive, HelpCircle } from "lucide-react"; // Added HelpCircle
+import { Loader2, UploadCloud, X, CalendarIcon, FileArchive, HelpCircle, Info } from "lucide-react"; // Added HelpCircle, Info
 
 import { Button } from "@/components/ui/button";
 import {
@@ -19,6 +19,16 @@ import {
   DialogClose,
   DialogTrigger // Added DialogTrigger
 } from "@/components/ui/dialog";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog"; // Import AlertDialog components
 import {
   Form,
   FormControl,
@@ -58,6 +68,8 @@ export function UploadReleaseModal({ isOpen, onClose, onSuccess }: UploadRelease
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [zipFileName, setZipFileName] = useState<string | null>(null);
+  const [showConfirmationDialog, setShowConfirmationDialog] = useState(false); // State for confirmation dialog
+  const [confirmedReleaseName, setConfirmedReleaseName] = useState<string>(""); // State to store release name for confirmation
 
   const form = useForm<UploadFormValues>({
     resolver: zodResolver(uploadSchema),
@@ -72,13 +84,19 @@ export function UploadReleaseModal({ isOpen, onClose, onSuccess }: UploadRelease
   // Reset form when modal opens/closes - Use useEffect for robustness
    useEffect(() => {
        if (!isOpen) {
-           form.reset({
-               releaseName: "",
-               releaseDate: new Date(),
-               releaseZip: undefined,
-           });
-           setZipFileName(null);
-           setIsSubmitting(false);
+           // Delay reset on close to avoid issues if quickly reopened
+           const timer = setTimeout(() => {
+                form.reset({
+                    releaseName: "",
+                    releaseDate: new Date(),
+                    releaseZip: undefined,
+                });
+                setZipFileName(null);
+                setIsSubmitting(false);
+                setShowConfirmationDialog(false); // Ensure confirmation is closed
+                setConfirmedReleaseName("");
+           }, 150);
+           return () => clearTimeout(timer);
        }
    // eslint-disable-next-line react-hooks/exhaustive-deps
    }, [isOpen]); // Rerun when isOpen changes
@@ -134,13 +152,11 @@ export function UploadReleaseModal({ isOpen, onClose, onSuccess }: UploadRelease
       // Call the Firestore service function
       await uploadReleaseZip(uploadData, values.releaseZip);
 
-      toast({
-        title: "Upload Successful",
-        description: `"${values.releaseName}" submitted for processing. It will appear in your releases list shortly.`,
-        variant: "default",
-      });
-      onSuccess(); // Call the success callback (refreshes list)
-      onClose(); // Close the modal
+      console.log("Upload successful, showing confirmation dialog.");
+      setConfirmedReleaseName(values.releaseName); // Store name for dialog
+      setShowConfirmationDialog(true); // Show the confirmation dialog instead of immediate toast/close
+
+      // Do NOT call onSuccess or onClose here yet
 
     } catch (error) {
       console.error("Error uploading release ZIP:", error);
@@ -149,10 +165,21 @@ export function UploadReleaseModal({ isOpen, onClose, onSuccess }: UploadRelease
         description: error instanceof Error ? error.message : "An unexpected error occurred during upload.",
         variant: "destructive",
       });
-    } finally {
-      setIsSubmitting(false);
+      setIsSubmitting(false); // Only set submitting false on error here
     }
+    // finally block removed as submitting state is handled differently now
   }
+
+   // Handler for closing the confirmation dialog and triggering final actions
+   const handleConfirmationClose = () => {
+        setShowConfirmationDialog(false);
+        onSuccess(); // Call the success callback (refreshes list)
+        onClose();   // Close the main upload modal
+        // Reset submitting state after everything is done
+        // Resetting form happens in useEffect based on isOpen
+        setIsSubmitting(false);
+   }
+
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -178,7 +205,7 @@ export function UploadReleaseModal({ isOpen, onClose, onSuccess }: UploadRelease
                 <FormItem>
                   <FormLabel>Release Name</FormLabel>
                   <FormControl>
-                    <Input placeholder="Enter release name (e.g., album or single title)" {...field} className="focus:ring-accent" />
+                    <Input placeholder="Enter release name (e.g., album or single title)" {...field} className="focus:ring-accent" disabled={isSubmitting} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -201,6 +228,7 @@ export function UploadReleaseModal({ isOpen, onClose, onSuccess }: UploadRelease
                             "w-full justify-start text-left font-normal border-input focus:ring-accent",
                             !field.value && "text-muted-foreground"
                           )}
+                          disabled={isSubmitting}
                         >
                           <CalendarIcon className="mr-2 h-4 w-4 opacity-50" />
                           {field.value && field.value instanceof Date && !isNaN(field.value.getTime()) ? (
@@ -308,6 +336,7 @@ export function UploadReleaseModal({ isOpen, onClose, onSuccess }: UploadRelease
                                         className="h-6 w-6 text-muted-foreground hover:text-destructive rounded-full"
                                         onClick={clearFile}
                                         aria-label="Remove ZIP file"
+                                        disabled={isSubmitting} // Disable clear button while submitting
                                     >
                                         <X className="h-4 w-4" />
                                     </Button>
@@ -321,7 +350,7 @@ export function UploadReleaseModal({ isOpen, onClose, onSuccess }: UploadRelease
                                             className="relative cursor-pointer rounded-md bg-background px-2 py-1 font-medium text-primary hover:text-primary/90 focus-within:outline-none focus-within:ring-2 focus-within:ring-accent focus-within:ring-offset-2"
                                         >
                                             <span>Select ZIP file</span>
-                                            <input id="releaseZip" name="releaseZip" type="file" className="sr-only" accept=".zip,application/zip,application/x-zip-compressed" onChange={handleFileChange} />
+                                            <input id="releaseZip" name="releaseZip" type="file" className="sr-only" accept=".zip,application/zip,application/x-zip-compressed" onChange={handleFileChange} disabled={isSubmitting} />
                                         </label>
                                         <p className="pl-1">or drag and drop</p>
                                     </div>
@@ -356,6 +385,34 @@ export function UploadReleaseModal({ isOpen, onClose, onSuccess }: UploadRelease
             </DialogFooter>
           </form>
         </Form>
+
+         {/* Upload Success Confirmation Dialog */}
+         <AlertDialog open={showConfirmationDialog} onOpenChange={setShowConfirmationDialog}>
+            <AlertDialogContent className="bg-card/85 dark:bg-card/70 border-border">
+                <AlertDialogHeader>
+                    <AlertDialogTitle className="text-primary flex items-center gap-2">
+                        <Info className="h-5 w-5" /> Upload Submitted Successfully
+                    </AlertDialogTitle>
+                    <AlertDialogDescription className="text-muted-foreground pt-2 space-y-3">
+                         <p>Your release &quot;{confirmedReleaseName}&quot; has been submitted for processing.</p>
+                         <p className="font-semibold">Please note:</p>
+                         <p>
+                             It can take up to <strong>10 business days</strong> for your release to appear on all streaming platforms
+                             after processing is complete. You can track its status on the releases page.
+                         </p>
+                     </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                     <AlertDialogAction
+                         onClick={handleConfirmationClose}
+                         className="bg-primary hover:bg-primary/90 text-primary-foreground"
+                     >
+                         OK, Got It
+                     </AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
+
       </DialogContent>
     </Dialog>
   );
