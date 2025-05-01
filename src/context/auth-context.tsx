@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
@@ -63,11 +64,23 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   // Display loading indicator whenever the loading state is true.
-  // Use the SplashScreen component for the initial load.
+  // Use the SplashScreen component for the initial load or logout.
   if (loading) {
-    // Fade out the splash screen after a short delay to avoid abrupt transitions during fast auth checks
-    // Pass the default text when only auth is loading
-    return <SplashScreen loadingText="Loading Artist Hub..." className="animate-fade-out" style={{ animationDelay: '0.5s' }} />;
+     // Determine the loading text based on whether a user object exists (indicating logout)
+     const loadingText = user ? "Logging out..." : "Loading Artist Hub...";
+     const userImageUrl = user?.photoURL;
+     const userName = user?.displayName || user?.email?.split('@')[0];
+
+    return (
+        <SplashScreen
+            loadingText={loadingText}
+            userImageUrl={userImageUrl} // Pass user info if available during logout transition
+            userName={userName}
+            // Fade out the splash screen after a short delay
+            className="animate-fade-out"
+            style={{ animationDelay: '0.5s' }}
+         />
+    );
   }
 
 
@@ -87,3 +100,4 @@ export const useAuth = (): AuthContextType => {
   }
   return context;
 };
+
