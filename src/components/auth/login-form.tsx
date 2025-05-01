@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect } from "react"; // Import React and useEffect
@@ -47,14 +48,10 @@ const loginSchema = emailSchema.merge(passwordSchema);
 
 type LoginFormValues = z.infer<typeof loginSchema>;
 
-// Update onLoginSuccess prop to accept name, imageUrl, and playLoginSound function
+// Update onLoginSuccess prop - removed playLoginSound function
 interface LoginFormProps {
-    onLoginSuccess: (name: string, imageUrl: string | null, playLoginSound: () => void) => void;
+    onLoginSuccess: (name: string, imageUrl: string | null) => void;
 }
-
-// IMPORTANT: Place your login sound file at /public/sounds/login-jingle.mp3
-// Linking directly to Google Drive is unreliable. Download the file and place it locally.
-const LOGIN_JINGLE_PATH = '/sounds/login-jingle.mp3';
 
 
 // Helper to get initials
@@ -97,17 +94,8 @@ export function LoginForm({ onLoginSuccess }: LoginFormProps) {
   const [enteredEmail, setEnteredEmail] = useState(""); // Store email from step 1
   const [profileData, setProfileData] = useState<ProfileFormValues | null>(null); // Store fetched profile data
   const [isFetchingProfile, setIsFetchingProfile] = useState(false); // Loading state for profile fetch
-  const [audio, setAudio] = useState<HTMLAudioElement | null>(null); // State for audio element
+  // Removed audio state and useEffect for audio preloading
 
-
-  useEffect(() => {
-    // Preload audio element on the client side
-    if (typeof window !== 'undefined') {
-      const audioInstance = new Audio(LOGIN_JINGLE_PATH);
-      audioInstance.preload = 'auto';
-      setAudio(audioInstance);
-    }
-  }, []);
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema), // Use combined schema for full validation context if needed
@@ -197,16 +185,7 @@ export function LoginForm({ onLoginSuccess }: LoginFormProps) {
     }
   };
 
-  // Play login sound function
-  const playLoginSound = () => {
-    if (audio) {
-      audio.currentTime = 0; // Rewind to start
-      audio.play().catch(error => console.error("Error playing login sound:", error));
-    } else {
-       console.warn("Login sound audio element not ready.");
-    }
-  };
-
+  // Removed playLoginSound function
 
   async function onSubmit(values: LoginFormValues) {
     // Determine name and image URL *before* calling login/onLoginSuccess
@@ -215,8 +194,7 @@ export function LoginForm({ onLoginSuccess }: LoginFormProps) {
 
     try {
       await login(values.artistId, values.password); // Use the validated values
-      // No longer play sound here, pass the function instead
-      onLoginSuccess(nameForSplash, imageUrlForSplash, playLoginSound); // Pass sound function
+      onLoginSuccess(nameForSplash, imageUrlForSplash); // Call success handler without sound function
     } catch (error) {
       console.error("Login failed:", error);
       // If login fails due to wrong password, stay on password step

@@ -1,3 +1,4 @@
+
 "use client";
 
 import { LoginForm } from '@/components/auth/login-form';
@@ -5,11 +6,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/context/auth-context';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react'; // Import useState
+import { useEffect, useState, useRef } from 'react'; // Import useState and useRef
 import { SplashScreen } from '@/components/common/splash-screen'; // Import SplashScreen
 
 // Placeholder URL for the GIF - replace with actual URL
 const LOGIN_BACKGROUND_GIF_URL = "https://giffiles.alphacoders.com/173/173157.gif"; // Updated GIF URL
+const LOGIN_JINGLE_PATH = '/sounds/login-jingle.mp3'; // Path to the sound file
+
 
 export default function LoginPage() {
     const { user, loading } = useAuth();
@@ -18,7 +21,18 @@ export default function LoginPage() {
     const [isCardVisible, setIsCardVisible] = useState(true); // State to control login card visibility
     const [splashUserName, setSplashUserName] = useState<string | null>(null); // State for splash user name
     const [splashUserImageUrl, setSplashUserImageUrl] = useState<string | null>(null); // State for splash user image
+    const audioRef = useRef<HTMLAudioElement | null>(null); // Ref for the audio element
 
+    // Initialize and preload audio element
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            audioRef.current = new Audio(LOGIN_JINGLE_PATH);
+            audioRef.current.preload = 'auto';
+            // Attempt to play and immediately pause to ensure it's ready on some browsers
+            // audioRef.current.play().catch(() => {});
+            // audioRef.current.pause();
+        }
+    }, []);
 
     useEffect(() => {
         // Redirect authenticated users away from login page
@@ -27,8 +41,20 @@ export default function LoginPage() {
         }
     }, [user, loading, router]);
 
-    // Update handleLoginSuccess to accept name and imageUrl
-    const handleLoginSuccess = (name: string, imageUrl: string | null, playLoginSound: () => void) => {
+    // Play login sound function now local to LoginPage
+    const playLoginSound = () => {
+        if (audioRef.current) {
+            audioRef.current.currentTime = 0; // Rewind to start
+            audioRef.current.play().catch(error => console.error("Error playing login sound:", error));
+            console.log("Attempting to play login sound...");
+        } else {
+            console.warn("Login sound audio element not ready or not initialized.");
+        }
+    };
+
+
+    // Update handleLoginSuccess - it now calls the local playLoginSound
+    const handleLoginSuccess = (name: string, imageUrl: string | null) => {
          // Store name and image URL for the splash screen
          setSplashUserName(name);
          setSplashUserImageUrl(imageUrl);
@@ -89,7 +115,7 @@ export default function LoginPage() {
                     {/* Removed CardHeader - It's now inside LoginForm and conditional */}
 
                     {/* Card Content - LoginForm (Now multi-step) */}
-                     {/* Pass handleLoginSuccess to LoginForm */}
+                     {/* Pass handleLoginSuccess to LoginForm (no sound function needed) */}
                      <LoginForm onLoginSuccess={handleLoginSuccess} />
 
                     {/* Footer - Optional */}
