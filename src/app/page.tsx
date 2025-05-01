@@ -22,7 +22,7 @@ const PineappleIcon = () => (
   <img
       src="https://media.lordicon.com/icons/wired/gradient/1843-pineapple.svg"
       alt="Pineapple Icon"
-      className="h-10 w-10" // Standard icon size for the cards
+      className="h-12 w-12" // Increased size
       data-ai-hint="pineapple logo icon"
   />
 );
@@ -32,7 +32,7 @@ const SpotifyIcon = () => (
     <img
         src="https://upload.wikimedia.org/wikipedia/commons/thumb/1/19/Spotify_logo_without_text.svg/1024px-Spotify_logo_without_text.svg.png" // Standard green logo URL
         alt="Spotify Logo"
-        className="h-10 w-10 object-contain" // Maintain aspect ratio
+        className="h-12 w-12 object-contain" // Increased size, maintain aspect ratio
         data-ai-hint="spotify logo icon"
     />
 );
@@ -40,12 +40,12 @@ const SpotifyIcon = () => (
 
 // Define the navigation items for the home screen launchpad
 const navItems = [
-  { title: "Dashboard", href: "/dashboard", icon: <LayoutDashboard className="h-10 w-10" />, description: "View your latest stats", external: false }, // Updated description
-  { title: "My Releases", href: "/releases", icon: <ListMusic className="h-10 w-10" />, description: "Manage your music", external: false },
-  { title: "Events", href: "/events", icon: <CalendarClock className="h-10 w-10" />, description: "Manage your events", external: false }, // Added Events link
-  { title: "Documents", href: "/documents", icon: <FileText className="h-10 w-10" />, description: "Access agreements & handbooks", external: false }, // Shortened description
-  { title: "Pineapple", href: "/pineapple", icon: <PineappleIcon />, description: "Connect & Collaborate", external: false }, // Shortened description
-  { title: "Spotify for Artists", href: "https://accounts.spotify.com/en-GB/login?continue=https%3A%2F%2Faccounts.spotify.com%2Foauth2%2Fv2%2Fauth%3Fresponse_type%3Dnone%26client_id%3D6cf79a93be894c2086b8cbf737e0796b%26scope%3Duser-read-email%2Buser-read-private%2Bugc-image-upload%26redirect_uri%3Dhttps%253A%252F%252Fartists.spotify.com%252Fc%26acr_values%3Durn%253Aspotify%253Asso%253Aacr%253Aartist%253A2fa&flow_ctx=0bb76910-45f7-4890-9c65-90cebef63fd0%3A1746148618", icon: <SpotifyIcon />, description: "Access your Spotify profile", external: true }, // Changed icon to SpotifyIcon
+  { title: "Dashboard", href: "/dashboard", icon: <LayoutDashboard className="h-12 w-12" />, description: "View your latest stats", external: false }, // Increased icon size
+  { title: "My Releases", href: "/releases", icon: <ListMusic className="h-12 w-12" />, description: "Manage your music", external: false }, // Increased icon size
+  { title: "Events", href: "/events", icon: <CalendarClock className="h-12 w-12" />, description: "Manage your events", external: false }, // Increased icon size
+  { title: "Documents", href: "/documents", icon: <FileText className="h-12 w-12" />, description: "Access agreements & handbooks", external: false }, // Increased icon size
+  { title: "Pineapple", href: "/pineapple", icon: <PineappleIcon />, description: "Connect & Collaborate", external: false }, // Uses updated PineappleIcon size
+  { title: "Spotify for Artists", href: "https://accounts.spotify.com/en-GB/login?continue=https%3A%2F%2Faccounts.spotify.com%2Foauth2%2Fv2%2Fauth%3Fresponse_type%3Dnone%26client_id%3D6cf79a93be894c2086b8cbf737e0796b%26scope%3Duser-read-email%2Buser-read-private%2Bugc-image-upload%26redirect_uri%3Dhttps%253A%252F%252Fartists.spotify.com%252Fc%26acr_values%3Durn%253Aspotify%253Asso%253Aacr%253Aartist%253A2fa&flow_ctx=0bb76910-45f7-4890-9c65-90cebef63fd0%3A1746148618", icon: <SpotifyIcon />, description: "Access your Spotify profile", external: true }, // Uses updated SpotifyIcon size
 ];
 
 // List of informal greeting templates
@@ -190,9 +190,9 @@ export default function HomePage() {
                             "bg-card/50 dark:bg-card/40 border border-border/30 shadow-md rounded-lg transition-all duration-200 ease-in-out cursor-pointer text-center h-full flex flex-col justify-center items-center p-6", // Adjusted opacity
                             "hover:shadow-lg hover:border-primary/50 hover:-translate-y-1 hover-glow" // Hover effects
                         )}>
-                            <CardContent className="flex flex-col items-center justify-center space-y-3 p-0">
-                                <div className="p-3 rounded-full bg-primary/10 text-primary transition-colors group-hover:bg-primary/20 mb-2">
-                                    {item.icon}
+                            <CardContent className="flex flex-col items-center justify-center space-y-4 p-0"> {/* Increased space-y */}
+                                <div className="p-4 rounded-full bg-primary/10 text-primary transition-colors group-hover:bg-primary/20 mb-2"> {/* Increased padding */}
+                                    {item.icon} {/* Icon size is now h-12 w-12 */}
                                 </div>
                                 <CardTitle className="text-lg font-semibold text-foreground">{item.title}</CardTitle>
                                 <CardDescription className="text-sm text-muted-foreground">{item.description}</CardDescription>
