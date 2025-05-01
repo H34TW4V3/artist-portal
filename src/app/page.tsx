@@ -145,16 +145,18 @@ export default function HomePage() {
     // Combined loading state
     const isLoading = authLoading || profileLoading;
 
-    // Show initial loading indicator (now handled by AuthProvider) *before* splash screen logic kicks in
-    // This handles the very first auth check
-    // if (isLoading && showSplash) { // Only show full page loader if auth/profile loading AND splash hasn't timed out yet
-    //      return <SplashScreen />; // Use the consistent splash screen
-    // }
+    // Determine display name and image URL based on loaded data or user defaults
+    const displayName = profileData?.name || user?.displayName || (user?.email ? user.email.split('@')[0] : 'Artist');
+    const displayImageUrl = profileData?.imageUrl || user?.photoURL || null;
 
     // Show Splash Screen only if not loading and splash hasn't timed out
     if (!isLoading && showSplash) {
-        // Pass the generated greeting as part of the loading text
-        return <SplashScreen loadingText={`Loading Hub for ${clientGreeting.split(', ')[1] || 'Artist'}...`} />;
+        // Pass the generated greeting and user info
+        return <SplashScreen
+                    loadingText={`Loading Hub for ${displayName}...`}
+                    userImageUrl={displayImageUrl}
+                    userName={displayName}
+               />;
     }
 
 
@@ -166,8 +168,12 @@ export default function HomePage() {
 
      // If still loading (after splash timeout), show the splash screen
      if (isLoading) {
-          // Pass the generated greeting as part of the loading text
-          return <SplashScreen loadingText={`Loading Hub for ${clientGreeting.split(', ')[1] || 'Artist'}...`} />;
+          // Pass the generated greeting and user info
+          return <SplashScreen
+                    loadingText={`Loading Hub for ${displayName}...`}
+                    userImageUrl={displayImageUrl}
+                    userName={displayName}
+                 />;
      }
 
 
@@ -302,4 +308,3 @@ export default function HomePage() {
         </div>
     );
 }
-

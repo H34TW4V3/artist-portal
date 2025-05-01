@@ -27,7 +27,12 @@ export default function ReleasesPage() {
   // Show loading indicator
   // Use SplashScreen instead of Loader2
   if (loading || !user) {
-     return <SplashScreen loadingText="Loading Releases..." />; // Pass custom text
+     // Pass user details if available, otherwise null
+     return <SplashScreen
+               loadingText="Loading Releases..."
+               userImageUrl={user?.photoURL}
+               userName={user?.displayName || user?.email?.split('@')[0]}
+            />; // Pass custom text and user info
   }
 
   return (

@@ -60,7 +60,12 @@ export default function DocumentsPage() {
    // Show loading indicator while checking auth state or if user is not yet available
    // Use SplashScreen instead of Loader2
    if (loading || !user) {
-     return <SplashScreen loadingText="Loading Documents..." />; // Pass custom text
+     // Pass user details if available, otherwise null
+     return <SplashScreen
+               loadingText="Loading Documents..."
+               userImageUrl={user?.photoURL}
+               userName={user?.displayName || user?.email?.split('@')[0]}
+            />; // Pass custom text and user info
    }
 
 
