@@ -2,14 +2,15 @@
 "use client";
 
 import { useState, useEffect, useCallback } from 'react'; // Import useCallback
-import { Sun, Cloud, MapPin, Umbrella, Snowflake, LocateFixed, AlertTriangle, CloudRain, CloudSnow, CloudLightning, Haze, Wind, HelpCircle, Siren } from 'lucide-react'; // Keep Siren for potential future use? Removed for now.
+import { Sun, Cloud, MapPin, Umbrella, Snowflake, LocateFixed, AlertTriangle, CloudRain, CloudSnow, CloudLightning, Haze, Wind, HelpCircle } from 'lucide-react';
 import { useWeather, type WeatherCondition } from '@/context/weather-context'; // Import context hook and type
 import { useToast } from '@/hooks/use-toast'; // Import useToast for notifications
 
-// Define session storage key for API call count - REMOVED
-// const WEATHER_API_CALL_COUNT_KEY = 'weatherApiCallCount';
-// const MAX_API_CALLS_PER_SESSION = 3;
-const LOCATION_CACHE_DURATION = 2 * 60 * 60 * 1000; // 2 hours in milliseconds
+// Session storage/local storage keys
+const WEATHER_DATA_KEY = 'artistHubWeatherData';
+const WEATHER_TIMESTAMP_KEY = 'artistHubWeatherTimestamp';
+const WEATHER_CACHE_DURATION = 30 * 60 * 1000; // 30 minutes in milliseconds
+const LOCATION_CACHE_DURATION = 2 * 60 * 60 * 1000; // 2 hours in milliseconds for geolocation
 
 // Extended Placeholder weather data structure matching WeatherContext
 interface WeatherData {
@@ -28,6 +29,47 @@ const mockWeatherDataCycle: WeatherData[] = [
     { temp: "-2°C", description: "Snowy", icon: <CloudSnow className="h-4 w-4 text-blue-200" />, location: "Stockholm", condition: 'snowy' },
 ];
 
+// Helper to get cached data
+const getCachedWeatherData = (): { data: WeatherData | null; timestamp: number | null } => {
+    if (typeof window === 'undefined') return { data: null, timestamp: null };
+    try {
+        const dataStr = localStorage.getItem(WEATHER_DATA_KEY);
+        const timestampStr = localStorage.getItem(WEATHER_TIMESTAMP_KEY);
+        const data = dataStr ? JSON.parse(dataStr) : null;
+        // Manually reconstruct the icon after parsing JSON
+        if (data && data.condition) {
+            data.icon = getWeatherIcon(data.condition);
+        }
+        const timestamp = timestampStr ? parseInt(timestampStr, 10) : null;
+        return { data, timestamp };
+    } catch (e) {
+        console.error("Error reading weather cache:", e);
+        // Clear potentially corrupted cache
+        try {
+           localStorage.removeItem(WEATHER_DATA_KEY);
+           localStorage.removeItem(WEATHER_TIMESTAMP_KEY);
+        } catch (clearError) {
+            console.error("Error clearing corrupted weather cache:", clearError);
+        }
+        return { data: null, timestamp: null };
+    }
+};
+
+// Helper to set cached data
+const setCachedWeatherData = (data: WeatherData) => {
+     if (typeof window === 'undefined') return;
+    try {
+        // Store data without the icon ReactNode
+        const dataToStore = { ...data, icon: undefined };
+        localStorage.setItem(WEATHER_DATA_KEY, JSON.stringify(dataToStore));
+        localStorage.setItem(WEATHER_TIMESTAMP_KEY, Date.now().toString());
+        console.log("Weather data cached successfully.");
+    } catch (e) {
+        console.error("Error writing weather cache:", e);
+    }
+};
+
+
 export function TimeWeather() {
   const { setWeatherCondition } = useWeather(); // Get setter from context
   const [currentTime, setCurrentTime] = useState<string | null>(null);
@@ -36,12 +78,7 @@ export function TimeWeather() {
   const [error, setError] = useState<string | null>(null);
   const [weatherIndex, setWeatherIndex] = useState(0); // State to cycle mock weather (fallback)
   const [usingMockData, setUsingMockData] = useState(false); // Track if using fallback
-  // Removed API call limit state
-  // const [apiCallLimitReached, setApiCallLimitReached] = useState(false);
   const { toast } = useToast(); // Initialize toast
-
-  // Removed checkAndIncrementApiCount function
-  // const checkAndIncrementApiCount = useCallback((): boolean => { ... }, []);
 
   // Update time every second
   useEffect(() => {
@@ -61,8 +98,6 @@ export function TimeWeather() {
     setLoadingWeather(true);
     setError(null);
     setUsingMockData(false); // Assume real data initially
-    // Removed API limit flag reset
-    // setApiCallLimitReached(false);
 
     const apiKey = process.env.NEXT_PUBLIC_OPENWEATHERMAP_API_KEY;
     if (!apiKey) {
@@ -88,26 +123,24 @@ export function TimeWeather() {
             throw new Error("Invalid API response structure.");
         }
 
-        // Removed API call count increment
-        // try { ... sessionStorage.setItem ... } catch (e) { ... }
-
-
         const temp = `${Math.round(data.main.temp)}°C`;
-        // Capitalize first letter of description
         const description = data.weather[0].description
                              ? data.weather[0].description.charAt(0).toUpperCase() + data.weather[0].description.slice(1)
                              : 'Unknown';
         const condition = mapApiConditionToLocal(data.weather[0].main); // Use helper
         const locationName = data.name; // City name from API
 
-        setWeather({
+        const fetchedWeatherData: WeatherData = {
              temp,
              description,
              icon: getWeatherIcon(condition), // Use helper
              location: locationName, // Store location name
              condition,
-        });
+        };
+
+        setWeather(fetchedWeatherData);
         setWeatherCondition(condition); // Update context
+        setCachedWeatherData(fetchedWeatherData); // Cache the new data
         setError(null); // Clear any previous error
         setUsingMockData(false);
         console.log("Real weather fetched successfully:", { temp, description, locationName, condition });
@@ -121,7 +154,6 @@ export function TimeWeather() {
     } finally {
         setLoadingWeather(false);
     }
-  // Removed checkAndIncrementApiCount from dependency array
   }, [setWeatherCondition, toast]);
 
   // --- Geolocation and Initial Fetch Logic ---
@@ -148,36 +180,47 @@ export function TimeWeather() {
     };
 
     // Check for geolocation support
-    if (typeof window !== 'undefined' && !navigator.geolocation) {
+    if (typeof window === 'undefined' || !navigator.geolocation) {
       setError("Geolocation not supported.");
-      toast({ title: "Compatibility Issue", description: "Geolocation not supported by this browser. Using mock weather.", variant: "destructive" });
+       if (typeof window !== 'undefined') {
+         toast({ title: "Compatibility Issue", description: "Geolocation not supported by this browser. Using mock weather.", variant: "destructive" });
+       }
       setWeatherCondition(null);
       setLoadingWeather(false);
       setUsingMockData(true);
       return;
     }
 
-    // Request location only on client-side after mount
-    if (typeof window !== 'undefined') {
-        // Removed API call limit check
-        // if (!checkAndIncrementApiCount()) { ... return; }
+    // --- Check Cache First ---
+    const { data: cachedData, timestamp: cachedTimestamp } = getCachedWeatherData();
+    const now = Date.now();
 
-        console.log("Requesting geolocation...");
-        navigator.geolocation.getCurrentPosition(
-        (position) => fetchRealWeather(position.coords.latitude, position.coords.longitude),
-        handleGeolocationError,
-        // Increase maximumAge to 2 hours (7,200,000ms)
-        { enableHighAccuracy: false, timeout: 10000, maximumAge: LOCATION_CACHE_DURATION }
+    if (cachedData && cachedTimestamp && (now - cachedTimestamp < WEATHER_CACHE_DURATION)) {
+        console.log("Using cached weather data.");
+        setWeather(cachedData);
+        setWeatherCondition(cachedData.condition);
+        setLoadingWeather(false);
+        setError(null);
+        setUsingMockData(false);
+    } else {
+        // --- Cache is invalid or missing, proceed with fetch ---
+        console.log("Weather cache invalid or missing. Requesting geolocation...");
+        setLoadingWeather(true); // Ensure loading state is true before fetch
+         navigator.geolocation.getCurrentPosition(
+            (position) => fetchRealWeather(position.coords.latitude, position.coords.longitude),
+            handleGeolocationError,
+            // Increase maximumAge to 2 hours (7,200,000ms) for location caching
+            { enableHighAccuracy: false, timeout: 10000, maximumAge: LOCATION_CACHE_DURATION }
         );
     }
 
-  // Removed checkAndIncrementApiCount from dependency array
+  // Run only once on mount
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fetchRealWeather]);
+  }, []);
 
    // --- Effect for Mock Data Cycle (ONLY RUNS if usingMockData is true) ---
    useEffect(() => {
-     if (!usingMockData) return; // Don't run if we got real location/weather
+     if (!usingMockData) return; // Don't run if we got real or cached weather
 
      console.log("Using mock weather data cycle.");
 
@@ -228,9 +271,7 @@ export function TimeWeather() {
             <LocateFixed className="h-4 w-4 animate-spin opacity-50" />
             <span className="opacity-50">Loading weather...</span>
            </>
-        // Removed API call limit reached display block
-        // ) : apiCallLimitReached ? ( ...
-        ) : error ? ( // Display specific error related to location/fetch
+        ) : error && !usingMockData ? ( // Display specific error related to location/fetch only if NOT using mock data yet
             <>
                 <AlertTriangle className="h-4 w-4 text-destructive" />
                 <span className="text-destructive">{error}</span>
@@ -297,3 +338,4 @@ function getWeatherIcon(condition: WeatherCondition): React.ReactNode {
         default: return <HelpCircle className="h-4 w-4 text-muted-foreground" />; // Default icon for null or unmapped
     }
 }
+
