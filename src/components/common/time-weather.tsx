@@ -1,10 +1,14 @@
 
 "use client";
 
-import { useState, useEffect } from 'react';
-import { Sun, Cloud, MapPin, Umbrella, Snowflake, LocateFixed, AlertTriangle, CloudRain, CloudSnow, CloudLightning, Haze, Wind, HelpCircle } from 'lucide-react'; // Added more specific icons and HelpCircle
+import { useState, useEffect, useCallback } from 'react'; // Import useCallback
+import { Sun, Cloud, MapPin, Umbrella, Snowflake, LocateFixed, AlertTriangle, CloudRain, CloudSnow, CloudLightning, Haze, Wind, HelpCircle, Siren } from 'lucide-react'; // Added Siren for limit
 import { useWeather, type WeatherCondition } from '@/context/weather-context'; // Import context hook and type
 import { useToast } from '@/hooks/use-toast'; // Import useToast for notifications
+
+// Define session storage key for API call count
+const WEATHER_API_CALL_COUNT_KEY = 'weatherApiCallCount';
+const MAX_API_CALLS_PER_SESSION = 3;
 
 // Extended Placeholder weather data structure matching WeatherContext
 interface WeatherData {
@@ -31,7 +35,31 @@ export function TimeWeather() {
   const [error, setError] = useState<string | null>(null);
   const [weatherIndex, setWeatherIndex] = useState(0); // State to cycle mock weather (fallback)
   const [usingMockData, setUsingMockData] = useState(false); // Track if using fallback
+  const [apiCallLimitReached, setApiCallLimitReached] = useState(false); // Track API limit
   const { toast } = useToast(); // Initialize toast
+
+  // Function to get and increment API call count
+  const checkAndIncrementApiCount = useCallback((): boolean => {
+    if (typeof window === 'undefined') return false; // Don't run on server
+
+    try {
+      const currentCountStr = sessionStorage.getItem(WEATHER_API_CALL_COUNT_KEY);
+      const currentCount = currentCountStr ? parseInt(currentCountStr, 10) : 0;
+
+      if (currentCount >= MAX_API_CALLS_PER_SESSION) {
+        console.warn(`Weather API call limit (${MAX_API_CALLS_PER_SESSION}) reached for this session.`);
+        setApiCallLimitReached(true);
+        return false; // Limit reached
+      }
+
+      // Increment only if fetch is successful (handled inside fetchRealWeather)
+      return true; // Limit not reached, proceed
+    } catch (e) {
+        console.error("Error accessing sessionStorage for API count:", e);
+        // Proceed cautiously if sessionStorage fails, maybe allow one call?
+        return true;
+    }
+  }, []);
 
   // Update time every second
   useEffect(() => {
@@ -46,68 +74,81 @@ export function TimeWeather() {
   }, []);
 
   // --- Fetch Real Location and Weather ---
-  useEffect(() => {
-    const fetchRealWeather = async (latitude: number, longitude: number) => {
-        console.log(`Geolocation successful: Lat: ${latitude}, Lon: ${longitude}`);
-        setLoadingWeather(true);
-        setError(null);
-        setUsingMockData(false); // Assume real data initially
+  const fetchRealWeather = useCallback(async (latitude: number, longitude: number) => {
+    console.log(`Geolocation successful: Lat: ${latitude}, Lon: ${longitude}`);
+    setLoadingWeather(true);
+    setError(null);
+    setUsingMockData(false); // Assume real data initially
+    setApiCallLimitReached(false); // Reset limit flag
 
-        const apiKey = process.env.NEXT_PUBLIC_OPENWEATHERMAP_API_KEY;
-        if (!apiKey) {
-            console.error("Weather API key not configured (NEXT_PUBLIC_OPENWEATHERMAP_API_KEY).");
-            setError("Weather unavailable.");
-            setWeatherCondition(null);
-            setLoadingWeather(false);
-            setUsingMockData(true); // Fallback to mock if API key missing
-            toast({ title: "Weather Service Error", description: "API key missing. Using mock data.", variant: "destructive" });
-            return;
+    const apiKey = process.env.NEXT_PUBLIC_OPENWEATHERMAP_API_KEY;
+    if (!apiKey) {
+        console.error("Weather API key not configured (NEXT_PUBLIC_OPENWEATHERMAP_API_KEY).");
+        setError("Weather unavailable.");
+        setWeatherCondition(null);
+        setLoadingWeather(false);
+        setUsingMockData(true); // Fallback to mock if API key missing
+        toast({ title: "Weather Service Error", description: "API key missing. Using mock data.", variant: "destructive" });
+        return;
+    }
+    const apiUrl = `https://api.openweathermap.org/data/2.5/weather?lat=${latitude}&lon=${longitude}&appid=${apiKey}&units=metric`;
+    try {
+        const response = await fetch(apiUrl);
+        if (!response.ok) {
+             const errorData = await response.json().catch(() => ({ message: `HTTP error! status: ${response.status}` }));
+             throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
         }
-        const apiUrl = `https://api.openweathermap.org/data/2.5/weather?lat=${latitude}&lon=${longitude}&appid=${apiKey}&units=metric`;
+        const data = await response.json();
+
+        // --- PARSE API RESPONSE AND SET STATE ---
+        if (!data.main || !data.weather || !data.weather[0]) {
+            throw new Error("Invalid API response structure.");
+        }
+
+        // Increment API call count in sessionStorage *after* successful fetch
         try {
-            const response = await fetch(apiUrl);
-            if (!response.ok) {
-                 const errorData = await response.json().catch(() => ({ message: `HTTP error! status: ${response.status}` }));
-                 throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
-            }
-            const data = await response.json();
-
-            // --- PARSE API RESPONSE AND SET STATE ---
-            if (!data.main || !data.weather || !data.weather[0]) {
-                throw new Error("Invalid API response structure.");
-            }
-
-            const temp = `${Math.round(data.main.temp)}°C`;
-            // Capitalize first letter of description
-            const description = data.weather[0].description
-                                 ? data.weather[0].description.charAt(0).toUpperCase() + data.weather[0].description.slice(1)
-                                 : 'Unknown';
-            const condition = mapApiConditionToLocal(data.weather[0].main); // Use helper
-            const locationName = data.name; // City name from API
-
-            setWeather({
-                 temp,
-                 description,
-                 icon: getWeatherIcon(condition), // Use helper
-                 location: locationName, // Store location name
-                 condition,
-            });
-            setWeatherCondition(condition); // Update context
-            setError(null); // Clear any previous error
-            setUsingMockData(false);
-            console.log("Real weather fetched successfully:", { temp, description, locationName, condition });
-
-        } catch (fetchError) {
-            console.error("Error fetching real weather:", fetchError);
-            setError("Weather unavailable."); // Keep error simple for UI
-            setWeatherCondition(null);
-            setUsingMockData(true); // Fallback to mock on fetch error
-            toast({ title: "Weather Error", description: `Could not fetch weather. ${fetchError instanceof Error ? fetchError.message : ''}. Using mock data.`, variant: "destructive" });
-        } finally {
-            setLoadingWeather(false);
+            const currentCountStr = sessionStorage.getItem(WEATHER_API_CALL_COUNT_KEY);
+            const currentCount = currentCountStr ? parseInt(currentCountStr, 10) : 0;
+            sessionStorage.setItem(WEATHER_API_CALL_COUNT_KEY, (currentCount + 1).toString());
+            console.log(`Weather API call count incremented to ${currentCount + 1}`);
+        } catch (e) {
+            console.error("Error updating sessionStorage for API count:", e);
         }
-    };
 
+
+        const temp = `${Math.round(data.main.temp)}°C`;
+        // Capitalize first letter of description
+        const description = data.weather[0].description
+                             ? data.weather[0].description.charAt(0).toUpperCase() + data.weather[0].description.slice(1)
+                             : 'Unknown';
+        const condition = mapApiConditionToLocal(data.weather[0].main); // Use helper
+        const locationName = data.name; // City name from API
+
+        setWeather({
+             temp,
+             description,
+             icon: getWeatherIcon(condition), // Use helper
+             location: locationName, // Store location name
+             condition,
+        });
+        setWeatherCondition(condition); // Update context
+        setError(null); // Clear any previous error
+        setUsingMockData(false);
+        console.log("Real weather fetched successfully:", { temp, description, locationName, condition });
+
+    } catch (fetchError) {
+        console.error("Error fetching real weather:", fetchError);
+        setError("Weather unavailable."); // Keep error simple for UI
+        setWeatherCondition(null);
+        setUsingMockData(true); // Fallback to mock on fetch error
+        toast({ title: "Weather Error", description: `Could not fetch weather. ${fetchError instanceof Error ? fetchError.message : ''}. Using mock data.`, variant: "destructive" });
+    } finally {
+        setLoadingWeather(false);
+    }
+  }, [setWeatherCondition, toast]); // Removed checkAndIncrementApiCount from here
+
+  // --- Geolocation and Initial Fetch Logic ---
+  useEffect(() => {
     const handleGeolocationError = (error: GeolocationPositionError) => {
       console.warn("Geolocation error:", error.message, `Code: ${error.code}`);
       let message = "Could not get location. ";
@@ -141,6 +182,16 @@ export function TimeWeather() {
 
     // Request location only on client-side after mount
     if (typeof window !== 'undefined') {
+        // Check API call limit *before* requesting location/fetching
+        if (!checkAndIncrementApiCount()) {
+            setError(`API call limit (${MAX_API_CALLS_PER_SESSION}) reached.`);
+            toast({ title: "Weather Update Limit", description: `Weather API call limit reached for this session. Using mock data.`, variant: "default" });
+            setWeatherCondition(null);
+            setLoadingWeather(false);
+            setUsingMockData(true);
+            return; // Stop if limit reached
+        }
+
         console.log("Requesting geolocation...");
         navigator.geolocation.getCurrentPosition(
         (position) => fetchRealWeather(position.coords.latitude, position.coords.longitude),
@@ -151,7 +202,7 @@ export function TimeWeather() {
 
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [setWeatherCondition, toast]); // Run once on mount
+  }, [fetchRealWeather, checkAndIncrementApiCount]); // Add dependencies
 
    // --- Effect for Mock Data Cycle (ONLY RUNS if usingMockData is true) ---
    useEffect(() => {
@@ -205,6 +256,11 @@ export function TimeWeather() {
            <>
             <LocateFixed className="h-4 w-4 animate-spin opacity-50" />
             <span className="opacity-50">Loading weather...</span>
+           </>
+        ) : apiCallLimitReached ? ( // Display specific message if limit reached
+           <>
+               <Siren className="h-4 w-4 text-orange-500" />
+               <span className="text-orange-500">API Limit Reached</span>
            </>
         ) : error ? ( // Display specific error related to location/fetch
             <>
@@ -273,3 +329,5 @@ function getWeatherIcon(condition: WeatherCondition): React.ReactNode {
         default: return <HelpCircle className="h-4 w-4 text-muted-foreground" />; // Default icon for null or unmapped
     }
 }
+
+    
