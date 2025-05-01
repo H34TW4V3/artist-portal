@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect } from "react"; // Import React and useEffect
@@ -48,9 +47,9 @@ const loginSchema = emailSchema.merge(passwordSchema);
 
 type LoginFormValues = z.infer<typeof loginSchema>;
 
-// Update onLoginSuccess prop to accept name and imageUrl
+// Update onLoginSuccess prop to accept name, imageUrl, and playLoginSound function
 interface LoginFormProps {
-    onLoginSuccess: (name: string, imageUrl: string | null) => void;
+    onLoginSuccess: (name: string, imageUrl: string | null, playLoginSound: () => void) => void;
 }
 
 // IMPORTANT: Place your login sound file at /public/sounds/login-jingle.mp3
@@ -216,8 +215,8 @@ export function LoginForm({ onLoginSuccess }: LoginFormProps) {
 
     try {
       await login(values.artistId, values.password); // Use the validated values
-      playLoginSound(); // Play sound on success
-      onLoginSuccess(nameForSplash, imageUrlForSplash); // Call the success handler passed from parent with name and image URL
+      // No longer play sound here, pass the function instead
+      onLoginSuccess(nameForSplash, imageUrlForSplash, playLoginSound); // Pass sound function
     } catch (error) {
       console.error("Login failed:", error);
       // If login fails due to wrong password, stay on password step

@@ -1,4 +1,3 @@
-
 "use client";
 
 import { LoginForm } from '@/components/auth/login-form';
@@ -29,7 +28,7 @@ export default function LoginPage() {
     }, [user, loading, router]);
 
     // Update handleLoginSuccess to accept name and imageUrl
-    const handleLoginSuccess = (name: string, imageUrl: string | null) => {
+    const handleLoginSuccess = (name: string, imageUrl: string | null, playLoginSound: () => void) => {
          // Store name and image URL for the splash screen
          setSplashUserName(name);
          setSplashUserImageUrl(imageUrl);
@@ -38,10 +37,13 @@ export default function LoginPage() {
          setIsCardVisible(false);
          setShowSplash(true);
 
-        // Set timer to redirect after splash animation completes
+         // Play the login sound as the splash appears
+         playLoginSound();
+
+        // Set timer to redirect after splash animation completes (at least 3 seconds)
         setTimeout(() => {
             router.replace('/'); // Redirect to home page
-        }, 4000); // Increased duration to 4 seconds
+        }, 3000); // Set duration to 3 seconds
     };
 
 
@@ -69,10 +71,10 @@ export default function LoginPage() {
              {/* Show splash screen if triggered */}
              {showSplash && (
                 <SplashScreen
-                    loadingText="Logging in..."
+                    loadingText="Logging in..." // Use specific text for login splash
                     userImageUrl={splashUserImageUrl} // Pass stored image URL
                     userName={splashUserName} // Pass stored user name
-                    style={{ animationDelay: '0s' }} // Pass custom text, remove delay for instant show
+                    style={{ animationDelay: '0s' }} // Remove delay for instant show
                     // Override default fade-out animation for this specific instance
                     className="animate-none opacity-100"
                  />

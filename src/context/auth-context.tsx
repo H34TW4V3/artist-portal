@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
@@ -65,8 +64,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // Display loading indicator whenever the loading state is true.
   // Use the SplashScreen component for the initial load or logout.
   if (loading) {
-     // Determine the loading text based on whether a user object exists (indicating logout)
-     const loadingText = user ? "Logging out..." : "Loading Artist Hub...";
+     // Determine the loading text based on whether a user object exists *before* this update (logout vs initial load)
+     // Note: `user` state might update slightly after `loading` becomes true during logout.
+     // A more robust way might involve tracking the logout action itself, but this is simpler.
+     const isLoggingOut = user !== null; // If there was a user, assume logout is in progress
+     const loadingText = isLoggingOut ? "Logging out..." : "Loading Artist Hub...";
      const userImageUrl = user?.photoURL;
      const userName = user?.displayName || user?.email?.split('@')[0];
 
@@ -75,9 +77,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             loadingText={loadingText}
             userImageUrl={userImageUrl} // Pass user info if available during logout transition
             userName={userName}
-            // Fade out the splash screen after a short delay
-            // className="animate-fade-out" // Keep splash visible while loading
-            // style={{ animationDelay: '0.5s' }}
+            // Removed explicit fade-out animation/delay from here.
+            // The splash screen will disappear naturally when loading becomes false.
+            // Add a minimum display time if needed, e.g., using a separate timer state.
          />
     );
   }
@@ -99,4 +101,3 @@ export const useAuth = (): AuthContextType => {
   }
   return context;
 };
-
