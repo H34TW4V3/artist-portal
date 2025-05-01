@@ -2,21 +2,34 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { Clock, Sun, Cloud, MapPin } from 'lucide-react'; // Import icons
+import { Clock, Sun, Cloud, MapPin, Umbrella, Snowflake } from 'lucide-react'; // Import more icons
+import { useWeather, type WeatherCondition } from '@/context/weather-context'; // Import context hook and type
 
-// Placeholder weather data structure
+// Extended Placeholder weather data structure matching WeatherContext
 interface WeatherData {
   temp: string;
   description: string;
   icon: React.ReactNode;
   location: string;
+  condition: WeatherCondition; // Add condition field
 }
 
+// Mock weather cycle
+const mockWeatherConditions: WeatherCondition[] = ['sunny', 'cloudy', 'rainy', 'snowy'];
+const mockWeatherDataCycle: WeatherData[] = [
+    { temp: "25°C", description: "Sunny", icon: <Sun className="h-4 w-4 text-yellow-500" />, location: "Los Angeles", condition: 'sunny' },
+    { temp: "18°C", description: "Partly Cloudy", icon: <Cloud className="h-4 w-4 text-gray-400" />, location: "London", condition: 'cloudy' },
+    { temp: "15°C", description: "Light Rain", icon: <Umbrella className="h-4 w-4 text-blue-400" />, location: "Seattle", condition: 'rainy' },
+    { temp: "-2°C", description: "Snowing", icon: <Snowflake className="h-4 w-4 text-blue-200" />, location: "Stockholm", condition: 'snowy' },
+];
+
 export function TimeWeather() {
+  const { setWeatherCondition } = useWeather(); // Get setter from context
   const [currentTime, setCurrentTime] = useState<string | null>(null);
   const [weather, setWeather] = useState<WeatherData | null>(null);
   const [loadingWeather, setLoadingWeather] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [weatherIndex, setWeatherIndex] = useState(0); // State to cycle mock weather
 
   // Update time every second
   useEffect(() => {
@@ -30,39 +43,45 @@ export function TimeWeather() {
     return () => clearInterval(intervalId); // Cleanup interval on unmount
   }, []);
 
-  // Fetch location and weather (using placeholders for now)
+  // Fetch location and weather (using mock cycle for now)
   useEffect(() => {
     const fetchLocationAndWeather = async () => {
       setLoadingWeather(true);
       setError(null);
 
-      // Placeholder for location - In a real app, use navigator.geolocation
-      const locationName = "City Name"; // Placeholder
-
-      // Placeholder for weather fetch - In a real app, use fetch with an API
       try {
         // Simulate API call delay
-        await new Promise(resolve => setTimeout(resolve, 1500));
+        await new Promise(resolve => setTimeout(resolve, 500)); // Shorter delay
 
-        // Mock weather data
-        const mockWeatherData: WeatherData = {
-          temp: "22°C", // Placeholder temperature
-          description: "Sunny", // Placeholder description
-          icon: <Sun className="h-4 w-4 text-yellow-500" />, // Placeholder icon
-          location: locationName,
-        };
-        setWeather(mockWeatherData);
+        // Get current mock weather data
+        const currentMockWeather = mockWeatherDataCycle[weatherIndex];
+        setWeather(currentMockWeather);
+
+        // Update the global weather context
+        setWeatherCondition(currentMockWeather.condition);
+        console.log(`Weather Context Updated: ${currentMockWeather.condition}`);
 
       } catch (err) {
-        console.error("Error fetching weather (placeholder):", err);
+        console.error("Error setting mock weather:", err);
         setError("Could not load weather.");
+        setWeatherCondition(null); // Reset context on error
       } finally {
         setLoadingWeather(false);
       }
     };
 
     fetchLocationAndWeather();
-  }, []); // Run once on mount
+  }, [weatherIndex, setWeatherCondition]); // Rerun when weatherIndex or setWeatherCondition changes
+
+   // Effect to cycle through mock weather every 15 seconds
+   useEffect(() => {
+     const weatherCycleInterval = setInterval(() => {
+       setWeatherIndex(prevIndex => (prevIndex + 1) % mockWeatherDataCycle.length);
+     }, 15000); // Change weather every 15 seconds
+
+     return () => clearInterval(weatherCycleInterval);
+   }, []);
+
 
   return (
     <div className="flex items-center gap-3 sm:gap-4 text-xs sm:text-sm text-muted-foreground">

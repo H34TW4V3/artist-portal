@@ -8,6 +8,8 @@ import { Toaster } from '@/components/ui/toaster';
 import { SettingsMenuButton } from '@/components/common/settings-menu-button';
 import { WallpaperCustomizerModal } from '@/components/common/wallpaper-customizer-modal';
 import { AuthProvider } from '@/context/auth-context'; // Import AuthProvider
+import { WeatherProvider } from '@/context/weather-context'; // Import WeatherProvider
+import { WeatherAnimationOverlay } from '@/components/common/weather-animation-overlay'; // Import WeatherAnimationOverlay
 import { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation'; // Import usePathname
 
@@ -95,6 +97,7 @@ export default function RootLayout({
       </head>
       <body className="font-sans antialiased bg-background text-foreground relative min-h-screen">
         <AuthProvider> {/* Wrap content with AuthProvider */}
+          <WeatherProvider> {/* Wrap with WeatherProvider */}
              {/* Global Background Image - Rendered on all pages except potentially login */}
              {/* Conditionally apply based on path if login should NOT have it */}
              {pathname !== '/login' && (
@@ -103,6 +106,9 @@ export default function RootLayout({
                     style={{ backgroundImage: `url('${wallpaperUrl}')` }}
                 />
              )}
+
+            {/* Weather Animation Overlay - Rendered between wallpaper and content */}
+            {pathname !== '/login' && <WeatherAnimationOverlay />}
 
             {/* Content wrapper */}
             <div className="relative z-10 min-h-screen flex flex-col">
@@ -130,6 +136,7 @@ export default function RootLayout({
             )}
 
             <Toaster />
+          </WeatherProvider>
         </AuthProvider>
       </body>
     </html>

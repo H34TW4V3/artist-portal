@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -148,11 +149,40 @@ body {
 
    /* Subtle pulse animation for icons */
    @keyframes subtle-pulse {
-    0%, 100% { transform: scale(1); }
-    50% { transform: scale(1.03); }
+    0%, 100% { transform: scale(1); opacity: 0.7; }
+    50% { transform: scale(1.05); opacity: 1; }
    }
    .animate-subtle-pulse {
        animation: subtle-pulse 2.5s ease-in-out infinite;
    }
+
+   /* Floating animation for clouds */
+    @keyframes float {
+        0%, 100% { transform: translateY(0) translateX(0); }
+        50% { transform: translateY(-5px) translateX(2px); }
+    }
+    .animate-float {
+        animation: float ease-in-out infinite;
+    }
+
+    /* Falling animation for rain */
+    @keyframes fall {
+        from { transform: translateY(-10vh) translateX(0); opacity: 1; }
+        to { transform: translateY(100vh) translateX(5px); opacity: 0; } /* slight horizontal drift */
+    }
+    .animate-fall {
+        animation: fall linear infinite;
+    }
+
+    /* Swaying fall animation for snow */
+    @keyframes sway-fall {
+        0% { transform: translateY(-10vh) translateX(0) rotate(0deg); opacity: 1; }
+        50% { transform: translateY(50vh) translateX(15px) rotate(10deg); opacity: 0.8; }
+        100% { transform: translateY(100vh) translateX(-10px) rotate(-5deg); opacity: 0; }
+    }
+    .animate-sway-fall {
+         animation: sway-fall ease-in-out infinite;
+    }
+
 
 }
