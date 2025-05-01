@@ -110,9 +110,7 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${GeistSans.variable} ${isMounted ? theme : 'dark'}`}>
       <head>
-         {/* Keep basic metadata for client components */}
-         <title>Artist Hub</title>
-         <meta name="description" content="Manage your music releases and view streaming statistics." />
+         {/* Removed explicit title and meta description - Let Next.js handle metadata via convention or export */}
       </head>
       <body className="font-sans antialiased bg-background text-foreground relative min-h-screen">
         <AuthProvider> {/* Wrap content with AuthProvider */}
