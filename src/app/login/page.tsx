@@ -25,12 +25,17 @@ export default function LoginPage() {
 
     // Initialize and preload audio element
     useEffect(() => {
+        // Ensure this runs only on the client
         if (typeof window !== 'undefined') {
-            audioRef.current = new Audio(LOGIN_JINGLE_PATH);
-            audioRef.current.preload = 'auto';
-            // Attempt to play and immediately pause to ensure it's ready on some browsers
-            // audioRef.current.play().catch(() => {});
-            // audioRef.current.pause();
+            if (!audioRef.current) {
+                audioRef.current = new Audio(LOGIN_JINGLE_PATH);
+                audioRef.current.preload = 'auto';
+                console.log("Audio element initialized and preloading:", LOGIN_JINGLE_PATH);
+                 // Attempt to play and immediately pause to ensure it's ready on some browsers
+                 // This might require user interaction on some browsers
+                 // audioRef.current.play().catch(() => {});
+                 // audioRef.current.pause();
+            }
         }
     }, []);
 
@@ -45,8 +50,13 @@ export default function LoginPage() {
     const playLoginSound = () => {
         if (audioRef.current) {
             audioRef.current.currentTime = 0; // Rewind to start
-            audioRef.current.play().catch(error => console.error("Error playing login sound:", error));
-            console.log("Attempting to play login sound...");
+            audioRef.current.play().then(() => {
+                console.log("Login sound played successfully.");
+            }).catch(error => {
+                 // Autoplay might be blocked
+                 console.error("Error playing login sound:", error);
+                 // Consider showing a UI element to enable sound if autoplay fails
+             });
         } else {
             console.warn("Login sound audio element not ready or not initialized.");
         }
@@ -118,7 +128,7 @@ export default function LoginPage() {
                     {/* Removed CardHeader - It's now inside LoginForm and conditional */}
 
                     {/* Card Content - LoginForm (Now multi-step) */}
-                     {/* Pass handleLoginSuccess to LoginForm (no sound function needed) */}
+                     {/* Pass handleLoginSuccess to LoginForm */}
                      <LoginForm onLoginSuccess={handleLoginSuccess} />
 
                     {/* Footer - Optional */}

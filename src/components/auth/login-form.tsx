@@ -185,7 +185,6 @@ export function LoginForm({ onLoginSuccess }: LoginFormProps) {
     }
   };
 
-  // Removed playLoginSound function
 
   async function onSubmit(values: LoginFormValues) {
     // Determine name and image URL *before* calling login/onLoginSuccess
