@@ -71,6 +71,7 @@ export default function HomePage() {
     const [profileLoading, setProfileLoading] = useState(true); // State for profile data loading
     const [clientGreeting, setClientGreeting] = useState(""); // State for client-side greeting generation
     const [showSplash, setShowSplash] = useState(true); // State for splash screen visibility
+    const [hasShownInitialSplash, setHasShownInitialSplash] = useState(false); // Track if initial splash was shown
 
     // Fetch profile data from Firestore
     useEffect(() => {
@@ -117,8 +118,10 @@ export default function HomePage() {
             router.replace('/login');
         }
 
+        const isLoading = authLoading || profileLoading;
+
         // Set greeting after both auth and profile data are loaded
-        if (!authLoading && !profileLoading && user) {
+        if (!isLoading && user) {
             // Prioritize profileData.name, then displayName, then email, then 'Artist'
             const nameFromProfile = profileData?.name;
             const nameFromAuth = user.displayName;
@@ -127,19 +130,37 @@ export default function HomePage() {
 
             // Generate greeting on client side using the helper function
             setClientGreeting(getRandomGreeting(finalName));
-        } else {
-            // Provide a default or loading greeting
+
+            // Only start the splash timer if it hasn't been shown before in this session/mount
+            if (!hasShownInitialSplash) {
+                const timer = setTimeout(() => {
+                    setShowSplash(false);
+                    setHasShownInitialSplash(true); // Mark as shown
+                }, 1500); // Show splash for 1.5 seconds
+
+                // Cleanup timer only if it was started
+                return () => clearTimeout(timer);
+            } else {
+                // If splash already shown, ensure showSplash is false immediately
+                setShowSplash(false);
+            }
+
+        } else if (!isLoading && !user) {
+            // Handle case where user logs out while on this page (redundant due to redirect?)
+             setClientGreeting("Welcome!");
+             setShowSplash(false); // No splash if no user
+        }
+         else {
+            // Provide a default or loading greeting if still loading
             setClientGreeting("Welcome!");
+            // Keep showSplash true while loading, unless already shown
+            if (!hasShownInitialSplash) {
+                setShowSplash(true);
+            }
         }
 
-         // Splash screen timeout
-         const timer = setTimeout(() => {
-            setShowSplash(false);
-        }, 1500); // Show splash for 1.5 seconds
-
-        return () => clearTimeout(timer); // Cleanup timer
-
-    }, [user, authLoading, profileLoading, profileData, router]); // Depend on profileData and profileLoading
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [user, authLoading, profileLoading, profileData, router, hasShownInitialSplash]); // Depend on hasShownInitialSplash
 
 
     // Combined loading state
@@ -149,8 +170,8 @@ export default function HomePage() {
     const displayName = profileData?.name || user?.displayName || (user?.email ? user.email.split('@')[0] : 'Artist');
     const displayImageUrl = profileData?.imageUrl || user?.photoURL || null;
 
-    // Show Splash Screen only if not loading and splash hasn't timed out
-    if (!isLoading && showSplash) {
+    // Show Splash Screen only if loading OR if it's the initial timed splash display
+     if (isLoading || (showSplash && !hasShownInitialSplash)) {
         // Pass the generated greeting and user info
         return <SplashScreen
                     loadingText={`Loading Hub for ${displayName}...`}
@@ -164,16 +185,6 @@ export default function HomePage() {
      if (!user && !authLoading) {
          // AuthProvider handles loading state display
          return null; // Return null while redirecting or if stuck
-     }
-
-     // If still loading (after splash timeout), show the splash screen
-     if (isLoading) {
-          // Pass the generated greeting and user info
-          return <SplashScreen
-                    loadingText={`Loading Hub for ${displayName}...`}
-                    userImageUrl={displayImageUrl}
-                    userName={displayName}
-                 />;
      }
 
 
