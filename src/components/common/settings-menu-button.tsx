@@ -22,6 +22,7 @@ interface SettingsMenuButtonProps {
   currentTheme: 'light' | 'dark';
   onToggleWeatherAnimations: () => void; // Handler for toggling animations
   weatherAnimationsEnabled: boolean; // Current state of animations
+  showWeatherToggle?: boolean; // Added optional prop to control visibility
   className?: string;
 }
 
@@ -31,6 +32,7 @@ export function SettingsMenuButton({
   currentTheme,
   onToggleWeatherAnimations,
   weatherAnimationsEnabled,
+  showWeatherToggle = true, // Default to true
   className,
 }: SettingsMenuButtonProps) {
   return (
@@ -62,22 +64,23 @@ export function SettingsMenuButton({
           )}
           <span>Switch to {currentTheme === 'dark' ? 'Light' : 'Dark'} Mode</span>
         </DropdownMenuItem>
-         {/* Weather Animation Toggle */}
-         {/* Prevent focus change on item click to allow Switch interaction */}
-         <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="cursor-default focus:bg-transparent focus:text-popover-foreground">
-            <div className="flex items-center justify-between w-full">
-                 <Label htmlFor="weather-animation-switch" className="flex items-center gap-2 cursor-pointer text-sm">
-                     <Wind className="h-4 w-4" />
-                     <span>Weather FX</span>
-                 </Label>
-                <Switch
-                    id="weather-animation-switch"
-                    checked={weatherAnimationsEnabled}
-                    onCheckedChange={onToggleWeatherAnimations}
-                    aria-label="Toggle weather animations"
-                />
-            </div>
-        </DropdownMenuItem>
+         {/* Weather Animation Toggle - Conditionally Rendered */}
+         {showWeatherToggle && (
+             <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="cursor-default focus:bg-transparent focus:text-popover-foreground">
+                <div className="flex items-center justify-between w-full">
+                     <Label htmlFor="weather-animation-switch" className="flex items-center gap-2 cursor-pointer text-sm">
+                         <Wind className="h-4 w-4" />
+                         <span>Weather FX</span>
+                     </Label>
+                    <Switch
+                        id="weather-animation-switch"
+                        checked={weatherAnimationsEnabled}
+                        onCheckedChange={onToggleWeatherAnimations}
+                        aria-label="Toggle weather animations"
+                    />
+                </div>
+            </DropdownMenuItem>
+         )}
         {/* Optional: Add Separator if adding more sections */}
         {/* <DropdownMenuSeparator className="bg-border/50" /> */}
       </DropdownMenuContent>

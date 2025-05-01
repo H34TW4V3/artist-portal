@@ -8,8 +8,8 @@ import { Toaster } from '@/components/ui/toaster';
 import { SettingsMenuButton } from '@/components/common/settings-menu-button';
 import { WallpaperCustomizerModal } from '@/components/common/wallpaper-customizer-modal';
 import { AuthProvider } from '@/context/auth-context'; // Import AuthProvider
-import { WeatherProvider } from '@/context/weather-context'; // Import WeatherProvider
-import { WeatherAnimationOverlay } from '@/components/common/weather-animation-overlay'; // Import WeatherAnimationOverlay
+// import { WeatherProvider } from '@/context/weather-context'; // Import WeatherProvider - Temporarily disabled
+// import { WeatherAnimationOverlay } from '@/components/common/weather-animation-overlay'; // Import WeatherAnimationOverlay - Temporarily disabled
 import { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation'; // Import usePathname
 
@@ -114,7 +114,7 @@ export default function RootLayout({
       </head>
       <body className="font-sans antialiased bg-background text-foreground relative min-h-screen">
         <AuthProvider> {/* Wrap content with AuthProvider */}
-          <WeatherProvider> {/* Wrap with WeatherProvider */}
+          {/* <WeatherProvider> Temporarily disabled */}
              {/* Global Background Image - Rendered on all pages except potentially login */}
              {/* Conditionally apply based on path if login should NOT have it */}
              {pathname !== '/login' && (
@@ -124,8 +124,9 @@ export default function RootLayout({
                 />
              )}
 
-            {/* Weather Animation Overlay - Rendered between wallpaper and content, conditionally */}
+            {/* Weather Animation Overlay - Temporarily disabled
              {pathname !== '/login' && showWeatherAnimations && <WeatherAnimationOverlay />}
+            */}
 
             {/* Content wrapper */}
             <div className="relative z-10 min-h-screen flex flex-col">
@@ -142,6 +143,7 @@ export default function RootLayout({
                     currentTheme={theme}
                     onToggleWeatherAnimations={handleToggleWeatherAnimations} // Pass handler
                     weatherAnimationsEnabled={showWeatherAnimations} // Pass current state
+                    showWeatherToggle={false} // Temporarily hide the toggle
                 />
                 <WallpaperCustomizerModal
                   isOpen={isModalOpen}
@@ -155,10 +157,9 @@ export default function RootLayout({
             )}
 
             <Toaster />
-          </WeatherProvider>
+          {/* </WeatherProvider> Temporarily disabled */}
         </AuthProvider>
       </body>
     </html>
   );
 }
-

@@ -4,7 +4,7 @@
 import { useState, useEffect } from "react";
 import { ReleaseList } from "@/components/dashboard/release-list";
 import UserProfile from "@/components/common/user-profile";
-import { TimeWeather } from "@/components/common/time-weather"; // Import TimeWeather
+// import { TimeWeather } from "@/components/common/time-weather"; // Import TimeWeather - Temporarily disabled
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ListMusic, Home } from "lucide-react"; // Use ListMusic icon
 import Link from "next/link";
@@ -56,18 +56,20 @@ export default function ReleasesPage() {
                 </CardDescription>
               </div>
             </div>
-             {/* Time and Weather - added flex-shrink-0 and ml-auto for positioning */}
-              <div className="flex-shrink-0 ml-auto hidden md:flex"> {/* Hide on small screens, align right */}
+             {/* Time and Weather - Temporarily disabled
+              <div className="flex-shrink-0 ml-auto hidden md:flex">
                   <TimeWeather />
               </div>
+             */}
              {/* Render UserProfile component - added flex-shrink-0 */}
-             <div className="flex-shrink-0">
+             <div className="flex-shrink-0 ml-auto"> {/* Adjusted to use ml-auto when weather is hidden */}
                  <UserProfile />
              </div>
-             {/* Mobile Time and Weather - shown below title/desc on small screens */}
-              <div className="w-full md:hidden mt-2"> {/* Show on small screens, full width */}
+             {/* Mobile Time and Weather - Temporarily disabled
+              <div className="w-full md:hidden mt-2">
                   <TimeWeather />
               </div>
+             */}
           </CardHeader>
         </Card>
 
