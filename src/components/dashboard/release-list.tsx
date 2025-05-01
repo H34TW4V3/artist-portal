@@ -37,6 +37,15 @@ import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton'; // Import Skeleton
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/context/auth-context'; // Import useAuth
+// Import Table components
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 interface ReleaseListProps {
   className?: string;
