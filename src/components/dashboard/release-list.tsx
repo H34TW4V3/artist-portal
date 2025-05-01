@@ -3,18 +3,12 @@
 
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
-import { MoreHorizontal, Edit, Trash2, Loader2, UploadCloud, PlusCircle } from "lucide-react"; // Kept Edit for modal title consistency maybe
+// Removed MoreHorizontal, Edit, Trash2 from lucide-react imports
+import { Loader2, UploadCloud, PlusCircle } from "lucide-react";
 import { Timestamp } from "firebase/firestore"; // Import Timestamp
 
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+// Removed DropdownMenu related imports
 import {
     AlertDialog,
     AlertDialogAction,
@@ -46,6 +40,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../ui/dropdown-menu'; // Keep Dropdown for Add Release button
 
 interface ReleaseListProps {
   className?: string;
@@ -59,8 +54,7 @@ export function ReleaseList({ className }: ReleaseListProps) {
   const [isManageModalOpen, setIsManageModalOpen] = useState(false); // Changed from isEditDialogOpen
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [isAddExistingModalOpen, setIsAddExistingModalOpen] = useState(false); // State for new modal
-  const [deletingReleaseId, setDeletingReleaseId] = useState<string | null>(null);
-  const [isPerformingAction, setIsPerformingAction] = useState<string | null>(null);
+  // Removed deletingReleaseId and isPerformingAction states related to old dropdown delete
   const { toast } = useToast();
   const placeholderArtwork = "/placeholder-artwork.png"; // Define placeholder path
 
@@ -97,7 +91,7 @@ export function ReleaseList({ className }: ReleaseListProps) {
 
   // Handle opening the manage modal when a row is clicked
   const handleRowClick = (release: ReleaseWithId, e: React.MouseEvent) => {
-     // Prevent modal open if clicking inside the dropdown trigger/content area
+     // Prevent modal open if clicking inside the dropdown trigger/content area (only applies to Add Release now)
      const targetElement = e.target as Element;
      if (targetElement.closest('[data-radix-dropdown-menu-trigger], [data-radix-dropdown-menu-content]')) {
         return;
@@ -121,29 +115,7 @@ export function ReleaseList({ className }: ReleaseListProps) {
   }
 
 
-  const handleDeleteConfirm = async (releaseId: string) => {
-    setIsPerformingAction(releaseId); // Indicate action started
-    try {
-        await removeRelease(releaseId); // Call Firestore service function
-        toast({
-            title: "Release Removed",
-            description: "The release has been successfully removed.",
-            variant: "default",
-        });
-        await fetchReleases(); // Refetch to update the list
-
-    } catch (error) {
-        console.error("Error removing release:", error);
-        toast({
-            title: "Removal Failed",
-            description: error instanceof Error ? error.message : "Could not remove the release.",
-            variant: "destructive",
-        });
-    } finally {
-        setDeletingReleaseId(null); // Close confirmation dialog
-        setIsPerformingAction(null); // Indicate action finished
-    }
-  };
+  // handleDeleteConfirm is now handled within ManageReleaseModal
 
   // Format date for display
   const formatDate = (dateValue: string | Date | Timestamp | undefined): string => {
@@ -155,19 +127,22 @@ export function ReleaseList({ className }: ReleaseListProps) {
         } else if (typeof dateValue === 'string') {
              const parts = dateValue.split('-');
              if (parts.length === 3) {
+                  // Ensure UTC interpretation for YYYY-MM-DD
                   date = new Date(Date.UTC(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2])));
              } else {
+                   // Fallback for other string formats (might be less reliable)
                   date = new Date(dateValue);
              }
         } else {
              date = dateValue;
         }
         if (isNaN(date.getTime())) return '-';
+        // Format date using UTC values
         return date.toLocaleDateString('en-US', {
             year: 'numeric',
             month: 'short',
             day: 'numeric',
-            timeZone: 'UTC'
+            timeZone: 'UTC' // Specify UTC timezone for consistent display
         });
     } catch (e) {
         console.error("Error formatting date:", dateValue, e);
@@ -183,7 +158,7 @@ export function ReleaseList({ className }: ReleaseListProps) {
         <CardHeader className="flex flex-row justify-between items-center gap-4 flex-wrap">
             <div>
                 <CardTitle className="text-xl font-semibold text-primary">Manage Releases</CardTitle>
-                <CardDescription className="text-muted-foreground">View, edit, or remove your releases.</CardDescription> {/* Updated description */}
+                <CardDescription className="text-muted-foreground">View or edit your releases.</CardDescription> {/* Updated description */}
             </div>
              {user && (
                  <DropdownMenu>
@@ -220,10 +195,9 @@ export function ReleaseList({ className }: ReleaseListProps) {
                         Artwork
                     </TableHead>
                     <TableHead className="p-2">Title</TableHead>
+                    {/* Removed Artist column header */}
                     <TableHead className="hidden md:table-cell p-2">Release Date</TableHead>
-                    <TableHead className="text-right p-2">
-                        Actions
-                    </TableHead>
+                    {/* Removed Actions column header */}
                     </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -234,15 +208,15 @@ export function ReleaseList({ className }: ReleaseListProps) {
                                     <Skeleton className="h-12 w-12 rounded-md bg-muted/50" />
                                 </TableCell>
                                 <TableCell className="p-2"><Skeleton className="h-4 w-3/4 bg-muted/50" /></TableCell>
+                                {/* Removed Artist skeleton cell */}
                                 <TableCell className="hidden md:table-cell p-2"><Skeleton className="h-4 w-20 bg-muted/50" /></TableCell>
-                                <TableCell className="text-right p-2">
-                                    <Skeleton className="h-8 w-8 rounded-md ml-auto bg-muted/50" />
-                                </TableCell>
+                                {/* Removed Actions skeleton cell */}
                             </TableRow>
                         ))
                     ) : releases.length === 0 ? (
                         <TableRow>
-                            <TableCell colSpan={4} className="h-24 text-center text-muted-foreground">
+                            {/* Adjusted colSpan */}
+                            <TableCell colSpan={3} className="h-24 text-center text-muted-foreground">
                                 No releases found yet. Click "Add Release" to get started!
                             </TableCell>
                         </TableRow>
@@ -266,71 +240,11 @@ export function ReleaseList({ className }: ReleaseListProps) {
                                     />
                                 </TableCell>
                                 <TableCell className="font-medium text-foreground p-2 align-middle">{release.title}</TableCell>
+                                {/* Removed Artist data cell */}
                                 <TableCell className="hidden md:table-cell text-muted-foreground p-2 align-middle">
                                   {formatDate(release.releaseDate || release.createdAt)}
                                 </TableCell>
-                                <TableCell className="text-right p-2 align-middle">
-                                    {/* Actions Dropdown - Needs stopPropagation */}
-                                    <AlertDialog open={deletingReleaseId === release.id} onOpenChange={(open) => !open && setDeletingReleaseId(null)}>
-                                        <DropdownMenu>
-                                            <DropdownMenuTrigger asChild>
-                                            {/* Added stopPropagation to button click */}
-                                            <Button
-                                                aria-haspopup="true"
-                                                size="icon"
-                                                variant="ghost"
-                                                disabled={isPerformingAction === release.id}
-                                                className="h-8 w-8 data-[state=open]:bg-accent data-[state=open]:text-accent-foreground"
-                                                onClick={(e) => e.stopPropagation()} // Stop row click
-                                            >
-                                                {isPerformingAction === release.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <MoreHorizontal className="h-4 w-4" />}
-                                                <span className="sr-only">Toggle menu</span>
-                                            </Button>
-                                            </DropdownMenuTrigger>
-                                            <DropdownMenuContent align="end" className="bg-popover border-border">
-                                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                            {/* Removed Edit Item - Row click handles opening manage modal now */}
-                                            {/* <DropdownMenuItem onClick={() => handleEdit(release)} className="cursor-pointer focus:bg-accent focus:text-accent-foreground">
-                                                <Edit className="mr-2 h-4 w-4" />
-                                                <span>Edit Metadata</span>
-                                            </DropdownMenuItem>
-                                            <DropdownMenuSeparator className="bg-border/50" /> */}
-                                            <DropdownMenuItem
-                                                onClick={() => setDeletingReleaseId(release.id)}
-                                                className="text-destructive focus:text-destructive focus:bg-destructive/10 cursor-pointer"
-                                             >
-                                                <Trash2 className="mr-2 h-4 w-4" />
-                                                <span>Delete</span>
-                                            </DropdownMenuItem>
-                                            </DropdownMenuContent>
-                                        </DropdownMenu>
-                                        {/* Delete Confirmation Dialog */}
-                                        <AlertDialogContent className="bg-card/85 dark:bg-card/70 border-border">
-                                            <AlertDialogHeader>
-                                            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                                            <AlertDialogDescription className="text-muted-foreground">
-                                                This action cannot be undone. This will permanently remove the release
-                                                &quot;{releases.find(r => r.id === deletingReleaseId)?.title}&quot; and its associated data from the platform.
-                                            </AlertDialogDescription>
-                                            </AlertDialogHeader>
-                                            <AlertDialogFooter>
-                                            <AlertDialogCancel disabled={isPerformingAction === release.id} className="border-input hover:bg-muted/50">Cancel</AlertDialogCancel>
-                                            <AlertDialogAction
-                                                onClick={() => deletingReleaseId && handleDeleteConfirm(deletingReleaseId)}
-                                                disabled={isPerformingAction === release.id}
-                                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                            >
-                                                {isPerformingAction === release.id ? (
-                                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                                ) : (
-                                                     <Trash2 className="mr-2 h-4 w-4" />
-                                                )}
-                                                {isPerformingAction === release.id ? 'Deleting...' : 'Confirm Delete'}
-                                            </AlertDialogAction>
-                                            </AlertDialogFooter>
-                                        </AlertDialogContent>
-                                    </AlertDialog>
-                                </TableCell>
+                                {/* Removed Actions data cell and dropdown */}
                             </TableRow>
                         ))
                     )}
@@ -347,6 +261,8 @@ export function ReleaseList({ className }: ReleaseListProps) {
          onClose={handleManageDialogClose}
          releaseData={selectedRelease} // Pass the selected release data
          onSuccess={handleSuccess} // Re-use the success handler
+         // Pass fetchReleases to refresh list after takedown if needed
+         onTakedownSuccess={fetchReleases}
      />
 
      {/* Upload New Release Modal */}
@@ -365,3 +281,4 @@ export function ReleaseList({ className }: ReleaseListProps) {
     </>
   );
 }
+

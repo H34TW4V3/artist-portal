@@ -6,7 +6,8 @@ import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { format, parseISO } from "date-fns";
-import { Loader2, Link as LinkIcon, Upload, CalendarIcon, Music, Trash2, PlusCircle, X, Save, ExternalLink } from "lucide-react";
+// Added AlertTriangle for takedown button
+import { Loader2, Link as LinkIcon, Upload, CalendarIcon, Music, Trash2, PlusCircle, X, Save, ExternalLink, AlertTriangle } from "lucide-react";
 import Image from 'next/image';
 import { Timestamp } from "firebase/firestore";
 
@@ -19,6 +20,17 @@ import {
   DialogFooter,
   DialogClose,
 } from "@/components/ui/dialog";
+// Added AlertDialog imports
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -26,7 +38,8 @@ import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form";
-import { updateRelease, type ReleaseWithId, type TrackInfo } from "@/services/music-platform"; // Import update service and types
+// Updated import to include ReleaseMetadata type for updateRelease
+import { updateRelease, type ReleaseWithId, type TrackInfo, type ReleaseMetadata } from "@/services/music-platform";
 import { storage } from "@/services/firebase-config"; // Import storage instance
 import { useAuth } from "@/context/auth-context"; // To get user ID for storage path
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage"; // Import storage functions
@@ -51,12 +64,15 @@ interface ManageReleaseModalProps {
   onClose: () => void;
   releaseData: ReleaseWithId | null; // The release being managed
   onSuccess: () => void; // Callback after successful update
+  onTakedownSuccess: () => void; // Added callback for successful takedown
 }
 
-export function ManageReleaseModal({ isOpen, onClose, releaseData, onSuccess }: ManageReleaseModalProps) {
+export function ManageReleaseModal({ isOpen, onClose, releaseData, onSuccess, onTakedownSuccess }: ManageReleaseModalProps) {
   const { user } = useAuth();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isTakedownSubmitting, setIsTakedownSubmitting] = useState(false); // State for takedown action
+  const [isTakedownConfirmOpen, setIsTakedownConfirmOpen] = useState(false); // State for takedown confirmation dialog
   const [artworkPreviewUrl, setArtworkPreviewUrl] = useState<string | null>(null); // For new uploads
   const [currentArtworkUrl, setCurrentArtworkUrl] = useState<string | null>(null); // From initialData
   const artworkInputRef = useRef<HTMLInputElement>(null);
@@ -115,6 +131,8 @@ export function ManageReleaseModal({ isOpen, onClose, releaseData, onSuccess }: 
          });
          setCurrentArtworkUrl(releaseData.artworkUrl || null);
          setArtworkPreviewUrl(null); // Clear preview on open
+         setIsTakedownConfirmOpen(false); // Ensure confirm dialog is closed on reopen
+         setIsTakedownSubmitting(false); // Reset takedown loading state
      } else if (!isOpen) {
           // Optionally reset form on close after a delay
            setTimeout(() => {
@@ -124,6 +142,8 @@ export function ManageReleaseModal({ isOpen, onClose, releaseData, onSuccess }: 
                 });
                 setCurrentArtworkUrl(null);
                 setArtworkPreviewUrl(null);
+                setIsTakedownConfirmOpen(false);
+                setIsTakedownSubmitting(false);
            }, 150);
      }
      setIsSubmitting(false); // Reset submitting state
@@ -208,6 +228,41 @@ export function ManageReleaseModal({ isOpen, onClose, releaseData, onSuccess }: 
       setIsSubmitting(false);
     }
   };
+
+  // Handle Takedown Request
+  const handleTakedownRequest = async () => {
+      if (!releaseData) return;
+      setIsTakedownSubmitting(true);
+      console.log(`Submitting takedown request for release: ${releaseData.id} - ${releaseData.title}`);
+      // Simulate API call for takedown
+      try {
+          await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate network delay
+          // Assume success for now
+          console.log(`Takedown request for ${releaseData.title} processed (placeholder).`);
+          toast({
+              title: "Takedown Requested",
+              description: `Request to takedown "${releaseData.title}" submitted. This may take some time to reflect on platforms.`,
+              variant: "default",
+          });
+          setIsTakedownConfirmOpen(false); // Close confirmation dialog
+          onClose(); // Close the main manage modal
+          onTakedownSuccess(); // Notify parent to refetch/update list
+
+          // In a real scenario, you might update the release status in Firestore here
+          // await updateRelease(releaseData.id, { status: 'takedown_requested' });
+
+      } catch (error) {
+          console.error("Error submitting takedown request:", error);
+          toast({
+              title: "Takedown Failed",
+              description: error instanceof Error ? error.message : "Could not submit takedown request.",
+              variant: "destructive",
+          });
+      } finally {
+          setIsTakedownSubmitting(false);
+      }
+  };
+
 
   // Determine image source: preview > current > placeholder
   const displayArtworkSrc = artworkPreviewUrl || currentArtworkUrl || placeholderArtwork;
@@ -428,16 +483,36 @@ export function ManageReleaseModal({ isOpen, onClose, releaseData, onSuccess }: 
                   )}
                 />
 
+                 {/* Takedown Request Section */}
+                 <div className="pt-4 border-t border-border/50">
+                     <h4 className="text-sm font-medium text-destructive mb-2">Danger Zone</h4>
+                     <div className="flex items-center justify-between">
+                         <div>
+                             <p className="text-sm text-muted-foreground">Submit a request to remove this release from all platforms.</p>
+                             <p className="text-xs text-destructive">This action is permanent and cannot be easily undone.</p>
+                         </div>
+                         <Button
+                             type="button"
+                             variant="destructive"
+                             onClick={() => setIsTakedownConfirmOpen(true)}
+                             disabled={isSubmitting || isTakedownSubmitting}
+                         >
+                              <AlertTriangle className="mr-2 h-4 w-4" /> Submit Takedown Request
+                         </Button>
+                     </div>
+                 </div>
+
+
                 {/* Footer with Save/Close */}
-                <DialogFooter className="pt-6">
+                <DialogFooter className="pt-6 mt-4 border-t border-border/50"> {/* Added margin top */}
                     <DialogClose asChild>
-                        <Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting}>
+                        <Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting || isTakedownSubmitting}>
                         Close
                         </Button>
                     </DialogClose>
                     <Button
                         type="submit"
-                        disabled={isSubmitting || !formIsDirty || !formIsValid} // Disable if no changes or invalid
+                        disabled={isSubmitting || isTakedownSubmitting || !formIsDirty || !formIsValid} // Disable if no changes or invalid or takedown in progress
                         className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-md"
                     >
                         {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
@@ -449,7 +524,39 @@ export function ManageReleaseModal({ isOpen, onClose, releaseData, onSuccess }: 
             </Form>
         </ScrollArea>
 
+        {/* Takedown Confirmation Dialog */}
+        <AlertDialog open={isTakedownConfirmOpen} onOpenChange={setIsTakedownConfirmOpen}>
+            <AlertDialogContent className="bg-card/85 dark:bg-card/70 border-border">
+                <AlertDialogHeader>
+                    <AlertDialogTitle className="text-destructive">Confirm Takedown Request</AlertDialogTitle>
+                    <AlertDialogDescription className="text-muted-foreground">
+                        Are you absolutely sure you want to request a takedown for
+                        &quot;{releaseData?.title}&quot;? This action is permanent and will remove the release
+                        from all streaming platforms. This process cannot be easily reversed.
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                    <AlertDialogCancel disabled={isTakedownSubmitting} className="border-input hover:bg-muted/50">
+                        Cancel
+                    </AlertDialogCancel>
+                    <AlertDialogAction
+                        onClick={handleTakedownRequest}
+                        disabled={isTakedownSubmitting}
+                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    >
+                        {isTakedownSubmitting ? (
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : (
+                            <AlertTriangle className="mr-2 h-4 w-4" />
+                        )}
+                        {isTakedownSubmitting ? 'Submitting...' : 'Yes, Submit Takedown'}
+                    </AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
+
       </DialogContent>
     </Dialog>
   );
 }
+
