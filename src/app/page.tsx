@@ -116,12 +116,22 @@ export default function HomePage() {
         // Redirect unauthenticated users
         if (!authLoading && !user) {
             router.replace('/login');
+            return; // Early return to prevent further processing
         }
 
         const isLoading = authLoading || profileLoading;
 
-        // Set greeting after both auth and profile data are loaded
-        if (!isLoading && user) {
+        // Set greeting and check tutorial status after both auth and profile data are loaded
+        if (!isLoading && user && profileData !== undefined) { // Check profileData is not undefined (initial state)
+
+            // Tutorial Check - Redirect if not completed
+            if (profileData && profileData.hasCompletedTutorial === false) {
+                console.log("Redirecting to tutorial...");
+                router.replace('/tutorial'); // Redirect to the tutorial page
+                return; // Stop further processing for this render cycle
+            }
+
+            // Proceed with setting greeting if tutorial is completed or not applicable
             // Prioritize profileData.name (Artist Name), then displayName, then email, then 'Artist'
             const artistNameFromProfile = profileData?.name;
             const nameFromAuth = user.displayName;

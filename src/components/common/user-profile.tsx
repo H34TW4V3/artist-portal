@@ -40,6 +40,7 @@ const profileSchema = z.object({
           message: "Invalid phone number format.",
        }),
   imageUrl: z.string().url("Invalid URL.").optional().nullable(),
+  hasCompletedTutorial: z.boolean().optional().default(false), // Add tutorial flag
 });
 
 // Define the component as a default export
@@ -86,6 +87,7 @@ export default function UserProfile() {
                    imageUrl: user.photoURL || null,
                    bio: null,
                    phoneNumber: null,
+                   hasCompletedTutorial: false, // Default to false if validation fails
                });
            }
         } else {
@@ -97,6 +99,7 @@ export default function UserProfile() {
             imageUrl: user.photoURL || null, // Get photo URL from auth user if available
             bio: null,
             phoneNumber: null,
+            hasCompletedTutorial: false, // Initialize tutorial flag to false
           };
           await setDoc(userDocRef, defaultData); // Create the document
           setProfileData(defaultData);
@@ -115,6 +118,7 @@ export default function UserProfile() {
             imageUrl: null,
             bio: null,
             phoneNumber: null,
+            hasCompletedTutorial: false,
         });
       } finally {
         setIsProfileLoading(false); // Finish loading profile data
@@ -161,6 +165,7 @@ export default function UserProfile() {
               ...data, // Include updated name, bio, phone
               email: user.email || data.email, // Ensure email is correct
               imageUrl: newImageUrl, // Use the potentially new image URL
+              hasCompletedTutorial: profileData?.hasCompletedTutorial || false, // Preserve existing tutorial status
           };
 
           // 3. Update Firestore Document
@@ -310,3 +315,4 @@ export default function UserProfile() {
     </div>
   );
 }
+

@@ -41,7 +41,7 @@ export default function LoginPage() {
         // Set timer to redirect after splash animation completes
         setTimeout(() => {
             router.replace('/'); // Redirect to home page
-        }, 1500); // Match splash screen fade-out duration + delay
+        }, 4000); // Increased duration to 4 seconds
     };
 
 
@@ -73,6 +73,8 @@ export default function LoginPage() {
                     userImageUrl={splashUserImageUrl} // Pass stored image URL
                     userName={splashUserName} // Pass stored user name
                     style={{ animationDelay: '0s' }} // Pass custom text, remove delay for instant show
+                    // Override default fade-out animation for this specific instance
+                    className="animate-none opacity-100"
                  />
               )}
 

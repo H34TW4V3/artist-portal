@@ -25,7 +25,7 @@ const Progress = React.forwardRef<
       className={cn(
           "h-full w-full flex-1 bg-primary transition-all duration-300 ease-in-out",
           // Apply animation only if indeterminate
-          indeterminate && "animate-progress-indeterminate origin-left"
+          indeterminate && "animate-progress-indeterminate origin-left" // Apply animation class
       )}
        // Apply transform only if not indeterminate
        style={!indeterminate ? { transform: `translateX(-${100 - (value || 0)}%)` } : {}}

@@ -36,6 +36,7 @@ const profileSchema = z.object({
           message: "Invalid phone number format.",
        }),
   imageUrl: z.string().url("Invalid URL.").optional().nullable(), // Store URL, upload handled separately
+  hasCompletedTutorial: z.boolean().optional().default(false), // Add tutorial flag to schema
 });
 
 export type ProfileFormValues = z.infer<typeof profileSchema>;
@@ -70,6 +71,7 @@ export function ProfileForm({ initialData, updateFunction, onSuccess, onCancel, 
             bio: "",
             phoneNumber: "",
             imageUrl: "",
+            hasCompletedTutorial: false, // Ensure default in form
         },
         mode: "onChange",
     });
