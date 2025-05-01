@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
-import { MoreHorizontal, Edit, Trash2, Loader2, UploadCloud } from "lucide-react"; // Changed PlusCircle to UploadCloud
+import { MoreHorizontal, Edit, Trash2, Loader2, UploadCloud, PlusCircle } from "lucide-react"; // Changed PlusCircle to UploadCloud, added PlusCircle back for Add
 import { Timestamp } from "firebase/firestore"; // Import Timestamp
 
 import { Button } from "@/components/ui/button";
@@ -42,7 +42,8 @@ import {
 } from "@/components/ui/dialog"; // Removed DialogClose as it's implicit
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ReleaseForm } from './release-form'; // For editing
-import { UploadReleaseModal } from './upload-release-modal'; // Import the new upload modal
+import { UploadReleaseModal } from './upload-release-modal'; // Import the upload modal
+import { AddExistingReleaseModal } from './add-existing-release-modal'; // Import placeholder modal
 import type { ReleaseWithId, ReleaseMetadata } from '@/services/music-platform'; // Import types
 import { removeRelease, getReleases } from '@/services/music-platform'; // Import the Firestore functions
 import { useToast } from '@/hooks/use-toast';
@@ -61,6 +62,7 @@ export function ReleaseList({ className }: ReleaseListProps) {
   const [editingRelease, setEditingRelease] = useState<ReleaseWithId | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [isAddExistingModalOpen, setIsAddExistingModalOpen] = useState(false); // State for new modal
   const [deletingReleaseId, setDeletingReleaseId] = useState<string | null>(null);
   const [isPerformingAction, setIsPerformingAction] = useState<string | null>(null);
   const { toast } = useToast();
@@ -109,10 +111,11 @@ export function ReleaseList({ className }: ReleaseListProps) {
       }
   }
 
-  // Callback for successful edit/upload from respective forms/modals
+  // Callback for successful edit/upload/add existing from respective forms/modals
   const handleSuccess = async () => {
       setIsEditDialogOpen(false); // Close edit dialog
       setIsUploadModalOpen(false); // Close upload modal
+      setIsAddExistingModalOpen(false); // Close add existing modal
       setEditingRelease(null);
       await fetchReleases(); // Refetch the list
   }
@@ -196,11 +199,25 @@ export function ReleaseList({ className }: ReleaseListProps) {
                 <CardTitle className="text-xl font-semibold text-primary">Manage Releases</CardTitle>
                 <CardDescription className="text-muted-foreground">View, edit, or remove your existing releases.</CardDescription>
             </div>
-             {/* "Upload New Release" button to trigger the modal */}
-             {user && ( // Only show upload button if logged in
-                <Button onClick={() => setIsUploadModalOpen(true)} className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-md ml-auto">
-                    <UploadCloud className="mr-2 h-4 w-4" /> Upload New Release
-                </Button>
+             {/* "Add Release" button with dropdown */}
+             {user && ( // Only show button if logged in
+                 <DropdownMenu>
+                     <DropdownMenuTrigger asChild>
+                         <Button className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-md ml-auto">
+                             <PlusCircle className="mr-2 h-4 w-4" /> Add Release
+                         </Button>
+                     </DropdownMenuTrigger>
+                     <DropdownMenuContent align="end" className="bg-popover border-border">
+                         <DropdownMenuItem onClick={() => setIsUploadModalOpen(true)} className="cursor-pointer focus:bg-accent focus:text-accent-foreground">
+                             <UploadCloud className="mr-2 h-4 w-4" />
+                             <span>Upload New Release</span>
+                         </DropdownMenuItem>
+                         <DropdownMenuItem onClick={() => setIsAddExistingModalOpen(true)} className="cursor-pointer focus:bg-accent focus:text-accent-foreground">
+                             <PlusCircle className="mr-2 h-4 w-4" /> {/* Placeholder icon */}
+                             <span>Add Existing Release</span>
+                         </DropdownMenuItem>
+                     </DropdownMenuContent>
+                 </DropdownMenu>
               )}
         </CardHeader>
         <CardContent>
@@ -247,7 +264,7 @@ export function ReleaseList({ className }: ReleaseListProps) {
                         <TableRow>
                             {/* Adjusted colspan */}
                             <TableCell colSpan={4} className="h-24 text-center text-muted-foreground">
-                                No releases found yet. Click "Upload New Release" to add your first one!
+                                No releases found yet. Click "Add Release" to get started!
                             </TableCell>
                         </TableRow>
                     ) : (
@@ -365,7 +382,13 @@ export function ReleaseList({ className }: ReleaseListProps) {
         onClose={() => setIsUploadModalOpen(false)}
         onSuccess={handleSuccess} // Re-use the success handler to refresh list
      />
+
+      {/* Add Existing Release Modal (Placeholder) */}
+      <AddExistingReleaseModal
+          isOpen={isAddExistingModalOpen}
+          onClose={() => setIsAddExistingModalOpen(false)}
+          onSuccess={handleSuccess} // Re-use the success handler
+      />
     </>
   );
 }
-
