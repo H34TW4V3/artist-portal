@@ -2,13 +2,14 @@
 "use client";
 
 import { useState, useEffect, useCallback } from 'react'; // Import useCallback
-import { Sun, Cloud, MapPin, Umbrella, Snowflake, LocateFixed, AlertTriangle, CloudRain, CloudSnow, CloudLightning, Haze, Wind, HelpCircle, Siren } from 'lucide-react'; // Added Siren for limit
+import { Sun, Cloud, MapPin, Umbrella, Snowflake, LocateFixed, AlertTriangle, CloudRain, CloudSnow, CloudLightning, Haze, Wind, HelpCircle, Siren } from 'lucide-react'; // Keep Siren for potential future use? Removed for now.
 import { useWeather, type WeatherCondition } from '@/context/weather-context'; // Import context hook and type
 import { useToast } from '@/hooks/use-toast'; // Import useToast for notifications
 
-// Define session storage key for API call count
-const WEATHER_API_CALL_COUNT_KEY = 'weatherApiCallCount';
-const MAX_API_CALLS_PER_SESSION = 3;
+// Define session storage key for API call count - REMOVED
+// const WEATHER_API_CALL_COUNT_KEY = 'weatherApiCallCount';
+// const MAX_API_CALLS_PER_SESSION = 3;
+const LOCATION_CACHE_DURATION = 2 * 60 * 60 * 1000; // 2 hours in milliseconds
 
 // Extended Placeholder weather data structure matching WeatherContext
 interface WeatherData {
@@ -35,31 +36,12 @@ export function TimeWeather() {
   const [error, setError] = useState<string | null>(null);
   const [weatherIndex, setWeatherIndex] = useState(0); // State to cycle mock weather (fallback)
   const [usingMockData, setUsingMockData] = useState(false); // Track if using fallback
-  const [apiCallLimitReached, setApiCallLimitReached] = useState(false); // Track API limit
+  // Removed API call limit state
+  // const [apiCallLimitReached, setApiCallLimitReached] = useState(false);
   const { toast } = useToast(); // Initialize toast
 
-  // Function to get and increment API call count
-  const checkAndIncrementApiCount = useCallback((): boolean => {
-    if (typeof window === 'undefined') return false; // Don't run on server
-
-    try {
-      const currentCountStr = sessionStorage.getItem(WEATHER_API_CALL_COUNT_KEY);
-      const currentCount = currentCountStr ? parseInt(currentCountStr, 10) : 0;
-
-      if (currentCount >= MAX_API_CALLS_PER_SESSION) {
-        console.warn(`Weather API call limit (${MAX_API_CALLS_PER_SESSION}) reached for this session.`);
-        setApiCallLimitReached(true);
-        return false; // Limit reached
-      }
-
-      // Increment only if fetch is successful (handled inside fetchRealWeather)
-      return true; // Limit not reached, proceed
-    } catch (e) {
-        console.error("Error accessing sessionStorage for API count:", e);
-        // Proceed cautiously if sessionStorage fails, maybe allow one call?
-        return true;
-    }
-  }, []);
+  // Removed checkAndIncrementApiCount function
+  // const checkAndIncrementApiCount = useCallback((): boolean => { ... }, []);
 
   // Update time every second
   useEffect(() => {
@@ -79,7 +61,8 @@ export function TimeWeather() {
     setLoadingWeather(true);
     setError(null);
     setUsingMockData(false); // Assume real data initially
-    setApiCallLimitReached(false); // Reset limit flag
+    // Removed API limit flag reset
+    // setApiCallLimitReached(false);
 
     const apiKey = process.env.NEXT_PUBLIC_OPENWEATHERMAP_API_KEY;
     if (!apiKey) {
@@ -105,15 +88,8 @@ export function TimeWeather() {
             throw new Error("Invalid API response structure.");
         }
 
-        // Increment API call count in sessionStorage *after* successful fetch
-        try {
-            const currentCountStr = sessionStorage.getItem(WEATHER_API_CALL_COUNT_KEY);
-            const currentCount = currentCountStr ? parseInt(currentCountStr, 10) : 0;
-            sessionStorage.setItem(WEATHER_API_CALL_COUNT_KEY, (currentCount + 1).toString());
-            console.log(`Weather API call count incremented to ${currentCount + 1}`);
-        } catch (e) {
-            console.error("Error updating sessionStorage for API count:", e);
-        }
+        // Removed API call count increment
+        // try { ... sessionStorage.setItem ... } catch (e) { ... }
 
 
         const temp = `${Math.round(data.main.temp)}°C`;
@@ -145,7 +121,8 @@ export function TimeWeather() {
     } finally {
         setLoadingWeather(false);
     }
-  }, [setWeatherCondition, toast]); // Removed checkAndIncrementApiCount from here
+  // Removed checkAndIncrementApiCount from dependency array
+  }, [setWeatherCondition, toast]);
 
   // --- Geolocation and Initial Fetch Logic ---
   useEffect(() => {
@@ -182,27 +159,21 @@ export function TimeWeather() {
 
     // Request location only on client-side after mount
     if (typeof window !== 'undefined') {
-        // Check API call limit *before* requesting location/fetching
-        if (!checkAndIncrementApiCount()) {
-            setError(`API call limit (${MAX_API_CALLS_PER_SESSION}) reached.`);
-            toast({ title: "Weather Update Limit", description: `Weather API call limit reached for this session. Using mock data.`, variant: "default" });
-            setWeatherCondition(null);
-            setLoadingWeather(false);
-            setUsingMockData(true);
-            return; // Stop if limit reached
-        }
+        // Removed API call limit check
+        // if (!checkAndIncrementApiCount()) { ... return; }
 
         console.log("Requesting geolocation...");
         navigator.geolocation.getCurrentPosition(
         (position) => fetchRealWeather(position.coords.latitude, position.coords.longitude),
         handleGeolocationError,
-        { enableHighAccuracy: false, timeout: 10000, maximumAge: 600000 } // Use standard accuracy, 10s timeout, cache for 10 min
+        // Increase maximumAge to 2 hours (7,200,000ms)
+        { enableHighAccuracy: false, timeout: 10000, maximumAge: LOCATION_CACHE_DURATION }
         );
     }
 
-
+  // Removed checkAndIncrementApiCount from dependency array
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fetchRealWeather, checkAndIncrementApiCount]); // Add dependencies
+  }, [fetchRealWeather]);
 
    // --- Effect for Mock Data Cycle (ONLY RUNS if usingMockData is true) ---
    useEffect(() => {
@@ -257,11 +228,8 @@ export function TimeWeather() {
             <LocateFixed className="h-4 w-4 animate-spin opacity-50" />
             <span className="opacity-50">Loading weather...</span>
            </>
-        ) : apiCallLimitReached ? ( // Display specific message if limit reached
-           <>
-               <Siren className="h-4 w-4 text-orange-500" />
-               <span className="text-orange-500">API Limit Reached</span>
-           </>
+        // Removed API call limit reached display block
+        // ) : apiCallLimitReached ? ( ...
         ) : error ? ( // Display specific error related to location/fetch
             <>
                 <AlertTriangle className="h-4 w-4 text-destructive" />
@@ -329,5 +297,3 @@ function getWeatherIcon(condition: WeatherCondition): React.ReactNode {
         default: return <HelpCircle className="h-4 w-4 text-muted-foreground" />; // Default icon for null or unmapped
     }
 }
-
-    
