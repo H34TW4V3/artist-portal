@@ -230,6 +230,7 @@ export function ReleaseList({ className }: ReleaseListProps) {
                         Array.from({ length: 3 }).map((_, index) => (
                             <TableRow key={`skeleton-${index}`} className="border-b border-border/30">
                                 <TableCell className="hidden sm:table-cell p-2">
+                                    {/* Skeleton size matches Image size (h-12 w-12 = 48x48) */}
                                     <Skeleton className="h-12 w-12 rounded-md bg-muted/50" />
                                 </TableCell>
                                 <TableCell className="p-2"><Skeleton className="h-4 w-3/4 bg-muted/50" /></TableCell>
