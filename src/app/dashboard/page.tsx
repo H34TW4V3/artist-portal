@@ -7,6 +7,7 @@ import { StatisticsView } from "@/components/dashboard/statistics-view";
 // import { ReleaseList } from "@/components/dashboard/release-list"; // Commented out ReleaseList import
 // import { EventsView } from "@/components/dashboard/events-view"; // Commented out EventsView import
 import UserProfile from "@/components/common/user-profile"; // Changed to default import
+import { TimeWeather } from "@/components/common/time-weather"; // Import TimeWeather
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 // Commented out ListMusic and CalendarClock icons
@@ -60,7 +61,7 @@ export default function DashboardPage() {
       <main className="relative z-10 flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
         {/* Header Card - Dynamically updates based on active tab */}
         <Card className="mb-4 sm:mb-8 bg-card/60 dark:bg-card/50 shadow-lg rounded-lg border-border/30"> {/* Adjusted opacity */}
-          <CardHeader className="flex flex-row items-center justify-between gap-4">
+          <CardHeader className="flex flex-row items-center justify-between gap-4 flex-wrap"> {/* Added flex-wrap */}
             <div className="flex items-center gap-4">
               {/* Add Home Button */}
               <Link href="/" passHref legacyBehavior>
@@ -79,7 +80,18 @@ export default function DashboardPage() {
                 </CardDescription>
               </div>
             </div>
-            <UserProfile />
+            {/* Time and Weather - added flex-shrink-0 and ml-auto for positioning */}
+             <div className="flex-shrink-0 ml-auto hidden md:flex"> {/* Hide on small screens, align right */}
+                 <TimeWeather />
+             </div>
+            {/* Render UserProfile component - added flex-shrink-0 */}
+            <div className="flex-shrink-0">
+                <UserProfile />
+            </div>
+            {/* Mobile Time and Weather - shown below title/desc on small screens */}
+             <div className="w-full md:hidden mt-2"> {/* Show on small screens, full width */}
+                 <TimeWeather />
+             </div>
           </CardHeader>
         </Card>
 

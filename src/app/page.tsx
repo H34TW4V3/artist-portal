@@ -4,6 +4,7 @@
 import Link from "next/link";
 import Image from "next/image"; // Import next/image
 import UserProfile from "@/components/common/user-profile"; // Keep UserProfile
+import { TimeWeather } from "@/components/common/time-weather"; // Import TimeWeather
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 // Import relevant icons
 import { LayoutDashboard, FileText, Home, ListMusic, CalendarClock } from "lucide-react"; // Removed Radio icon
@@ -59,17 +60,6 @@ const greetings = [
     "Yo, {{name}}!",
 ];
 
-// Function to get a random greeting
-const getRandomGreeting = (name: string) => {
-    // Use client-side logic for Math.random
-    const [randomIndex, setRandomIndex] = useState(0);
-    useEffect(() => {
-        setRandomIndex(Math.floor(Math.random() * greetings.length));
-    }, []); // Run only once on mount
-
-    return greetings[randomIndex].replace("{{name}}", name);
-};
-
 
 export default function HomePage() {
     const { user, loading: authLoading } = useAuth(); // Use the auth context
@@ -111,6 +101,14 @@ export default function HomePage() {
         fetchProfileData();
     }, [user, db, authLoading]);
 
+    // Function to get a random greeting - client side only
+    const getRandomGreeting = (name: string) => {
+        if (typeof window === 'undefined') return `Welcome, ${name}!`; // Avoid Math.random on server
+        const randomIndex = Math.floor(Math.random() * greetings.length);
+        return greetings[randomIndex].replace("{{name}}", name);
+    };
+
+
     useEffect(() => {
         // Redirect unauthenticated users
         if (!authLoading && !user) {
@@ -125,9 +123,8 @@ export default function HomePage() {
             const nameFromEmail = user.email?.split('@')[0];
             const finalName = nameFromProfile || nameFromAuth || nameFromEmail || 'Artist';
 
-            // Generate greeting on client side
-            const randomIndex = Math.floor(Math.random() * greetings.length);
-            setClientGreeting(greetings[randomIndex].replace("{{name}}", finalName));
+            // Generate greeting on client side using the helper function
+            setClientGreeting(getRandomGreeting(finalName));
         } else {
             // Provide a default or loading greeting
             setClientGreeting("Welcome!");
@@ -162,7 +159,7 @@ export default function HomePage() {
             <main className="relative z-10 flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
                 {/* Header Card */}
                 <Card className="mb-4 sm:mb-8 bg-card/60 dark:bg-card/50 shadow-lg rounded-lg border-border/30"> {/* Adjusted opacity */}
-                <CardHeader className="flex flex-row items-center justify-between gap-4">
+                <CardHeader className="flex flex-row items-center justify-between gap-4 flex-wrap"> {/* Added flex-wrap */}
                     {/* App Title/Greeting */}
                     <div className="flex items-center gap-4">
                     {/* Placeholder Icon - could be a music note or app logo */}
@@ -176,8 +173,20 @@ export default function HomePage() {
                             </CardDescription>
                         </div>
                     </div>
-                    {/* Render UserProfile component */}
-                    <UserProfile />
+
+                     {/* Time and Weather - added flex-shrink-0 and ml-auto for positioning */}
+                    <div className="flex-shrink-0 ml-auto hidden md:flex"> {/* Hide on small screens, align right */}
+                        <TimeWeather />
+                    </div>
+
+                    {/* Render UserProfile component - added flex-shrink-0 */}
+                    <div className="flex-shrink-0">
+                        <UserProfile />
+                    </div>
+                    {/* Mobile Time and Weather - shown below greeting on small screens */}
+                     <div className="w-full md:hidden mt-2"> {/* Show on small screens, full width */}
+                         <TimeWeather />
+                     </div>
                 </CardHeader>
                 </Card>
 
@@ -264,4 +273,3 @@ export default function HomePage() {
         </div>
     );
 }
-
