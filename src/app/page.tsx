@@ -186,9 +186,7 @@ export default function HomePage() {
                             <CardTitle className="text-xl sm:text-3xl font-bold tracking-tight text-primary">
                                 {clientGreeting || "Welcome!"} {/* Display the client-side greeting */}
                             </CardTitle>
-                            <CardDescription className="text-muted-foreground text-xs sm:text-sm">
-                                Your central hub for management and insights.
-                            </CardDescription>
+                            {/* Removed CardDescription */}
                         </div>
                     </div>
 
@@ -304,3 +302,4 @@ export default function HomePage() {
         </div>
     );
 }
+
