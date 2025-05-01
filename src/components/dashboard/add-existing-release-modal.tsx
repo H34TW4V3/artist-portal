@@ -32,10 +32,10 @@ import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { storage } from "@/services/firebase-config"; // Import storage instance
 import { useAuth } from "@/context/auth-context"; // To get user ID for storage path
 
-// Schema for adding an existing release
+// Schema for adding an existing release - REMOVED artist field
 const existingReleaseSchema = z.object({
   title: z.string().min(2, "Title must be at least 2 characters.").max(100, "Title must be 100 characters or less."),
-  artist: z.string().min(2, "Artist name must be at least 2 characters.").max(100, "Artist name must be 100 characters or less."),
+  // artist: z.string().min(2, "Artist name must be at least 2 characters.").max(100, "Artist name must be 100 characters or less."), // REMOVED
   releaseDate: z.date({ required_error: "A release date is required." }),
   artworkFile: z.instanceof(File).optional().nullable() // Artwork file is optional
     .refine(file => !file || file.size <= 5 * 1024 * 1024, 'Artwork must be 5MB or less.')
@@ -63,7 +63,7 @@ export function AddExistingReleaseModal({ isOpen, onClose, onSuccess }: AddExist
     resolver: zodResolver(existingReleaseSchema),
     defaultValues: {
       title: "",
-      artist: "",
+      // artist: "", // REMOVED
       releaseDate: new Date(),
       artworkFile: null,
       tracks: [{ name: "" }], // Start with one empty track
@@ -82,7 +82,7 @@ export function AddExistingReleaseModal({ isOpen, onClose, onSuccess }: AddExist
      if (isOpen) {
          form.reset({
              title: "",
-             artist: "",
+             // artist: "", // REMOVED
              releaseDate: new Date(),
              artworkFile: null,
              tracks: [{ name: "" }],
@@ -94,7 +94,7 @@ export function AddExistingReleaseModal({ isOpen, onClose, onSuccess }: AddExist
           setTimeout(() => {
             form.reset({
                 title: "",
-                artist: "",
+                // artist: "", // REMOVED
                 releaseDate: new Date(),
                 artworkFile: null,
                 tracks: [{ name: "" }],
@@ -163,10 +163,10 @@ export function AddExistingReleaseModal({ isOpen, onClose, onSuccess }: AddExist
         console.log("Artwork uploaded for existing release:", artworkUrl);
       }
 
-      // 2. Prepare data for Firestore
+      // 2. Prepare data for Firestore - REMOVED artist from values
       const releaseData: ExistingReleaseData = {
         title: values.title,
-        artist: values.artist,
+        // artist: values.artist, // REMOVED
         releaseDate: format(values.releaseDate, "yyyy-MM-dd"), // Format date as string
         artworkUrl: artworkUrl, // URL from upload or null
         tracks: values.tracks,
@@ -174,7 +174,7 @@ export function AddExistingReleaseModal({ isOpen, onClose, onSuccess }: AddExist
       };
 
       // 3. Call the service function
-      await addExistingRelease(releaseData);
+      await addExistingRelease(releaseData); // Service function now handles artist name internally
 
       toast({
         title: "Release Added",
@@ -227,8 +227,8 @@ export function AddExistingReleaseModal({ isOpen, onClose, onSuccess }: AddExist
                   )}
                 />
 
-                 {/* Artist Name */}
-                 <FormField
+                 {/* Artist Name - REMOVED */}
+                 {/* <FormField
                     control={form.control}
                     name="artist"
                     render={({ field }) => (
@@ -240,7 +240,7 @@ export function AddExistingReleaseModal({ isOpen, onClose, onSuccess }: AddExist
                         <FormMessage />
                         </FormItem>
                     )}
-                />
+                /> */}
 
                 {/* Release Date */}
                 <FormField

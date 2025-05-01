@@ -1,3 +1,4 @@
+
 import {
     getFirestore,
     collection,
@@ -60,8 +61,8 @@ import {
 
   export type ReleaseWithId = ReleaseMetadata & { id: string };
 
-  // Type for adding an existing release (subset of ReleaseMetadata)
-  export type ExistingReleaseData = Omit<ReleaseMetadata, 'userId' | 'createdAt' | 'zipUrl' | 'status' | 'artworkUrl'> & { artworkUrl?: string | null };
+  // Type for adding an existing release - Artist is now optional here
+  export type ExistingReleaseData = Omit<ReleaseMetadata, 'userId' | 'createdAt' | 'zipUrl' | 'status' | 'artworkUrl' | 'artist'> & { artworkUrl?: string | null, artist?: string | null };
 
 
   // --- Helper Functions ---
@@ -176,8 +177,9 @@ import {
 
   /**
    * Adds data for an existing release (not uploaded via ZIP).
+   * Determines artist name from auth if not provided.
    * Does not include zipUrl or status. Artwork URL is optional.
-   * @param data - The release data including title, artist, date, tracks, spotifyLink.
+   * @param data - The release data including title, date, tracks, spotifyLink. artist is optional.
    * @returns The ID of the newly created Firestore document.
    */
   export async function addExistingRelease(data: ExistingReleaseData): Promise<string> {
@@ -185,11 +187,12 @@ import {
       if (!userId) throw new Error("Authentication required. Please log in.");
 
       const auth = getAuth(app);
+      // Use provided artist name or fallback to auth user's display name/email
       const artistName = data.artist || auth.currentUser?.displayName || auth.currentUser?.email?.split('@')[0] || "Unknown Artist";
 
       const releaseData: Omit<ReleaseMetadata, 'id' | 'createdAt' | 'zipUrl' | 'status'> = {
           title: data.title,
-          artist: artistName, // Use provided artist or fallback
+          artist: artistName, // Use determined artist name
           releaseDate: data.releaseDate, // Expect YYYY-MM-DD
           artworkUrl: data.artworkUrl || null, // Use provided URL or null
           userId: userId,
