@@ -7,6 +7,7 @@ import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
 import { SettingsMenuButton } from '@/components/common/settings-menu-button';
 import { WallpaperCustomizerModal } from '@/components/common/wallpaper-customizer-modal';
+import { AboutModal } from '@/components/common/about-modal'; // Import AboutModal
 import { AuthProvider } from '@/context/auth-context'; // Import AuthProvider
 // import { WeatherProvider } from '@/context/weather-context'; // Import WeatherProvider - Temporarily disabled
 // import { WeatherAnimationOverlay } from '@/components/common/weather-animation-overlay'; // Import WeatherAnimationOverlay - Temporarily disabled
@@ -39,7 +40,8 @@ export default function RootLayout({
   // Set initial state to 'dark'
   const [theme, setTheme] = useState<'light' | 'dark'>('dark');
   const [showWeatherAnimations, setShowWeatherAnimations] = useState(true); // State for weather animations
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isWallpaperModalOpen, setIsWallpaperModalOpen] = useState(false); // Renamed for clarity
+  const [isAboutModalOpen, setIsAboutModalOpen] = useState(false); // State for About modal
   const [isMounted, setIsMounted] = useState(false);
   const pathname = usePathname(); // Get current pathname
 
@@ -82,13 +84,13 @@ export default function RootLayout({
     const urlToSet = newUrlOrDataUri.trim() || DEFAULT_WALLPAPER_URL;
     setWallpaperUrl(urlToSet);
     localStorage.setItem(LOCAL_STORAGE_WALLPAPER_KEY, urlToSet);
-    setIsModalOpen(false);
+    setIsWallpaperModalOpen(false);
   };
 
   const handleResetWallpaper = () => {
     setWallpaperUrl(DEFAULT_WALLPAPER_URL);
     localStorage.removeItem(LOCAL_STORAGE_WALLPAPER_KEY);
-    setIsModalOpen(false);
+    setIsWallpaperModalOpen(false);
   };
 
   const handleToggleTheme = () => {
@@ -133,26 +135,31 @@ export default function RootLayout({
                  {children} {/* Render the page content */}
             </div>
 
-            {/* Settings Menu and Wallpaper Modal - Render only when authenticated or needed */}
+            {/* Settings Menu and Modals - Render only when authenticated or needed */}
             {/* Conditionally render based on mount state and pathname */}
             {isMounted && pathname !== '/login' && (
               <>
                 <SettingsMenuButton
-                    onOpenWallpaperModal={() => setIsModalOpen(true)}
+                    onOpenWallpaperModal={() => setIsWallpaperModalOpen(true)}
                     onToggleTheme={handleToggleTheme}
                     currentTheme={theme}
                     onToggleWeatherAnimations={handleToggleWeatherAnimations} // Pass handler
                     weatherAnimationsEnabled={showWeatherAnimations} // Pass current state
                     showWeatherToggle={false} // Temporarily hide the toggle
+                    onOpenAboutModal={() => setIsAboutModalOpen(true)} // Pass handler for About modal
                 />
                 <WallpaperCustomizerModal
-                  isOpen={isModalOpen}
-                  onClose={() => setIsModalOpen(false)}
+                  isOpen={isWallpaperModalOpen}
+                  onClose={() => setIsWallpaperModalOpen(false)}
                   currentUrl={wallpaperUrl === DEFAULT_WALLPAPER_URL ? '' : wallpaperUrl}
                   onApply={handleApplyWallpaper}
                   onReset={handleResetWallpaper}
                   defaultUrl={DEFAULT_WALLPAPER_URL}
                 />
+                 <AboutModal
+                    isOpen={isAboutModalOpen}
+                    onClose={() => setIsAboutModalOpen(false)}
+                 />
               </>
             )}
 

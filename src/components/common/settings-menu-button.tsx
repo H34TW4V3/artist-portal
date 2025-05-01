@@ -5,7 +5,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  // Removed DropdownMenuLabel and DropdownMenuSeparator imports
   DropdownMenuTrigger,
   DropdownMenuSeparator, // Add Separator back
   DropdownMenuLabel, // Add Label back for sectioning
@@ -13,7 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch"; // Import Switch
 import { Label } from "@/components/ui/label"; // Import Label
-import { Pencil, Image as ImageIcon, Sun, Moon, Wind } from "lucide-react"; // Renamed Image to avoid conflict, added Wind icon
+import { Pencil, Image as ImageIcon, Sun, Moon, Wind, Info } from "lucide-react"; // Renamed Image to avoid conflict, added Wind and Info icons
 import { cn } from "@/lib/utils";
 
 interface SettingsMenuButtonProps {
@@ -23,6 +22,7 @@ interface SettingsMenuButtonProps {
   onToggleWeatherAnimations: () => void; // Handler for toggling animations
   weatherAnimationsEnabled: boolean; // Current state of animations
   showWeatherToggle?: boolean; // Added optional prop to control visibility
+  onOpenAboutModal: () => void; // Handler for opening the About modal
   className?: string;
 }
 
@@ -33,6 +33,7 @@ export function SettingsMenuButton({
   onToggleWeatherAnimations,
   weatherAnimationsEnabled,
   showWeatherToggle = true, // Default to true
+  onOpenAboutModal, // Receive the new handler
   className,
 }: SettingsMenuButtonProps) {
   return (
@@ -81,8 +82,13 @@ export function SettingsMenuButton({
                 </div>
             </DropdownMenuItem>
          )}
-        {/* Optional: Add Separator if adding more sections */}
-        {/* <DropdownMenuSeparator className="bg-border/50" /> */}
+        {/* Separator */}
+        <DropdownMenuSeparator className="bg-border/50" />
+        {/* About Option */}
+        <DropdownMenuItem onClick={onOpenAboutModal} className="cursor-pointer focus:bg-accent focus:text-accent-foreground">
+          <Info className="mr-2 h-4 w-4" />
+          <span>About</span>
+        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );
