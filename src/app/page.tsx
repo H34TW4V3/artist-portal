@@ -5,7 +5,7 @@ import Link from "next/link";
 import UserProfile from "@/components/common/user-profile"; // Keep UserProfile
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 // Import relevant icons
-import { LayoutDashboard, FileText, Home, ListMusic, CalendarClock, Radio } from "lucide-react"; // Added Radio icon
+import { LayoutDashboard, FileText, Home, ListMusic, CalendarClock } from "lucide-react"; // Removed Radio icon
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/auth-context"; // Import useAuth
 import { Skeleton } from "@/components/ui/skeleton"; // Import Skeleton
@@ -26,6 +26,16 @@ const PineappleIcon = () => (
   />
 );
 
+// Spotify Icon Component using the provided URL
+const SpotifyIcon = () => (
+    <img
+        src="https://image.pngaaa.com/979/3918979-middle.png" // Use the provided URL
+        alt="Spotify Icon"
+        className="h-10 w-10 object-contain" // Maintain aspect ratio
+    />
+);
+
+
 // Define the navigation items for the home screen launchpad
 const navItems = [
   { title: "Dashboard", href: "/dashboard", icon: <LayoutDashboard className="h-10 w-10" />, description: "View your latest stats", external: false }, // Updated description
@@ -33,7 +43,7 @@ const navItems = [
   { title: "Events", href: "/events", icon: <CalendarClock className="h-10 w-10" />, description: "Manage your events", external: false }, // Added Events link
   { title: "Documents", href: "/documents", icon: <FileText className="h-10 w-10" />, description: "Access agreements & handbooks", external: false }, // Shortened description
   { title: "Pineapple", href: "/pineapple", icon: <PineappleIcon />, description: "Connect & Collaborate", external: false }, // Shortened description
-  { title: "Spotify for Artists", href: "https://accounts.spotify.com/en-GB/login?continue=https%3A%2F%2Faccounts.spotify.com%2Foauth2%2Fv2%2Fauth%3Fresponse_type%3Dnone%26client_id%3D6cf79a93be894c2086b8cbf737e0796b%26scope%3Duser-read-email%2Buser-read-private%2Bugc-image-upload%26redirect_uri%3Dhttps%253A%252F%252Fartists.spotify.com%252Fc%26acr_values%3Durn%253Aspotify%253Asso%253Aacr%253Aartist%253A2fa&flow_ctx=0bb76910-45f7-4890-9c65-90cebef63fd0%3A1746148618", icon: <Radio className="h-10 w-10" />, description: "Access your Spotify profile", external: true }, // Added Spotify link
+  { title: "Spotify for Artists", href: "https://accounts.spotify.com/en-GB/login?continue=https%3A%2F%2Faccounts.spotify.com%2Foauth2%2Fv2%2Fauth%3Fresponse_type%3Dnone%26client_id%3D6cf79a93be894c2086b8cbf737e0796b%26scope%3Duser-read-email%2Buser-read-private%2Bugc-image-upload%26redirect_uri%3Dhttps%253A%252F%252Fartists.spotify.com%252Fc%26acr_values%3Durn%253Aspotify%253Asso%253Aacr%253Aartist%253A2fa&flow_ctx=0bb76910-45f7-4890-9c65-90cebef63fd0%3A1746148618", icon: <SpotifyIcon />, description: "Access your Spotify profile", external: true }, // Changed icon to SpotifyIcon
 ];
 
 // List of informal greeting templates
