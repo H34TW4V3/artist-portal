@@ -23,15 +23,17 @@ const PineappleIcon = () => (
       src="https://media.lordicon.com/icons/wired/gradient/1843-pineapple.svg"
       alt="Pineapple Icon"
       className="h-10 w-10" // Standard icon size for the cards
+      data-ai-hint="pineapple logo icon"
   />
 );
 
-// Spotify Icon Component using the provided URL
+// Spotify Icon Component - Updated to standard green logo
 const SpotifyIcon = () => (
     <img
-        src="https://www.citypng.com/public/uploads/preview/spotify-purple-text-logo-free-png-701751694774505ogjsndspdc.png" // Use the new provided URL
-        alt="Spotify Icon"
+        src="https://upload.wikimedia.org/wikipedia/commons/thumb/1/19/Spotify_logo_without_text.svg/1024px-Spotify_logo_without_text.svg.png" // Standard green logo URL
+        alt="Spotify Logo"
         className="h-10 w-10 object-contain" // Maintain aspect ratio
+        data-ai-hint="spotify logo icon"
     />
 );
 
