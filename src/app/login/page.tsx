@@ -109,11 +109,13 @@ export default function LoginPage() {
                         </CardDescription>
                     </CardHeader>
 
-                    {/* Card Content - LoginForm */}
-                     <CardContent className="p-6">
-                         {/* Pass handleLoginSuccess to LoginForm */}
-                         <LoginForm onLoginSuccess={handleLoginSuccess} />
-                     </CardContent>
+                    {/* Card Content - LoginForm (Now multi-step) */}
+                     {/* Removed CardContent wrapper */}
+                     {/* Pass handleLoginSuccess to LoginForm */}
+                     <LoginForm onLoginSuccess={handleLoginSuccess} />
+                     {/* <CardContent className="p-6"> NO LONGER WRAPS LoginForm */}
+                         {/* <LoginForm onLoginSuccess={handleLoginSuccess} /> */}
+                     {/* </CardContent> */}
 
                     {/* Footer - Optional */}
                     <div className="p-4 text-center text-xs text-muted-foreground border-t border-border/30 bg-muted/10 dark:bg-muted/5"> {/* Adjusted footer bg */}
@@ -124,3 +126,4 @@ export default function LoginPage() {
         </div>
     );
 }
+

@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -23,7 +24,7 @@ const Progress = React.forwardRef<
     <ProgressPrimitive.Indicator
       className={cn(
           "h-full w-full flex-1 bg-primary transition-all duration-300 ease-in-out",
-          // Add animation for indeterminate state
+          // Apply animation only if indeterminate
           indeterminate && "animate-progress-indeterminate origin-left"
       )}
        // Apply transform only if not indeterminate
@@ -34,3 +35,4 @@ const Progress = React.forwardRef<
 Progress.displayName = ProgressPrimitive.Root.displayName
 
 export { Progress }
+
