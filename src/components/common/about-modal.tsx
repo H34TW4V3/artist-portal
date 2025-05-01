@@ -33,8 +33,9 @@ export function AboutModal({ isOpen, onClose }: AboutModalProps) {
         </DialogHeader>
 
         <div className="py-4 text-center text-foreground space-y-1">
-          <p className="text-base font-medium">Codename: {APP_CODENAME}</p>
+          {/* Swap the order of Version and Codename */}
           <p className="text-base font-medium">Version: {APP_VERSION}</p>
+          <p className="text-base font-medium">Codename: {APP_CODENAME}</p>
            {APP_VERSION === "Development Build" && (
              <p className="text-xs text-muted-foreground mt-1">
                  (Set NEXT_PUBLIC_COMMIT_SHA at build time for commit ID)
