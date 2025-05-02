@@ -53,9 +53,13 @@ export default function DocumentsPage() {
     { title: "Merchandising Agreement", icon: <FileText className="h-5 w-5 text-primary" /> },
   ];
 
-  // Renamed to reflect cheat sheets
+  // Renamed to reflect cheat sheets and added URLs where available
   const guides = [
-    { title: "Artist Handbook", icon: <BookOpenText className="h-5 w-5 text-primary" /> },
+    {
+      title: "Artist Handbook",
+      icon: <BookOpenText className="h-5 w-5 text-primary" />,
+      viewUrl: "https://drive.google.com/file/d/1-O3KULYSrHWEChdJJITKiv82KmxykLzA/view?usp=sharing" // Added URL
+    },
     { title: "Release Submission Cheat Sheet", icon: <BookOpenText className="h-5 w-5 text-primary" /> },
      { title: "Social Media Best Practices", icon: <BookOpenText className="h-5 w-5 text-primary" /> },
   ];
@@ -130,7 +134,7 @@ export default function DocumentsPage() {
             onValueChange={(value) => setActiveTab(value as keyof typeof tabHeaders)} // Update state on change
             className="w-full"
         >
-          <TabsList className="grid w-full grid-cols-2 gap-2 mb-6 h-auto bg-card/60 dark:bg-card/50 border border-border/20 shadow-sm rounded-lg p-1 max-w-md"> {/* Adjusted opacity */}
+          <TabsList className="grid w-full grid-cols-2 gap-2 mb-6 h-auto bg-card/60 dark:bg-card/50 border border-border/20 shadow-sm rounded-lg p-1 max-w-md mx-auto"> {/* Adjusted opacity */}
             <TabsTrigger value="agreements" className="py-2 data-[state=active]:shadow-md transition-subtle rounded-md flex items-center justify-center gap-2 data-[state=active]:hover-glow data-[state=active]:focus-glow">
               <FileText className="h-4 w-4" /> My Agreements
             </TabsTrigger>
@@ -169,6 +173,7 @@ export default function DocumentsPage() {
                     key={`guide-${index}`}
                     title={guide.title}
                     icon={guide.icon}
+                    viewUrl={guide.viewUrl} // Pass the URL to the card
                   />
                 ))}
               </CardContent>

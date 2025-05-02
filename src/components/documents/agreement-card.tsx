@@ -11,21 +11,36 @@ import { useToast } from '@/hooks/use-toast'; // For placeholder actions
 interface AgreementCardProps {
   title: string;
   icon: React.ReactNode;
+  viewUrl?: string; // Add optional view URL prop
   className?: string;
 }
 
-export function AgreementCard({ title, icon, className }: AgreementCardProps) {
+export function AgreementCard({ title, icon, viewUrl, className }: AgreementCardProps) {
   const { toast } = useToast();
 
-  // Placeholder actions
+  // Updated view action
   const handleView = () => {
-    toast({ title: "Action", description: `Viewing "${title}" (Placeholder)` });
-    // TODO: Implement view logic (e.g., open PDF in new tab or modal)
+    if (viewUrl) {
+        try {
+            window.open(viewUrl, '_blank', 'noopener,noreferrer');
+        } catch (error) {
+            console.error("Error opening URL:", error);
+            toast({ title: "Error", description: "Could not open the document link.", variant: "destructive" });
+        }
+    } else {
+        toast({ title: "Action", description: `Viewing "${title}" (No link available)` });
+        // TODO: Implement default view logic if no URL (e.g., open PDF in modal)
+    }
   };
 
   const handleDownload = () => {
-    toast({ title: "Action", description: `Downloading "${title}" (Placeholder)` });
-    // TODO: Implement download logic
+    // If viewUrl exists, prompt user to download from the Google Drive view
+    if (viewUrl && viewUrl.includes('drive.google.com')) {
+         toast({ title: "Download", description: `Please use the download option in Google Drive after clicking 'View'.`, duration: 4000 });
+    } else {
+        toast({ title: "Action", description: `Downloading "${title}" (Placeholder)` });
+        // TODO: Implement download logic for non-Drive files or direct downloads if applicable
+    }
   };
 
   return (
