@@ -414,7 +414,7 @@ export function LoginForm({ onLoginSuccess }: LoginFormProps) {
                   </Button>
               </div>
                {/* Hidden submit for Enter key */}
-               <button type="submit" disabled={isSubmitting} style={{ display: 'none' }} aria-hidden="true"></button>
+               <button type="submit" disabled={authLoading} style={{ display: 'none' }} aria-hidden="true"></button>
             </form>
         </div>
       </Form>
@@ -427,3 +427,6 @@ export function LoginForm({ onLoginSuccess }: LoginFormProps) {
     </>
   );
 }
+
+
+    
