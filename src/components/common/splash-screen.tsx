@@ -1,5 +1,5 @@
 
-import React, { useEffect, useRef } from 'react'; // Import React and hooks
+import React, { useEffect, useRef } from 'react'; // Add explicit React import
 import { Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'; // Import Avatar components
@@ -144,6 +144,5 @@ export function SplashScreen({
              )}
         </div>
     );
-}
+} // <-- Ensure this brace exists
 // No need for SplashScreen.displayName if using standard function
-
