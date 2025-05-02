@@ -177,8 +177,8 @@ export default function EventsPage() {
                href={FOURVENUES_PRO_URL}
                target="_blank"
                rel="noopener noreferrer"
-               // Card styling applied here
-               className="block group relative rounded-lg overflow-hidden shadow-md transition-all duration-200 ease-in-out hover:shadow-lg hover:border-primary/50 hover:-translate-y-1 hover-glow border border-border/30 bg-card/60 dark:bg-card/50"
+               // Card styling applied here - Removed background
+               className="block group relative rounded-lg overflow-hidden shadow-md transition-all duration-200 ease-in-out hover:shadow-lg hover:border-primary/50 hover:-translate-y-1 hover-glow border border-border/30"
              >
                <div className="p-4 flex flex-col items-center text-center">
                   {/* Image - Use relative positioning and object-contain for better sizing */}
@@ -192,9 +192,10 @@ export default function EventsPage() {
                         data-ai-hint="fourvenues event management logo"
                     />
                   </div>
-                  <p className="text-sm font-medium text-foreground mb-1">Go to Fourvenues Pro</p>
+                   {/* Changed text to "F" */}
+                  <p className="text-sm font-medium text-foreground mb-1">F</p>
                   <p className="text-xs text-muted-foreground">
-                     Access the external platform for advanced event management features.
+                     Access the external platform for advanced event management.
                   </p>
                    <ExternalLink className="h-4 w-4 text-muted-foreground absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity" />
                </div>
@@ -234,3 +235,4 @@ export default function EventsPage() {
   );
 }
 
+    
