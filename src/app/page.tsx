@@ -13,6 +13,7 @@ import { useAuth } from "@/context/auth-context"; // Import useAuth
 import { Skeleton } from "@/components/ui/skeleton"; // Import Skeleton
 import { useRouter } from 'next/navigation'; // Import useRouter
 import { useEffect, useState, useRef } from 'react'; // Import useEffect, useState, and useRef
+// Removed Howler import
 // Removed SplashScreen import as it's handled by AuthProvider
 import { Button } from "@/components/ui/button"; // Keep button for potential future use or structure
 // Import user service function
@@ -31,14 +32,14 @@ const PineappleIcon = () => (
   />
 );
 
-// Removed SpotifyIcon component, image will be used directly
+// Removed LOGIN_JINGLE_PATH and SESSION_SOUND_PLAYED_KEY
 
 // Define the navigation items for the home screen launchpad
 const navItems = [
   { title: "Dashboard", href: "/dashboard", icon: <LayoutDashboard className="h-12 w-12" />, description: "View your latest stats", external: false }, // Increased icon size
   { title: "My Releases", href: "/releases", icon: <ListMusic className="h-12 w-12" />, description: "Manage your music", external: false }, // Increased icon size
   { title: "Events", href: "/events", icon: <CalendarClock className="h-12 w-12" />, description: "Manage your events", external: false }, // Increased icon size
-  { title: "Documents", href: "/documents", icon: <FileText className="h-12 w-12" />, description: "Access agreements & handbooks", external: false }, // Increased icon size
+  { title: "Documents & Guidebooks", href: "/documents", icon: <FileText className="h-12 w-12" />, description: "Access agreements & guidebooks", external: false }, // Updated title and description
   { title: "Pineapple", href: "/pineapple", icon: <PineappleIcon />, description: "Connect & Collaborate", external: false }, // Uses updated PineappleIcon size
    // Updated Spotify for Artists item to use Image component directly
    {
@@ -72,6 +73,12 @@ export default function HomePage() {
     const [profileLoading, setProfileLoading] = useState(true);
     const [clientGreeting, setClientGreeting] = useState("");
     // Removed splash state and hasShownInitialSplash
+    // Removed audioRef
+
+    // Removed audio initialization useEffect
+
+    // Removed playLoginSound function
+
 
     // Fetch profile data from Firestore using service function
     useEffect(() => {
@@ -86,12 +93,23 @@ export default function HomePage() {
             try {
                 // Fetch profile using UID from the service
                 const fetchedProfile = await getUserProfileByUid(user.uid); // Correct function
+
                 if (fetchedProfile) {
                     setProfileData(fetchedProfile);
                 } else {
-                    console.warn("User profile not found in publicProfile for greeting. Will create default if needed elsewhere.");
-                    // Don't create default here, let UserProfile handle creation
-                    setProfileData(null); // Explicitly set to null if not found after checking
+                  // No public profile document exists yet, create one with defaults
+                  console.log("No public profile found for user, creating default...");
+                  const defaultData: ProfileFormValues = {
+                    name: user.displayName || user.email?.split('@')[0] || "User", // Use display name or email part
+                    email: user.email || "", // Get email from auth user
+                    imageUrl: user.photoURL || null, // Get photo URL from auth user if available
+                    bio: null,
+                    phoneNumber: null,
+                    hasCompletedTutorial: false, // Initialize tutorial flag to false
+                  };
+                  // Use the setPublicProfile service to create the doc in the subcollection
+                  await setPublicProfile(user.uid, defaultData, false); // Correct function call, merge=false
+                  setProfileData(defaultData);
                 }
             } catch (error) {
                 console.error("Error fetching user profile for greeting:", error);
@@ -137,6 +155,8 @@ export default function HomePage() {
                 return;
             }
 
+            // Removed call to playLoginSound();
+
             // Proceed with setting greeting if tutorial is completed or not applicable
             // **PRIORITIZE profileData.name**, then displayName, then email, then 'Artist'
             const finalName = profileData?.name || user.displayName || user.email?.split('@')[0] || 'Artist';
@@ -152,7 +172,7 @@ export default function HomePage() {
         }
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [user, authLoading, profileLoading, profileData, router]);
+    }, [user, authLoading, profileLoading, profileData, router]); // Removed hasShownInitialSplash
 
 
     // Combined loading state
@@ -321,3 +341,5 @@ export default function HomePage() {
         </div>
     );
 }
+
+    
