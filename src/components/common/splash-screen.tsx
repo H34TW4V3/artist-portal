@@ -22,18 +22,18 @@ const getInitials = (name: string | undefined | null) => {
     return name?.split(' ').map(n => n[0]).join('').toUpperCase() || 'U';
 };
 
-
-export const SplashScreen: React.FC<SplashScreenProps> = ({
+// Use standard function component definition
+export function SplashScreen({
     className,
     style,
     loadingText,
     userImageUrl,
     userName,
     appletIcon,
-    duration = 3000, // Default duration if needed, login form sets to 0
+    duration = 5000,
     playAudioUrl,
     audioPlayedRef,
-}) => {
+}: SplashScreenProps) {
     const [isVisible, setIsVisible] = React.useState(true);
     const audioRef = useRef<Howl | null>(null);
     const internalAudioPlayedRef = useRef(false); // Internal tracking if no external ref provided
@@ -41,8 +41,8 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
 
     // --- Audio Handling ---
     useEffect(() => {
-        // Initialize Howler instance only if URL is provided and hasn't played yet
-        if (playAudioUrl && !audioRef.current && !currentAudioPlayedRef.current) {
+        // Initialize Howler instance only if URL is provided
+        if (playAudioUrl && typeof window !== 'undefined' && !audioRef.current) {
             console.log("SplashScreen: Initializing Howler for", playAudioUrl);
             audioRef.current = new Howl({
                 src: [playAudioUrl],
@@ -50,20 +50,17 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
                 html5: true,
                 onplayerror: (id, error) => {
                     console.error('Howler playback error:', error);
-                    // Attempt fallback playback on user interaction if possible, or log error.
-                    // For now, we just log it. Might need a manual play button if strict autoplay fails.
                 },
                 onloaderror: (id, error) => {
                     console.error('Howler load error:', error);
                 },
                 onload: () => {
                     console.log('Howler audio loaded:', playAudioUrl);
-                    // Attempt to play immediately after load IF interaction is likely recent (e.g., login click)
-                    // Check if the ref indicates it hasn't played yet
-                    if (!currentAudioPlayedRef.current) {
-                         console.log('Attempting immediate playback after load...');
-                         audioRef.current?.play();
-                         currentAudioPlayedRef.current = true; // Mark as played
+                    // Attempt to play ONLY if the ref says it hasn't played
+                    if (currentAudioPlayedRef && !currentAudioPlayedRef.current) {
+                        console.log('Attempting playback after load (splash)...');
+                        audioRef.current?.play();
+                        currentAudioPlayedRef.current = true; // Mark as played using the ref
                     }
                 }
             });
@@ -74,23 +71,14 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
             console.log("SplashScreen: Unloading Howler instance.");
             audioRef.current?.unload();
             audioRef.current = null;
-            // Reset played status if needed, depending on desired behavior
-            // currentAudioPlayedRef.current = false; // Resetting here might cause sound to replay unintentionally on rerenders
-        }; // Fixed: Added closing brace for the effect hook
+            // DO NOT reset currentAudioPlayedRef.current here, it's managed by the parent component (LoginForm)
+        };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [playAudioUrl]);
+    }, [playAudioUrl]); // Only re-run if the audio URL changes
 
 
     // --- Visibility Handling ---
-     useEffect(() => {
-         // If a duration is set, automatically hide after that time
-         if (duration > 0) {
-             const timer = setTimeout(() => {
-                 setIsVisible(false);
-             }, duration);
-             return () => clearTimeout(timer);
-         }
-     }, [duration]);
+    // Removed useEffect for duration, parent (LoginForm) controls visibility/timing
 
 
     // Determine animation based on visibility state
@@ -156,4 +144,6 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
              )}
         </div>
     );
-};
+}
+// No need for SplashScreen.displayName if using standard function
+
