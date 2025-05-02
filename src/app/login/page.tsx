@@ -197,7 +197,10 @@ export default function LoginPage() {
                             <Button
                                 size="lg"
                                 onClick={handleDemoSubmitClick} // Trigger the flow start
-                                className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-primary-foreground shadow-md"
+                                className={cn(
+                                    "w-full sm:w-auto bg-primary hover:bg-primary/90 text-primary-foreground shadow-md",
+                                    "hover-glow focus-glow transition-transform duration-200 ease-out hover:scale-105 focus-visible:scale-105" // Added animations
+                                )}
                             >
                                 Submit Demo
                             </Button>
@@ -227,3 +230,4 @@ export default function LoginPage() {
         </div>
     );
 }
+
