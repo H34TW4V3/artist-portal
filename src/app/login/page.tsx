@@ -24,8 +24,8 @@ export default function LoginPage() {
     const { toast } = useToast(); // Initialize toast
     const [showSplash, setShowSplash] = useState(false); // State to control splash visibility *after* login
     const [isLoginFormVisible, setIsLoginFormVisible] = useState(true); // State to control login form card visibility
-    const [isDemoCardVisible, setIsDemoCardVisible] = useState(true); // State for demo card visibility
-    const [isDemoFormActive, setIsDemoFormActive] = useState(false); // State for showing demo form *inside* card
+    const [isDemoCardVisible, setIsDemoCardVisible] = useState(true); // State for demo card visibility (the card itself)
+    const [isDemoFlowActive, setIsDemoFlowActive] = useState(false); // State for showing demo form *steps* inside the card
     const [splashUserName, setSplashUserName] = useState<string | null>(null); // State for splash user name
     const [splashUserImageUrl, setSplashUserImageUrl] = useState<string | null>(null); // State for splash user image
     const audioRef = useRef<HTMLAudioElement | null>(null); // Ref for the audio element
@@ -86,14 +86,17 @@ export default function LoginPage() {
         }, 5000); // Set duration to 5 seconds
     };
 
-    // Update handler to show the embedded demo form
+    // Update handler to start the demo flow
     const handleDemoSubmitClick = () => {
-        console.log("Submit Demo button clicked, activating embedded form.");
-        setIsDemoFormActive(true); // Show the form inside the card
+        console.log("Submit Demo button clicked, starting demo flow.");
+        setIsLoginFormVisible(false); // Hide the login card
+        setIsDemoFlowActive(true); // Activate the multi-step form within the demo card
+        // Login card visibility is now controlled by isLoginFormVisible
     };
 
     const handleSubmitDemoSuccess = () => {
-        setIsDemoFormActive(false); // Hide form, show initial card content again
+        setIsDemoFlowActive(false); // Deactivate demo form flow
+        setIsLoginFormVisible(true); // Show login card again
         toast({
             title: "Demo Submitted!",
             description: "Thank you for submitting your demo. We'll review it shortly.",
@@ -102,7 +105,8 @@ export default function LoginPage() {
     };
 
     const handleDemoFormCancel = () => {
-         setIsDemoFormActive(false); // Hide form, show initial card content
+         setIsDemoFlowActive(false); // Deactivate demo form flow
+         setIsLoginFormVisible(true); // Show login card again
     }
 
 
@@ -145,15 +149,15 @@ export default function LoginPage() {
             {/* Container for Login and Demo Cards */}
              {/* Use flex-col on small screens and flex-row on larger screens */}
             <div className={cn(
-                "relative z-10 flex flex-col sm:flex-row gap-6 w-full max-w-4xl", // Adjusted max-width
+                "relative z-10 flex flex-col sm:flex-row gap-6 w-full max-w-4xl justify-center items-stretch", // Added justify-center, items-stretch
                 // Apply fade-out animation to the whole container when splash shows
-                !isLoginFormVisible && !isDemoCardVisible && "animate-fade-out"
+                 !isLoginFormVisible && !isDemoCardVisible && "animate-fade-out" // This might need adjustment based on new logic
                 )}>
 
                 {/* Login Card container - Conditionally render based on visibility */}
                 {isLoginFormVisible && (
                      <div className={cn(
-                        "flex-1 rounded-xl border border-border/30 shadow-xl overflow-hidden animate-fade-in-up bg-card/20 dark:bg-card/10", // flex-1 to take up space
+                        "flex-1 rounded-xl border border-border/30 shadow-xl overflow-hidden animate-fade-in-up bg-card/20 dark:bg-card/10 flex flex-col", // flex-1, added flex flex-col
                         !isLoginFormVisible && "animate-fade-out" // Apply fade-out when card should hide
                      )}>
                         {/* Card Content - LoginForm (Now multi-step) */}
@@ -161,27 +165,27 @@ export default function LoginPage() {
                          <LoginForm onLoginSuccess={handleLoginSuccess} />
 
                         {/* Footer - Optional */}
-                        <div className="p-4 text-center text-xs text-muted-foreground border-t border-border/30 bg-muted/10 dark:bg-muted/5"> {/* Adjusted footer bg */}
+                        <div className="p-4 text-center text-xs text-muted-foreground border-t border-border/30 bg-muted/10 dark:bg-muted/5 mt-auto"> {/* Added mt-auto */}
                             © {new Date().getFullYear()} Oxygen Group PLC. All rights reserved.
                         </div>
                      </div>
                  )}
 
                 {/* Demo Submission Card */}
-                {isDemoCardVisible && (
+                {isDemoCardVisible && ( // Always show the card container, content changes based on isDemoFlowActive
                      <Card className={cn(
-                         "flex-1 rounded-xl border border-border/30 shadow-xl overflow-hidden animate-fade-in-up bg-card/20 dark:bg-card/10 flex flex-col justify-between relative", // flex-1, added flex layout, added relative for form positioning
-                         !isDemoCardVisible && "animate-fade-out", // Apply fade-out
+                         "flex-1 rounded-xl border border-border/30 shadow-xl overflow-hidden animate-fade-in-up bg-card/20 dark:bg-card/10 flex flex-col relative", // flex-1, added flex layout, added relative for form positioning
+                         !isDemoCardVisible && "animate-fade-out", // Apply fade-out if needed (though it should generally stay visible)
                          "animation-delay-100" // Slight delay for demo card animation
                          )}
                          style={{ animationDelay: '100ms' }} // Inline style for delay compatibility
                          >
-                        {/* Conditionally render Initial Content OR SubmitDemoForm */}
-                        {!isDemoFormActive ? (
+                        {/* Conditionally render Initial Content OR SubmitDemoForm based on isDemoFlowActive */}
+                        {!isDemoFlowActive ? (
                              <>
                                 <CardHeader className={cn(
                                     "items-center text-center p-6 border-b border-border/30 transition-opacity duration-300",
-                                    isDemoFormActive && "opacity-0 pointer-events-none" // Fade out initial header
+                                    isDemoFlowActive && "opacity-0 pointer-events-none" // Fade out initial header
                                 )}>
                                     <Upload className="h-12 w-12 mb-3 text-primary" /> {/* Icon */}
                                     <CardTitle className="text-2xl font-semibold tracking-tight text-primary">Submit Your Demo</CardTitle>
@@ -191,11 +195,11 @@ export default function LoginPage() {
                                 </CardHeader>
                                 <CardContent className={cn(
                                     "flex-grow flex items-center justify-center p-6 transition-opacity duration-300",
-                                    isDemoFormActive && "opacity-0 pointer-events-none" // Fade out initial content
+                                    isDemoFlowActive && "opacity-0 pointer-events-none" // Fade out initial content
                                 )}>
                                      <Button
                                          size="lg"
-                                         onClick={handleDemoSubmitClick}
+                                         onClick={handleDemoSubmitClick} // Trigger the flow start
                                          className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-primary-foreground shadow-md"
                                      >
                                          Submit Demo
@@ -203,8 +207,8 @@ export default function LoginPage() {
                                 </CardContent>
                                 {/* Footer - Always visible or fade? */}
                                 <div className={cn(
-                                    "p-4 text-center text-xs text-muted-foreground border-t border-border/30 bg-muted/10 dark:bg-muted/5 transition-opacity duration-300",
-                                    isDemoFormActive && "opacity-0 pointer-events-none" // Fade out initial footer
+                                    "p-4 text-center text-xs text-muted-foreground border-t border-border/30 bg-muted/10 dark:bg-muted/5 mt-auto transition-opacity duration-300", // Added mt-auto
+                                    isDemoFlowActive && "opacity-0 pointer-events-none" // Fade out initial footer
                                     )}>
                                     Unsolicited submissions policy applies.
                                 </div>
@@ -212,30 +216,21 @@ export default function LoginPage() {
                          ) : (
                               <div className={cn(
                                   "absolute inset-0 flex flex-col transition-opacity duration-500", // Use absolute positioning for form overlay
-                                  !isDemoFormActive && "opacity-0 pointer-events-none", // Fade in form
-                                  isDemoFormActive && "opacity-100"
+                                  !isDemoFlowActive && "opacity-0 pointer-events-none", // Fade in form
+                                  isDemoFlowActive && "opacity-100"
                                   )}>
                                     {/* Embed the SubmitDemoForm directly */}
+                                    {/* Pass handlers for success and cancel */}
                                     <SubmitDemoForm
                                         onSuccess={handleSubmitDemoSuccess}
                                         onCancel={handleDemoFormCancel}
-                                        className="flex-grow p-6 overflow-y-auto" // Add padding and allow scroll if needed
+                                        className="flex-grow flex flex-col p-6 overflow-y-auto" // Ensure form fills space and can scroll
                                     />
                               </div>
                          )}
                      </Card>
                  )}
             </div>
-
-             {/* Remove the Demo Submission Modal Trigger */}
-             {/*
-             <SubmitDemoModal
-                 isOpen={isSubmitDemoModalOpen}
-                 onClose={() => setIsSubmitDemoModalOpen(false)}
-                 onSuccess={handleSubmitDemoSuccess}
-             />
-             */}
-
         </div>
     );
 }
