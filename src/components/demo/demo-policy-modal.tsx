@@ -1,0 +1,81 @@
+
+"use client";
+
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  DialogClose,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { ScrollArea } from "@/components/ui/scroll-area";
+
+interface DemoPolicyModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+export function DemoPolicyModal({ isOpen, onClose }: DemoPolicyModalProps) {
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-lg md:max-w-2xl bg-card/85 dark:bg-card/70 border-border/50">
+        <DialogHeader>
+          <DialogTitle className="text-primary">Oxygen Music – Demo Policy</DialogTitle>
+          <DialogDescription className="text-muted-foreground pt-1">
+             Important guidelines for submitting your original music.
+          </DialogDescription>
+        </DialogHeader>
+
+        <ScrollArea className="max-h-[65vh] pr-4">
+             <div className="text-sm text-foreground space-y-4 py-4">
+                  <p>At Oxygen Music, we believe in nurturing authentic creativity and providing a platform for new talent. We welcome demo submissions on the condition that they adhere to the following guidelines.</p>
+
+                  <h4 className="font-semibold text-base pt-2">1. Submission Eligibility</h4>
+                  <ul className="list-disc list-inside space-y-1 pl-4">
+                      <li><strong>Originality</strong>: We will only consider demos that represent 100% original work created entirely by the submitting artist.</li>
+                      <li><strong>No Remixes or Derivative Works</strong>: Demos submitted must not be remixes, covers, or derivative works. Only completely original compositions and recordings qualify.</li>
+                  </ul>
+
+                  <h4 className="font-semibold text-base pt-2">2. Submission Process</h4>
+                   <ul className="list-disc list-inside space-y-1 pl-4">
+                        <li><strong>How to Submit</strong>: All demo submissions must be sent via our official submission portal (this form!). This ensures that your work is received and processed in an organized manner.</li>
+                        <li><strong>Accompanying Materials</strong>: Please include a brief bio and any relevant information about your creative process along with your demo. This helps us understand the context of your work and evaluate its originality.</li>
+                   </ul>
+
+                  <h4 className="font-semibold text-base pt-2">3. Review Process</h4>
+                   <ul className="list-disc list-inside space-y-1 pl-4">
+                        <li><strong>Evaluation</strong>: Each submission will be reviewed by our creative team to assess authenticity, originality, and artistic merit.</li>
+                        <li><strong>Response Policy</strong>: Due to the high volume of submissions, we may only respond to those demos that we feel could be a fit for future projects. If your demo is not selected, no further correspondence will be provided.</li>
+                   </ul>
+
+                  <h4 className="font-semibold text-base pt-2">4. Legal Considerations</h4>
+                   <ul className="list-disc list-inside space-y-1 pl-4">
+                        <li><strong>Copyright Confirmation</strong>: By submitting your demo, you certify that all content is your original work, free from any copyright infringement issues, and that you hold all necessary rights to the material.</li>
+                        <li><strong>No Implied Contracts</strong>: Submission of a demo does not imply any contractual or publishing relationship. Any further interest from Oxygen Music will be initiated through formal communication.</li>
+                   </ul>
+
+                  <h4 className="font-semibold text-base pt-2">5. Additional Guidelines</h4>
+                   <ul className="list-disc list-inside space-y-1 pl-4">
+                        <li><strong>Maintaining Artistic Integrity</strong>: We encourage artists to continue developing their sound independently and suggest that our demo process is just one of many ways to engage with the industry.</li>
+                        <li><strong>Privacy and Security</strong>: All submitted materials will be handled confidentially and used strictly for the purpose of evaluation under this policy.</li>
+                   </ul>
+
+                  <p className="pt-4">By submitting your demo to Oxygen Music, you confirm that your work meets these criteria and acknowledge that the decision to move forward rests solely with our team. We appreciate your passion for music and look forward to discovering new talent that embodies genuine creativity.</p>
+                  <p>If you have any questions about this policy or the submission process, please reach out to us through our official contact channels.</p>
+             </div>
+        </ScrollArea>
+
+        <DialogFooter className="mt-4">
+          <DialogClose asChild>
+            <Button type="button" variant="outline" onClick={onClose}>
+              Close
+            </Button>
+          </DialogClose>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}

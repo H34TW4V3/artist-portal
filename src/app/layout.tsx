@@ -43,10 +43,14 @@ export default function RootLayout({
   const [isWallpaperModalOpen, setIsWallpaperModalOpen] = useState(false); // Renamed for clarity
   const [isAboutModalOpen, setIsAboutModalOpen] = useState(false); // State for About modal
   const [isMounted, setIsMounted] = useState(false);
+  const [browserLang, setBrowserLang] = useState('en'); // Default to 'en'
   const pathname = usePathname(); // Get current pathname
 
   useEffect(() => {
     setIsMounted(true);
+    // Get browser language
+    setBrowserLang(navigator.language.split('-')[0] || 'en');
+
     const savedWallpaperUrl = localStorage.getItem(LOCAL_STORAGE_WALLPAPER_KEY);
     // Apply saved wallpaper only if not on the login page
     if (savedWallpaperUrl && pathname !== '/login') {
@@ -107,8 +111,9 @@ export default function RootLayout({
 
 
   // Apply 'dark' class by default before mounting
+  // Use browserLang for the html lang attribute
   return (
-    <html lang="en" className={`${GeistSans.variable} ${isMounted ? theme : 'dark'}`}>
+    <html lang={browserLang} className={`${GeistSans.variable} ${isMounted ? theme : 'dark'}`}>
       <head>
          {/* Removed explicit title and meta description - Let Next.js handle metadata via convention or export */}
          {/* Add link for placeholder artwork */}
