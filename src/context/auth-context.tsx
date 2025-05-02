@@ -6,6 +6,7 @@ import { User as FirebaseUser } from 'firebase/auth';
 // Import specific functions needed: login, logout, onAuthStateChange
 import { onAuthStateChange, login as fbLogin, logout as fbLogout } from '@/services/auth';
 import { SplashScreen } from '@/components/common/splash-screen'; // Import SplashScreen
+import { cn } from '@/lib/utils'; // Import cn
 
 interface AuthContextType {
   user: FirebaseUser | null;
@@ -19,6 +20,9 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 interface AuthProviderProps {
   children: ReactNode;
 }
+
+// Use the same background GIF as the login page
+const LOGIN_BACKGROUND_GIF_URL = "https://25.media.tumblr.com/0a0ba077c5c32fc4eaa6778519e56781/tumblr_n1an6osbsL1tpegqko1_r1_500.gif";
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<FirebaseUser | null>(null);
@@ -65,23 +69,26 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // Display loading indicator whenever the loading state is true.
   // Use the SplashScreen component for the initial load or logout.
   if (loading) {
-     // Determine the loading text based on whether a user object exists *before* this update (logout vs initial load)
-     // Note: `user` state might update slightly after `loading` becomes true during logout.
-     // A more robust way might involve tracking the logout action itself, but this is simpler.
-     const isLoggingOut = user !== null; // If there was a user, assume logout is in progress
+     const isLoggingOut = user !== null;
      const loadingText = isLoggingOut ? "Logging out..." : "Loading Artist Hub...";
      const userImageUrl = user?.photoURL;
      const userName = user?.displayName || user?.email?.split('@')[0];
 
     return (
-        <SplashScreen
-            loadingText={loadingText}
-            userImageUrl={userImageUrl} // Pass user info if available during logout transition
-            userName={userName}
-            // Removed explicit fade-out animation/delay from here.
-            // The splash screen will disappear naturally when loading becomes false.
-            // Add a minimum display time if needed, e.g., using a separate timer state.
-         />
+        // Wrapper div for background and centering
+        <div
+            className="flex min-h-screen w-full items-center justify-center p-4 relative bg-cover bg-center bg-no-repeat"
+            style={{ backgroundImage: `url('${LOGIN_BACKGROUND_GIF_URL}')` }}
+        >
+            {/* The SplashScreen component itself */}
+            <SplashScreen
+                loadingText={loadingText}
+                userImageUrl={userImageUrl}
+                userName={userName}
+                // Style the splash screen card itself if needed (e.g., add background/border)
+                className="bg-card/80 dark:bg-card/70 border border-border/50 shadow-xl max-w-sm relative z-10"
+            />
+        </div>
     );
   }
 

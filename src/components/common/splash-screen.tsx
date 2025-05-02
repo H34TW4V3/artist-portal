@@ -2,7 +2,6 @@
 import React, { useEffect, useRef } from 'react'; // Ensure React is imported
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'; // Import Avatar components
-// REMOVED: Howler import
 
 interface SplashScreenProps {
     className?: string;
@@ -11,8 +10,7 @@ interface SplashScreenProps {
     userImageUrl?: string | null;
     userName?: string | null;
     appletIcon?: React.ReactNode;
-    duration?: number; // Still potentially useful for internal state management if needed
-    // REMOVED: playAudioUrl, audioPlayedRef
+    duration?: number;
 }
 
 // Helper to get initials
@@ -29,11 +27,7 @@ export function SplashScreen({
     userName,
     appletIcon,
     duration = 5000, // Default duration set here
-    // REMOVED: playAudioUrl, audioPlayedRef
 }: SplashScreenProps) {
-    // REMOVED: audioRef, internalAudioPlayedRef, currentAudioPlayedRef
-
-    // REMOVED: useEffect for audio initialization
 
     const animationClass = 'animate-fade-in opacity-100';
 
@@ -41,10 +35,11 @@ export function SplashScreen({
    return (
         <div
             className={cn(
+                // Apply card-like styles, flex centering within the card
                 "flex flex-col items-center justify-center text-center p-6 rounded-lg",
                 "transition-opacity duration-500 ease-in-out",
                  animationClass, // Apply fade-in animation
-                className // Allow overriding classes
+                className // Allow overriding classes (e.g., bg-card/80 from parent)
             )}
             style={style}
         >
