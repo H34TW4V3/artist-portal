@@ -276,7 +276,7 @@ export function SubmitDemoForm({ onSuccess, onCancel, className }: SubmitDemoFor
             </div>
 
             {/* Form Area - Increased min-height and use relative positioning for transitions */}
-            <div className="flex-grow p-4 sm:p-6 relative min-h-[350px] sm:min-h-[400px]">
+            <div className="flex-grow p-4 sm:p-6 relative min-h-[300px] sm:min-h-[350px]"> {/* Adjusted min-height */}
                 <Form {...form}>
                     {/* Note: Removed onSubmit from form tag, handled by button click */}
                     <form className="space-y-5" aria-live="polite">
@@ -350,20 +350,23 @@ export function SubmitDemoForm({ onSuccess, onCancel, className }: SubmitDemoFor
 
             {/* Footer with Action Buttons */}
             <div className="flex justify-between p-4 border-t border-border/30 mt-auto">
+                {/* Back Button */}
                 <Button
                     type="button"
                     variant="outline"
                     onClick={handlePrevious}
                     disabled={currentStep === 1 || isSubmitting}
-                    className={cn(currentStep === 1 && "invisible")}
+                    className={cn(currentStep === 1 && "invisible")} // Hide on first step
                     size="lg"
                 >
                     <ArrowLeft className="mr-2 h-4 w-4" /> Back
                 </Button>
                 <div className="flex gap-2">
+                    {/* Cancel Button */}
                     <Button type="button" variant="outline" onClick={onCancel} disabled={isSubmitting} size="lg">
                         Cancel
                     </Button>
+                    {/* Next/Submit Button */}
                     <Button
                         type="button" // Changed from submit to button
                         onClick={handleNext} // Use handleNext for validation and step change/submission
@@ -386,3 +389,4 @@ export function SubmitDemoForm({ onSuccess, onCancel, className }: SubmitDemoFor
      </>
   );
 }
+
