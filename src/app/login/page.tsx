@@ -57,16 +57,17 @@ export default function LoginPage() {
     };
 
     // Update handler to start the demo flow
+    // REMOVED: setIsLoginFormVisible(false);
     const handleDemoSubmitClick = () => {
         console.log("Submit Demo button clicked, starting demo flow.");
-        setIsLoginFormVisible(false); // Animate out the login card
+        // setIsLoginFormVisible(false); // ** Keep login form visible **
         setIsDemoFlowActive(true); // Activate the multi-step form within the demo card
         // Demo card visibility remains true (isDemoCardVisible is not changed)
     };
 
     const handleSubmitDemoSuccess = () => {
         setIsDemoFlowActive(false); // Deactivate demo form flow
-        setIsLoginFormVisible(true); // Show login card again
+        setIsLoginFormVisible(true); // Ensure login card is visible
         toast({
             title: "Demo Submitted!",
             description: "Thank you for submitting your demo. We'll review it shortly.",
@@ -76,7 +77,7 @@ export default function LoginPage() {
 
     const handleDemoFormCancel = () => {
          setIsDemoFlowActive(false); // Deactivate demo form flow
-         setIsLoginFormVisible(true); // Show login card again
+         setIsLoginFormVisible(true); // Ensure login card is visible
          // No toast needed for cancel
     }
 
@@ -126,12 +127,11 @@ export default function LoginPage() {
                  showSplash && "animate-fade-out" // Fade out container when splash appears
                 )}>
 
-                {/* Login Card container - Apply slide-out animation when demo starts or fade-out for splash */}
+                {/* Login Card container - Apply fade-in initially, fade-out for splash */}
                 {/* Give Login flex-1 */}
                 <div className={cn(
                     "flex-1 rounded-xl border border-border/30 shadow-xl overflow-hidden bg-card/20 dark:bg-card/10 flex flex-col",
-                    isLoginFormVisible ? "animate-fade-in-up" : "animate-fade-out", // Use fade-in/fade-out for simplicity or change to slide
-                    !showSplash && !isLoginFormVisible && "animate-slide-out-to-left", // Slide left when demo starts (and not splash)
+                    isLoginFormVisible ? "animate-fade-in-up" : "animate-fade-out", // Use fade-in/fade-out
                     !isLoginFormVisible && "pointer-events-none" // Disable interaction when hidden/animating out
                  )}>
                     {/* Card Content - LoginForm */}
@@ -148,10 +148,11 @@ export default function LoginPage() {
                  {/* Uses flex to stretch vertically */}
                  <div className={cn(
                       "hidden sm:flex flex-col items-center justify-center py-10", // Removed fixed height, rely on flex stretch
-                      (!isLoginFormVisible || !isDemoCardVisible) && "opacity-0 pointer-events-none transition-opacity duration-300" // Hide when form animates out
+                      // Hide when either form animates out (e.g., during splash)
+                      (!isLoginFormVisible || !isDemoCardVisible) && "opacity-0 pointer-events-none transition-opacity duration-300"
                  )}>
                      <Separator orientation="vertical" className="flex-grow bg-border/50" /> {/* flex-grow makes separator fill space */}
-                     <span className="my-4 px-2 text-xl font-medium text-muted-foreground rounded-full">
+                     <span className="my-4 px-2 text-xl font-medium text-muted-foreground bg-transparent rounded-full"> {/* Added bg-transparent */}
                          Or
                      </span>
                      <Separator orientation="vertical" className="flex-grow bg-border/50" /> {/* flex-grow makes separator fill space */}
@@ -159,10 +160,11 @@ export default function LoginPage() {
                  {/* Horizontal Separator with "Or" - visible only below sm screens */}
                  <div className={cn(
                       "flex sm:hidden items-center justify-center w-full my-4", // Visible below sm, with margin
-                      (!isLoginFormVisible || !isDemoCardVisible) && "opacity-0 pointer-events-none transition-opacity duration-300" // Hide when form animates out
+                       // Hide when either form animates out (e.g., during splash)
+                      (!isLoginFormVisible || !isDemoCardVisible) && "opacity-0 pointer-events-none transition-opacity duration-300"
                  )}>
                      <Separator className="flex-grow bg-border/50" />
-                     <span className="mx-2 text-xl font-medium text-muted-foreground px-2 py-0.5 rounded-full">
+                     <span className="mx-2 text-xl font-medium text-muted-foreground px-2 py-0.5 bg-transparent rounded-full"> {/* Added bg-transparent */}
                          Or
                      </span>
                      <Separator className="flex-grow bg-border/50" />
@@ -170,7 +172,7 @@ export default function LoginPage() {
 
 
                 {/* Demo Submission Card - Always present for layout, content changes */}
-                {/* Give Demo flex-2 to make it twice as wide */}
+                {/* Give Demo flex-2 to make it roughly twice as wide */}
                 <Card className={cn(
                     "flex-2 rounded-xl border border-border/30 shadow-xl overflow-hidden bg-card/20 dark:bg-card/10 flex flex-col relative", // Use flex-2, Add relative positioning
                     isDemoCardVisible ? "animate-fade-in-up" : "animate-fade-out", // Fade-in initially, fade-out for splash
