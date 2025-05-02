@@ -269,7 +269,8 @@ export function SubmitDemoForm({ onSuccess, onCancel, className }: SubmitDemoFor
 
             {/* Form Area - Takes remaining space and scrolls */}
             {/* Use relative container for step animations - ensure sufficient min-height */}
-            <div className="flex-grow overflow-y-auto p-4 sm:p-6 relative min-h-[300px] sm:min-h-[350px]"> {/* Adjusted min-height */}
+            {/* Adjusted min-height to better fit content */}
+            <div className="flex-grow overflow-y-auto p-4 sm:p-6 relative min-h-[250px] sm:min-h-[300px]">
                 <Form {...form}>
                     {/* Forms are nested inside for step transition */}
                     <form onSubmit={(e) => {e.preventDefault(); handleNext();}} className="space-y-5" aria-live="polite"> {/* Increased space */}

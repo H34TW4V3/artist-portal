@@ -24,7 +24,7 @@ export default function LoginPage() {
     const { toast } = useToast(); // Initialize toast
     const [showSplash, setShowSplash] = useState(false); // State to control splash visibility *after* login
     const [isLoginFormVisible, setIsLoginFormVisible] = useState(true); // State to control login form card visibility
-    const [isDemoCardVisible, setIsDemoCardVisible] = useState(true); // State for demo card visibility (the card itself)
+    const [isDemoCardVisible, setIsDemoCardVisible] = useState(true); // State for demo card visibility (the card itself) - Stays true during flow
     const [isDemoFlowActive, setIsDemoFlowActive] = useState(false); // State for showing demo form *steps* inside the card
     const [splashUserName, setSplashUserName] = useState<string | null>(null); // State for splash user name
     const [splashUserImageUrl, setSplashUserImageUrl] = useState<string | null>(null); // State for splash user image
@@ -61,7 +61,7 @@ export default function LoginPage() {
         console.log("Submit Demo button clicked, starting demo flow.");
         setIsLoginFormVisible(false); // Animate out the login card
         setIsDemoFlowActive(true); // Activate the multi-step form within the demo card
-        // Demo card visibility is controlled by isDemoCardVisible (remains true)
+        // Demo card visibility remains true (isDemoCardVisible is not changed)
     };
 
     const handleSubmitDemoSuccess = () => {
@@ -172,7 +172,7 @@ export default function LoginPage() {
                 {/* Demo Submission Card - Always present for layout, content changes */}
                 {/* Give Demo flex-2 to make it twice as wide */}
                 <Card className={cn(
-                    "flex-2 rounded-xl border border-border/30 shadow-xl overflow-hidden bg-card/20 dark:bg-card/10 flex flex-col relative", // Use flex-2
+                    "flex-2 rounded-xl border border-border/30 shadow-xl overflow-hidden bg-card/20 dark:bg-card/10 flex flex-col relative", // Use flex-2, Add relative positioning
                     isDemoCardVisible ? "animate-fade-in-up" : "animate-fade-out", // Fade-in initially, fade-out for splash
                     "animation-delay-100" // Slight delay for demo card animation
                     )}
@@ -206,7 +206,7 @@ export default function LoginPage() {
                     </div>
 
                     {/* Container for the SubmitDemoForm with fade-in transition */}
-                     {/* Ensure this container fills the card */}
+                     {/* Ensure this container fills the card using absolute positioning */}
                     {isDemoFlowActive && (
                         <div className={cn(
                             "absolute inset-0 flex flex-col transition-opacity duration-500 ease-in-out",
