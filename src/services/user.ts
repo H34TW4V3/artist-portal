@@ -1,117 +1,112 @@
 
 import {
     getFirestore,
+    doc,
+    getDoc,
+    setDoc,
+    updateDoc,
+    Timestamp,
     collection,
-    query,
     where,
-    getDocs,
+    query,
     limit,
-    doc,     // Import doc
-    getDoc,  // Import getDoc
-    setDoc, // Import setDoc for creating the profile doc if needed
-} from "firebase/firestore";
-import { db } from './firebase-config'; // Import initialized db
-import type { ProfileFormValues } from '@/components/profile/profile-form'; // Import profile type
+    getDocs
+  } from "firebase/firestore";
+  import { app, db } from './firebase-config'; // Import initialized db
+  import type { ProfileFormValues } from "@/components/profile/profile-form"; // Import profile type
 
-// Define the assumed document ID within the publicProfile subcollection
-const PROFILE_DOC_ID = 'profile';
-
-/**
- * Fetches a user's profile document from the /users/{userId}/publicProfile/profile path.
- * @param uid - The UID of the user to fetch.
- * @returns A promise resolving to the ProfileFormValues object if found, otherwise null.
- * @throws An error if there's an issue fetching the document.
- */
-export async function getUserProfileByUid(uid: string): Promise<ProfileFormValues | null> {
-    if (!uid) {
-        console.warn("getUserProfileByUid: UID is required.");
-        return null;
-    }
-
-    // Reference the specific document within the subcollection
-    const profileDocRef = doc(db, "users", uid, "publicProfile", PROFILE_DOC_ID);
-
+  /**
+   * Fetches the public profile data for a specific user ID.
+   * Uses the 'users/{userId}/publicProfile/profile' path.
+   * @param uid - The user ID.
+   * @returns A promise resolving to the ProfileFormValues or null if not found/error.
+   */
+  export async function getUserProfileByUid(uid: string): Promise<ProfileFormValues | null> {
+    const profileDocRef = doc(db, "users", uid, "publicProfile", "profile"); // Updated path
     try {
-        const docSnap = await getDoc(profileDocRef); // Fetch the document
-
-        if (!docSnap.exists()) {
-            console.log(`No public profile document found for UID: ${uid} at path users/${uid}/publicProfile/${PROFILE_DOC_ID}`);
-            // Optionally, you could try fetching from the root doc as a fallback or create the subcollection doc here if needed.
-            // For now, return null if the specific subcollection doc doesn't exist.
-            return null;
-        }
-
-        const userData = docSnap.data() as ProfileFormValues; // Cast data
-
-        // Optionally, add Zod validation here
-
-        console.log(`Fetched user profile for UID: ${uid} from publicProfile subcollection.`);
-        return userData;
-
-    } catch (error) {
-        console.error("Error fetching user profile by UID from publicProfile:", error);
-        throw new Error("Failed to fetch user profile by UID.");
-    }
-}
-
-
-/**
- * Fetches a user's profile document from the /users/{userId}/publicProfile/profile path based on their email address.
- * First queries the root 'users' collection to find the userId associated with the email.
- * @param email - The email address of the user to fetch.
- * @returns A promise resolving to the ProfileFormValues object if found, otherwise null.
- * @throws An error if there's an issue querying Firestore or fetching the profile.
- */
-export async function getUserProfileByEmail(email: string): Promise<ProfileFormValues | null> {
-    if (!email) {
-        console.warn("getUserProfileByEmail: Email address is required.");
+      const docSnap = await getDoc(profileDocRef);
+      if (docSnap.exists()) {
+        console.log("getUserProfileByUid: Profile data found for UID:", uid);
+        // Ensure date fields are converted if they exist (example)
+        const data = docSnap.data() as ProfileFormValues;
+        // if (data.someDate && data.someDate instanceof Timestamp) {
+        //   data.someDate = data.someDate.toDate();
+        // }
+        return data;
+      } else {
+        console.log("getUserProfileByUid: No public profile found for UID:", uid);
         return null;
+      }
+    } catch (error) {
+      console.error("getUserProfileByUid: Error fetching user profile:", error);
+      throw new Error("Failed to fetch user profile by UID."); // Rethrow specific error
     }
+  }
 
-    // 1. Query the root users collection to find the user ID by email
+  /**
+   * Fetches the public profile data for a specific user email.
+   * Queries the main 'users' collection for the email field.
+   * Assumes profile data is stored directly under 'users/{userId}'.
+   * !! Important: This requires an index on the 'email' field in the 'users' collection. !!
+   * !! And assumes the public profile is stored at the root user doc, not subcollection !!
+   * !! Adjust path if using subcollection like getUserProfileByUid !!
+   * @param email - The user's email address.
+   * @returns A promise resolving to the ProfileFormValues or null if not found/error.
+   */
+  export async function getUserProfileByEmail(email: string): Promise<ProfileFormValues | null> {
+    // **ASSUMPTION**: Querying the root 'users' collection for a direct 'email' field.
+    // If profile is in subcollection, this needs a different approach (Cloud Function or duplicating email).
     const usersRef = collection(db, "users");
     const q = query(usersRef, where("email", "==", email), limit(1));
-    let userId: string | null = null;
 
     try {
-        const querySnapshot = await getDocs(q);
-        if (!querySnapshot.empty) {
-            userId = querySnapshot.docs[0].id;
-        } else {
-            console.log(`No root user document found for email: ${email}`);
-            // Try fetching from auth directly as fallback? Unreliable.
-            // For now, if root user doc isn't found by email, assume no profile.
-            return null;
-        }
+      const querySnapshot = await getDocs(q);
+      if (!querySnapshot.empty) {
+        const userDoc = querySnapshot.docs[0];
+        // **ASSUMPTION**: Profile data is at userDoc.data(). Adjust if it's in a subcollection.
+        // If using the subcollection structure:
+        // const profileData = await getUserProfileByUid(userDoc.id);
+        // return profileData;
+
+        // If data is directly on user doc:
+         const data = userDoc.data();
+         // Fetch the subcollection data using UID
+         const profileData = await getUserProfileByUid(userDoc.id);
+         if (profileData) {
+             console.log("getUserProfileByEmail: Profile data found for email:", email);
+             return profileData;
+         } else {
+             // User doc exists, but profile subcollection doc doesn't (edge case)
+             console.log("getUserProfileByEmail: User found, but no public profile sub-document for email:", email);
+             return null;
+         }
+
+      } else {
+        console.log("getUserProfileByEmail: No user found with email:", email);
+        return null;
+      }
     } catch (error) {
-        console.error("Error finding user ID by email:", error);
-        throw new Error("Failed to look up user by email.");
+      console.error("getUserProfileByEmail: Error fetching user profile by email:", error);
+      throw new Error("Failed to fetch user profile by email."); // Rethrow specific error
     }
+  }
 
-    // 2. If userId found, fetch the profile from the subcollection using getUserProfileByUid
-    if (userId) {
-        console.log(`Found userId: ${userId} for email: ${email}. Fetching public profile...`);
-        return await getUserProfileByUid(userId);
-    } else {
-        return null; // Should not happen if query succeeded but was empty, but good practice.
+
+  /**
+   * Creates or updates the public profile document for a user.
+   * Uses the 'users/{userId}/publicProfile/profile' path.
+   * @param uid - The user ID.
+   * @param data - The profile data to set or merge.
+   * @param merge - Whether to merge the data with existing document (true) or overwrite (false).
+   * @returns A promise resolving when the operation is complete.
+   */
+  export async function setPublicProfile(uid: string, data: ProfileFormValues, merge: boolean = true): Promise<void> {
+    const profileDocRef = doc(db, "users", uid, "publicProfile", "profile"); // Updated path
+    try {
+      await setDoc(profileDocRef, data, { merge: merge });
+      console.log(`Public profile ${merge ? 'updated' : 'created'} successfully for UID:`, uid);
+    } catch (error) {
+      console.error("setPublicProfile: Error setting public profile:", error);
+      throw new Error("Failed to update user profile.");
     }
-}
-
-/**
- * Creates or updates the user's public profile document.
- * @param userId The user's UID.
- * @param data The profile data to save.
- * @param merge Optional. Whether to merge data with existing document. Defaults to true.
- */
-export async function setPublicProfile(userId: string, data: ProfileFormValues, merge = true): Promise<void> {
-     if (!userId) throw new Error("User ID is required to set profile.");
-
-     const profileDocRef = doc(db, "users", userId, "publicProfile", PROFILE_DOC_ID);
-     try {
-          await setDoc(profileDocRef, data, { merge });
-          console.log(`Public profile for UID ${userId} successfully saved.`);
-     } catch (error) {
-          console.error(`Error setting public profile for UID ${userId}:`, error);
-          throw new Error("Failed to save public profile.");
-     }
-}
+  }
