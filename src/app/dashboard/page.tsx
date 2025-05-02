@@ -67,7 +67,7 @@ export default function DashboardPage() {
           <CardHeader className="flex flex-row items-center justify-between gap-4 flex-wrap"> {/* Added flex-wrap */}
             <div className="flex items-center gap-4">
               {/* Add Home Button */}
-              <Link href="/" passHref legacyBehavior>
+              <Link href="/">
                  <Button variant="ghost" size="lg" className="h-12 w-12 text-primary hover:bg-primary/10 active:bg-primary/20 p-0" aria-label="Go to Home">
                    <Home className="h-7 w-7" />
                  </Button>
@@ -128,3 +128,4 @@ export default function DashboardPage() {
     </div>
   );
 }
+

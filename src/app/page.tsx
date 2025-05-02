@@ -290,10 +290,8 @@ export default function HomePage() {
                                     {cardContent}
                                 </a>
                             ) : (
-                                <Link href={item.href} key={item.href} passHref legacyBehavior>
-                                    <a className={cn("block group aspect-[4/3]", animationClass, activeStateClasses)} style={{ animationDelay }}>
-                                        {cardContent}
-                                    </a>
+                                <Link href={item.href} key={item.href} className={cn("block group aspect-[4/3]", animationClass, activeStateClasses)} style={{ animationDelay }}>
+                                    {cardContent}
                                 </Link>
                             );
                         }

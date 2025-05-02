@@ -74,7 +74,7 @@ export default function PineapplePage() {
                 <Card className="mb-4 sm:mb-8 bg-card/60 dark:bg-card/50 shadow-lg rounded-lg border-border/30"> {/* Adjusted opacity */}
                     <CardHeader className="flex flex-row items-center justify-between gap-4 flex-wrap"> {/* Added flex-wrap */}
                         <div className="flex items-center gap-4">
-                            <Link href="/" passHref legacyBehavior>
+                            <Link href="/">
                                 <Button variant="ghost" size="lg" className="h-12 w-12 text-primary hover:bg-primary/10 active:bg-primary/20 p-0" aria-label="Go to Home">
                                     <Home className="h-7 w-7" />
                                 </Button>
