@@ -144,11 +144,11 @@ export function LoginForm({ onLoginComplete }: LoginFormProps) {
        try {
            const profile = await getUserProfileByEmail(email);
            if (profile) {
-               setArtistNameStep2(profile.name || email.split('@')[0] || "User"); // Use profile name, fallback to email prefix
+               setArtistNameStep2(profile.name || email.split('@')[0] || "name"); // Use profile name, fallback to email prefix
                setArtistImageStep2(profile.imageUrl || null);
                console.log("Fetched profile for step 2:", profile.name, profile.imageUrl);
            } else {
-                setArtistNameStep2(email.split('@')[0] || "User"); // Fallback if no profile found
+                setArtistNameStep2(email.split('@')[0] || "name"); // Fallback if no profile found
                 console.log("No profile found for step 2, using email prefix.");
            }
        } catch (error) {
