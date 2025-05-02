@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState, useEffect } from "react"; // Import React and useEffect
+import React, { useState, useEffect, useRef } from "react"; // Import React and useEffect, useRef
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
@@ -25,7 +25,7 @@ import { ForgotPasswordModal } from "./forgot-password-modal"; // Import the mod
 import { useAuth } from "@/context/auth-context"; // Import useAuth hook
 import { cn } from "@/lib/utils"; // Import cn
 // Updated to import getUserProfileByEmail from the user service
-import { getUserProfileByEmail } from "@/services/user";
+import { getUserProfileByEmail } from "@/services/user"; // Correct import path
 import type { ProfileFormValues } from "@/components/profile/profile-form"; // Import profile type
 import { Skeleton } from "@/components/ui/skeleton"; // Import Skeleton
 import { SplashScreen } from '@/components/common/splash-screen'; // Import SplashScreen
@@ -156,7 +156,8 @@ export function LoginForm({ onLoginComplete }: LoginFormProps) {
             setIsFetchingProfile(true);
             setProfileData(null); // Reset profile data
             try {
-                const fetchedProfile = await getUserProfileByEmail(email); // Fetch from publicProfile
+                // Use getUserProfileByEmail which correctly finds UID then fetches profile
+                const fetchedProfile = await getUserProfileByEmail(email);
                 setProfileData(fetchedProfile);
                 console.log("Fetched profile for password screen:", fetchedProfile);
             } catch (error) {
@@ -386,7 +387,8 @@ export function LoginForm({ onLoginComplete }: LoginFormProps) {
                         ) : currentStep === STEPS.length ? (
                             'Login'
                         ) : (
-                            <>Next <ArrowRight className="ml-2 h-4 w-4" /></>
+                            // Corrected JSX wrapping
+                            <span>Next <ArrowRight className="ml-2 h-4 w-4" /></span>
                         )}
                     </Button>
                 </div>
@@ -403,3 +405,4 @@ export function LoginForm({ onLoginComplete }: LoginFormProps) {
     </>
   );
 }
+

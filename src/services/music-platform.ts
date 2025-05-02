@@ -64,6 +64,7 @@ import {
   export type ReleaseWithId = ReleaseMetadata & { id: string };
 
   // Type for adding an existing release - Artist is now optional here
+  // Make artworkUrl optional as well for consistency with how it's used
   export type ExistingReleaseData = Omit<ReleaseMetadata, 'userId' | 'createdAt' | 'zipUrl' | 'status' | 'artworkUrl' | 'artist'> & { artworkUrl?: string | null, artist?: string | null };
 
 
@@ -151,9 +152,9 @@ import {
     const zipUrl = await getDownloadURL(snapshot.ref);
     console.log("ZIP Upload successful, URL:", zipUrl);
 
-    // Fetch artist name from Firestore profile, fallback to Auth info
-    const auth = getAuth(app);
-    const userProfile = await getUserProfileByUid(userId);
+    // Fetch artist name from Firestore profile using getUserProfileByUid
+    const userProfile = await getUserProfileByUid(userId); // Correct function call
+    const auth = getAuth(app); // Get auth instance for fallback
     const artistName = userProfile?.name || auth.currentUser?.displayName || auth.currentUser?.email?.split('@')[0] || "Unknown Artist";
 
     // Prepare data for Firestore document
@@ -189,11 +190,11 @@ import {
       const userId = getCurrentUserId();
       if (!userId) throw new Error("Authentication required. Please log in.");
 
-      const auth = getAuth(app);
-      // Use provided artist name OR fetch from profile, fallback to Auth info
-      let artistName = data.artist;
+      // Fetch artist name from Firestore profile using getUserProfileByUid
+      let artistName = data.artist; // Use provided artist if available
       if (!artistName) {
-          const userProfile = await getUserProfileByUid(userId);
+          const userProfile = await getUserProfileByUid(userId); // Correct function call
+          const auth = getAuth(app); // Get auth instance for fallback
           artistName = userProfile?.name || auth.currentUser?.displayName || auth.currentUser?.email?.split('@')[0] || "Unknown Artist";
       }
 
@@ -302,4 +303,3 @@ import {
     await deleteDoc(releaseDocRef);
     console.log("Release document deleted:", releaseId);
   }
-

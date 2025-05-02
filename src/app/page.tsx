@@ -16,7 +16,7 @@ import { useEffect, useState, useRef } from 'react'; // Import useEffect, useSta
 import { SplashScreen } from '@/components/common/splash-screen'; // Import SplashScreen
 import { Button } from "@/components/ui/button"; // Keep button for potential future use or structure
 // Import user service function
-import { getUserProfileByUid } from "@/services/user";
+import { getUserProfileByUid } from "@/services/user"; // Correct import
 import type { ProfileFormValues } from "@/components/profile/profile-form"; // Import profile type
 
 
@@ -66,31 +66,36 @@ export default function HomePage() {
     const { user, loading: authLoading } = useAuth(); // Use the auth context
     const router = useRouter();
     // Removed db state as we use the service function now
-    const [profileData, setProfileData] = useState<ProfileFormValues | null>(null);
+    // Initialize profileData state with undefined to distinguish initial state from loaded null
+    const [profileData, setProfileData] = useState<ProfileFormValues | null | undefined>(undefined);
     const [profileLoading, setProfileLoading] = useState(true);
     const [clientGreeting, setClientGreeting] = useState("");
     // Removed splash state and hasShownInitialSplash
-    // REMOVED: audioRef
 
     // Fetch profile data from Firestore using service function
     useEffect(() => {
         const fetchProfileData = async () => {
             if (authLoading || !user) {
                 setProfileLoading(false);
-                if (!user) setProfileData(null);
+                // Only set profileData to null if auth check is done and there's definitively no user
+                if (!authLoading && !user) {
+                    setProfileData(null);
+                } else {
+                     setProfileData(undefined); // Keep as undefined while auth is loading
+                }
                 return;
             }
 
             setProfileLoading(true);
             try {
                 // Fetch profile using UID from the service
-                const fetchedProfile = await getUserProfileByUid(user.uid);
+                const fetchedProfile = await getUserProfileByUid(user.uid); // Correct function
                 if (fetchedProfile) {
                     setProfileData(fetchedProfile);
                 } else {
                     console.log("User profile not found in publicProfile for greeting.");
                     // If no profile, still proceed but name will fallback
-                    setProfileData(null); // Explicitly set to null if not found
+                    setProfileData(null); // Explicitly set to null if not found after checking
                 }
             } catch (error) {
                 console.error("Error fetching user profile for greeting:", error);
@@ -120,8 +125,8 @@ export default function HomePage() {
 
         const isLoading = authLoading || profileLoading;
 
-        // Set greeting and check tutorial status
-        if (!isLoading && user) {
+        // Set greeting and check tutorial status only when loading is finished AND profileData is not undefined
+        if (!isLoading && user && profileData !== undefined) {
             // Tutorial Check
             // Ensure profileData is not null before checking tutorial status
             if (profileData && profileData.hasCompletedTutorial === false) {
@@ -130,7 +135,6 @@ export default function HomePage() {
                 return;
             }
 
-
             // Proceed with setting greeting if tutorial is completed or not applicable
             // **PRIORITIZE profileData.name**, then displayName, then email, then 'Artist'
             const finalName = profileData?.name || user.displayName || user.email?.split('@')[0] || 'Artist';
@@ -138,15 +142,11 @@ export default function HomePage() {
             // Generate greeting on client side using the helper function
             setClientGreeting(getRandomGreeting(finalName));
 
-            // Splash logic removed
-
         } else if (!isLoading && !user) {
              setClientGreeting("Welcome!");
-             // Splash logic removed
         } else {
             // Still loading or other state, set default greeting
             setClientGreeting("Welcome!");
-            // Splash logic removed
         }
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -162,12 +162,12 @@ export default function HomePage() {
     const displayImageUrl = profileData?.imageUrl || user?.photoURL || null;
 
     // Show Loading (Splash Screen) ONLY during initial auth/profile load
-     if (isLoading) {
+     if (isLoading || profileData === undefined) { // Also show splash while profileData is undefined (initial fetch)
         return (
              <SplashScreen
                  loadingText="Loading Hub..."
-                 userImageUrl={displayImageUrl}
-                 userName={displayName}
+                 userImageUrl={displayImageUrl} // Use determined URL
+                 userName={displayName}         // Use determined name
              />
         );
     }

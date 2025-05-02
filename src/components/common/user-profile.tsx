@@ -12,7 +12,7 @@ import * as z from "zod";
 import { app } from "@/services/firebase-config"; // Import your Firebase config
 import { useAuth } from "@/context/auth-context"; // Import useAuth to get the current user and logout
 // Import new user service functions
-import { getUserProfileByUid, setPublicProfile } from "@/services/user";
+import { getUserProfileByUid, setPublicProfile } from "@/services/user"; // Correct service functions
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -75,7 +75,7 @@ export default function UserProfile() {
       setIsProfileLoading(true); // Start loading profile data
       try {
         // Use the service function to fetch profile by UID from the publicProfile subcollection
-        const fetchedProfile = await getUserProfileByUid(user.uid);
+        const fetchedProfile = await getUserProfileByUid(user.uid); // Correct function call
 
         if (fetchedProfile) {
             setProfileData(fetchedProfile);
@@ -90,8 +90,8 @@ export default function UserProfile() {
             phoneNumber: null,
             hasCompletedTutorial: false, // Initialize tutorial flag to false
           };
-          // Use the setPublicProfile service to create the doc
-          await setPublicProfile(user.uid, defaultData, false); // Don't merge on initial creation
+          // Use the setPublicProfile service to create the doc in the subcollection
+          await setPublicProfile(user.uid, defaultData, false); // Correct function call, merge=false
           setProfileData(defaultData);
         }
       } catch (error) {
@@ -159,7 +159,7 @@ export default function UserProfile() {
           };
 
           // 3. Update Firestore Document using the service function
-          await setPublicProfile(user.uid, dataToSave, true); // Use merge=true for updates
+          await setPublicProfile(user.uid, dataToSave, true); // Correct function call, use merge=true for updates
 
           // 4. Update local state immediately for better UX
           setProfileData(dataToSave);
@@ -262,7 +262,7 @@ export default function UserProfile() {
                     <ProfileForm
                         key={user?.uid || 'profile-form'} // Ensure remount on user change if needed
                         initialData={profileData}
-                        updateFunction={handleUpdateProfile}
+                        updateFunction={handleUpdateProfile} // Use the correctly defined update function
                         onCancel={() => setIsProfileModalOpen(false)} // Close modal on cancel
                          onSuccess={() => {
                             setIsProfileModalOpen(false); // Close modal on success handled by handleUpdateProfile
