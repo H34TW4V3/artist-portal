@@ -30,7 +30,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
     userImageUrl,
     userName,
     appletIcon,
-    duration = 3000,
+    duration = 3000, // Default duration if needed, login form sets to 0
     playAudioUrl,
     audioPlayedRef,
 }) => {
@@ -95,18 +95,11 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
 
 
     // Determine animation based on visibility state
-    const animationClass = isVisible ? 'animate-fade-in opacity-100' : 'animate-fade-out';
+    // Use fade-in for initial appearance, fade-out controlled by parent via duration or explicit state
+    const animationClass = 'animate-fade-in opacity-100';
 
-    // Render null if not visible and fade-out is complete (or if duration is 0/negative initially)
-     if (!isVisible && duration > 0) {
-         // Allow time for fade-out animation before returning null
-         // This simple check might need refinement based on exact animation timings
-         // For now, let's return null immediately after isVisible becomes false if duration was set.
-         // A better approach might involve onAnimationEnd callback.
-         // return null;
-         // Let's keep rendering during fade-out, parent component controls removal.
-     }
-
+    // Ensure clean syntax before return
+    // No misplaced characters or comments here
 
     return (
         <div
@@ -117,7 +110,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
                 // Use background/backdrop from parent card or apply locally if needed
                 // "bg-background/30 dark:bg-background/20 backdrop-blur-sm", // Example local style
                 "transition-opacity duration-500 ease-in-out", // Smooth opacity transition
-                 animationClass, // Apply fade-in or fade-out animation
+                 animationClass, // Apply fade-in animation
                 className // Allow overriding classes
             )}
             // Style might be used for initial animation delay if needed
@@ -167,4 +160,3 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
         </div>
     );
 };
-
