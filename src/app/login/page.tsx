@@ -16,7 +16,6 @@ import { Separator } from '@/components/ui/separator'; // Import Separator
 
 // Placeholder URL for the GIF - replace with actual URL
 const LOGIN_BACKGROUND_GIF_URL = "https://25.media.tumblr.com/0a0ba077c5c32fc4eaa6778519e56781/tumblr_n1an6osbsL1tpegqko1_r1_500.gif"; // Updated GIF URL
-// REMOVED: const LOGIN_JINGLE_PATH = '/sounds/login-jingle.mp3'; // Path to the sound file
 
 
 export default function LoginPage() {
@@ -29,9 +28,7 @@ export default function LoginPage() {
     const [isDemoFlowActive, setIsDemoFlowActive] = useState(false); // State for showing demo form *steps* inside the card
     const [splashUserName, setSplashUserName] = useState<string | null>(null); // State for splash user name
     const [splashUserImageUrl, setSplashUserImageUrl] = useState<string | null>(null); // State for splash user image
-    // REMOVED: const audioRef = useRef<HTMLAudioElement | null>(null); // Ref for the audio element
 
-    // REMOVED: Initialize and preload audio element useEffect
 
     useEffect(() => {
         // Redirect authenticated users away from login page
@@ -40,7 +37,6 @@ export default function LoginPage() {
         }
     }, [user, loading, router]);
 
-    // REMOVED: Play login sound function
 
     // Update handleLoginSuccess - remove playLoginSound call
     const handleLoginSuccess = (name: string, imageUrl: string | null) => {
@@ -53,8 +49,6 @@ export default function LoginPage() {
          setIsDemoCardVisible(false); // Hide demo card as well
          setShowSplash(true); // Show splash screen
 
-         // REMOVED: Play the login sound as the splash appears
-         // playLoginSound();
 
         // Set timer to redirect after splash animation completes
         setTimeout(() => {
@@ -125,16 +119,15 @@ export default function LoginPage() {
 
             {/* Container for Login and Demo Cards */}
              {/* Use flex-col on small screens and flex-row on larger screens */}
-             {/* Increased max-width to max-w-4xl */}
+             {/* Increased max-width to max-w-5xl to accommodate wider demo card */}
             <div className={cn(
-                "relative z-10 flex flex-col sm:flex-row gap-6 w-full max-w-4xl justify-center items-stretch", // Use items-stretch for full height cards
+                "relative z-10 flex flex-col sm:flex-row gap-6 w-full max-w-5xl justify-center items-stretch", // Increased max-width, use items-stretch
                  // Apply fade-out animation to the whole container when splash shows
                  showSplash && "animate-fade-out" // Fade out container when splash appears
                 )}>
 
                 {/* Login Card container - Apply slide-out animation when demo starts or fade-out for splash */}
-                {/* Conditional rendering needed for animation exit */}
-                 {/* Removed self-stretch, now handled by items-stretch on parent */}
+                {/* Give Login flex-1 */}
                 <div className={cn(
                     "flex-1 rounded-xl border border-border/30 shadow-xl overflow-hidden bg-card/20 dark:bg-card/10 flex flex-col",
                     isLoginFormVisible ? "animate-fade-in-up" : "animate-fade-out", // Use fade-in/fade-out for simplicity or change to slide
@@ -152,16 +145,16 @@ export default function LoginPage() {
                 </div>
 
                  {/* Vertical Separator with "Or" - visible only on sm screens and up */}
+                 {/* Uses flex to stretch vertically */}
                  <div className={cn(
-                      "hidden sm:flex flex-col items-center justify-center h-auto py-10", // Adjusted height/padding
+                      "hidden sm:flex flex-col items-center justify-center py-10", // Removed fixed height, rely on flex stretch
                       (!isLoginFormVisible || !isDemoCardVisible) && "opacity-0 pointer-events-none transition-opacity duration-300" // Hide when form animates out
                  )}>
-                     <Separator orientation="vertical" className="flex-grow bg-border/50" />
-                     {/* Increased text size, removed background */}
+                     <Separator orientation="vertical" className="flex-grow bg-border/50" /> {/* flex-grow makes separator fill space */}
                      <span className="my-4 px-2 text-xl font-medium text-muted-foreground rounded-full">
                          Or
                      </span>
-                     <Separator orientation="vertical" className="flex-grow bg-border/50" />
+                     <Separator orientation="vertical" className="flex-grow bg-border/50" /> {/* flex-grow makes separator fill space */}
                  </div>
                  {/* Horizontal Separator with "Or" - visible only below sm screens */}
                  <div className={cn(
@@ -169,7 +162,6 @@ export default function LoginPage() {
                       (!isLoginFormVisible || !isDemoCardVisible) && "opacity-0 pointer-events-none transition-opacity duration-300" // Hide when form animates out
                  )}>
                      <Separator className="flex-grow bg-border/50" />
-                     {/* Increased text size, removed background */}
                      <span className="mx-2 text-xl font-medium text-muted-foreground px-2 py-0.5 rounded-full">
                          Or
                      </span>
@@ -178,9 +170,9 @@ export default function LoginPage() {
 
 
                 {/* Demo Submission Card - Always present for layout, content changes */}
-                {/* Apply slide-in animation only when login form slides out */}
+                {/* Give Demo flex-2 to make it twice as wide */}
                 <Card className={cn(
-                    "flex-1 rounded-xl border border-border/30 shadow-xl overflow-hidden bg-card/20 dark:bg-card/10 flex flex-col relative", // Removed self-stretch, flex-1 handles width
+                    "flex-2 rounded-xl border border-border/30 shadow-xl overflow-hidden bg-card/20 dark:bg-card/10 flex flex-col relative", // Use flex-2
                     isDemoCardVisible ? "animate-fade-in-up" : "animate-fade-out", // Fade-in initially, fade-out for splash
                     "animation-delay-100" // Slight delay for demo card animation
                     )}
@@ -233,4 +225,3 @@ export default function LoginPage() {
         </div>
     );
 }
-
