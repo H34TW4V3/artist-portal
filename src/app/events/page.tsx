@@ -18,6 +18,7 @@ import { CreateEventModal } from "@/components/events/create-event-modal"; // Im
 import type { Event } from "@/types/event"; // Import Event type (will create)
 import { getEvents } from "@/services/events"; // Import getEvents service (will create)
 import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils"; // Import cn
 
 // Updated Fourvenues URL
 const FOURVENUES_PRO_URL = "https://pro.fourvenues.com";
@@ -146,47 +147,51 @@ export default function EventsPage() {
 
         {/* Main Content Area */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Calendar Column */}
-          <Card className="lg:col-span-1 bg-card/60 dark:bg-card/50 border-border/30 shadow-md rounded-lg p-4 flex flex-col items-center"> {/* Adjusted opacity */}
-             <h2 className="text-lg font-semibold text-foreground mb-4">Calendar</h2>
-            <Calendar
-              mode="single"
-              selected={selectedDate}
-              onSelect={setSelectedDate}
-              className="rounded-md"
-               // Highlight dates with events
-               modifiers={{ eventDates: eventDates }}
-               modifiersStyles={{
-                 eventDates: {
-                   backgroundColor: 'hsl(var(--accent))',
-                   color: 'hsl(var(--accent-foreground))',
-                   borderRadius: '100%',
-                   fontWeight: 'bold',
-                 },
-               }}
-               // Disable past dates for selection if desired
-               // disabled={(date) => date < new Date(new Date().setHours(0,0,0,0))}
-            />
-          </Card>
+          {/* Calendar & Fourvenues Column */}
+          {/* Updated this div to be flex-col and contain both calendar and link */}
+          <div className="lg:col-span-1 flex flex-col gap-6">
+            <Card className="bg-card/60 dark:bg-card/50 border-border/30 shadow-md rounded-lg p-4 flex flex-col items-center"> {/* Adjusted opacity */}
+               <h2 className="text-lg font-semibold text-foreground mb-4">Calendar</h2>
+              <Calendar
+                mode="single"
+                selected={selectedDate}
+                onSelect={setSelectedDate}
+                className="rounded-md"
+                 // Highlight dates with events
+                 modifiers={{ eventDates: eventDates }}
+                 modifiersStyles={{
+                   eventDates: {
+                     backgroundColor: 'hsl(var(--accent))',
+                     color: 'hsl(var(--accent-foreground))',
+                     borderRadius: '100%',
+                     fontWeight: 'bold',
+                   },
+                 }}
+                 // Disable past dates for selection if desired
+                 // disabled={(date) => date < new Date(new Date().setHours(0,0,0,0))}
+              />
+            </Card>
 
-          {/* Events List & Actions Column */}
-          <div className="lg:col-span-2 space-y-6">
-             {/* Fourvenues Link - Changed to Image link */}
+             {/* Fourvenues Link - Moved here, below calendar */}
              <a
                href={FOURVENUES_PRO_URL}
                target="_blank"
                rel="noopener noreferrer"
+               // Card styling applied here
                className="block group relative rounded-lg overflow-hidden shadow-md transition-all duration-200 ease-in-out hover:shadow-lg hover:border-primary/50 hover:-translate-y-1 hover-glow border border-border/30 bg-card/60 dark:bg-card/50"
              >
                <div className="p-4 flex flex-col items-center text-center">
-                  <Image
-                      src={FOURVENUES_LOGO_URL}
-                      alt="Fourvenues Logo"
-                      width={150} // Adjust size as needed
-                      height={150} // Adjust size as needed
-                      className="rounded-md mb-3"
-                      data-ai-hint="fourvenues event management logo"
-                  />
+                  {/* Image - Use relative positioning and object-contain for better sizing */}
+                  <div className="relative w-32 h-32 mb-3 sm:w-40 sm:h-40"> {/* Container to control size */}
+                    <Image
+                        src={FOURVENUES_LOGO_URL}
+                        alt="Fourvenues Logo"
+                        fill // Use fill to cover the container
+                        style={{ objectFit: 'contain' }} // Use contain to fit the logo within bounds
+                        className="rounded-md"
+                        data-ai-hint="fourvenues event management logo"
+                    />
+                  </div>
                   <p className="text-sm font-medium text-foreground mb-1">Go to Fourvenues Pro</p>
                   <p className="text-xs text-muted-foreground">
                      Access the external platform for advanced event management features.
@@ -194,8 +199,10 @@ export default function EventsPage() {
                    <ExternalLink className="h-4 w-4 text-muted-foreground absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity" />
                </div>
              </a>
+          </div>
 
-
+          {/* Events List & Actions Column */}
+          <div className="lg:col-span-2 space-y-6">
             {/* Internal Events Card */}
             <Card className="bg-card/60 dark:bg-card/50 border-border/30 shadow-md rounded-lg"> {/* Adjusted opacity */}
               <CardHeader className="flex flex-row justify-between items-center">
