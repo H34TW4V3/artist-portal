@@ -349,56 +349,56 @@ export function SubmitDemoForm({ onSuccess, onCancel, className }: SubmitDemoFor
                 </Form>
             </div>
 
-            {/* Footer with Action Buttons - Use Icons */}
-             <div className="flex justify-between items-center p-4 border-t border-border/30 mt-auto">
+             {/* Footer with Action Buttons - Increased padding and icon sizes */}
+             <div className="flex justify-between items-center p-4 border-t border-border/30 mt-auto h-16"> {/* Increased height */}
                  {/* Back Button Icon */}
                  <Button
                      type="button"
-                     variant="ghost" // Ghost variant for icon button
-                     size="icon"
+                     variant="ghost"
+                     size="lg" // Use size="lg" for larger button area
                      onClick={handlePrevious}
                      disabled={currentStep === 1 || isSubmitting}
                      className={cn(
-                         "h-10 w-10 text-muted-foreground hover:text-primary", // Adjusted size and color
+                         "h-12 w-12 text-muted-foreground hover:text-primary p-0", // Adjusted size and padding
                          currentStep === 1 && "invisible" // Hide on first step
                      )}
                      aria-label="Previous Step"
                  >
-                     <ArrowLeft className="h-6 w-6" />
+                     <ArrowLeft className="h-7 w-7" /> {/* Increased icon size */}
                  </Button>
 
                  {/* Cancel Button Icon */}
                  <Button
                      type="button"
-                     variant="ghost" // Ghost variant for icon button
-                     size="icon"
+                     variant="ghost"
+                     size="lg" // Use size="lg"
                      onClick={onCancel}
                      disabled={isSubmitting}
-                     className="h-10 w-10 text-destructive hover:bg-destructive/10" // Adjusted size and color
+                     className="h-12 w-12 text-destructive hover:bg-destructive/10 p-0" // Adjusted size and padding
                      aria-label="Cancel Submission"
                  >
-                     <X className="h-6 w-6" />
+                     <X className="h-7 w-7" /> {/* Increased icon size */}
                  </Button>
 
                  {/* Next/Submit Button Icon */}
                  <Button
                      type="button"
-                     variant="ghost" // Use primary ghost variant for emphasis
-                     size="icon"
+                     variant="ghost"
+                     size="lg" // Use size="lg"
                      onClick={handleNext}
                      disabled={isSubmitting || (currentStep === DEMO_SUBMISSION_STEPS.length && !fileName)}
                      className={cn(
-                         "h-10 w-10 text-primary hover:bg-primary/10 disabled:text-muted-foreground disabled:hover:bg-transparent", // Adjusted size, color, disabled state
-                         isSubmitting && "animate-pulse" // Simple pulse for loading
+                         "h-12 w-12 text-primary hover:bg-primary/10 disabled:text-muted-foreground disabled:hover:bg-transparent p-0", // Adjusted size, padding, disabled state
+                         isSubmitting && "animate-pulse"
                      )}
                      aria-label={currentStep === DEMO_SUBMISSION_STEPS.length ? "Send Demo" : "Next Step"}
                  >
                      {isSubmitting ? (
-                         <Loader2 className="h-6 w-6 animate-spin" />
+                         <Loader2 className="h-7 w-7 animate-spin" /> // Increased icon size
                      ) : currentStep === DEMO_SUBMISSION_STEPS.length ? (
-                         <Send className="h-6 w-6" /> // Send icon for final step
+                         <Send className="h-7 w-7" /> // Increased icon size
                      ) : (
-                         <ArrowRight className="h-6 w-6" /> // Right arrow for next
+                         <ArrowRight className="h-7 w-7" /> // Increased icon size
                      )}
                  </Button>
              </div>
@@ -408,5 +408,3 @@ export function SubmitDemoForm({ onSuccess, onCancel, className }: SubmitDemoFor
   );
 }
 
-
-    
