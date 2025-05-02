@@ -5,7 +5,7 @@ import { useState, useRef, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Loader2, Music, UploadCloud, X, ArrowLeft, ArrowRight, User, Mail, Link as LinkIcon, Info, FileText, HelpCircle, Phone } from "lucide-react"; // Added Phone icon
+import { Loader2, Music, UploadCloud, X, ArrowLeft, ArrowRight, User, Mail, Link as LinkIcon, Info, FileText, HelpCircle, Phone } from "lucide-react"; // Added ArrowLeft, ArrowRight
 
 import { Button } from "@/components/ui/button";
 import {
@@ -105,13 +105,18 @@ export function SubmitDemoForm({ onSuccess, onCancel, className }: SubmitDemoFor
   });
 
   useEffect(() => {
+    // Reset form when component mounts or gets reused after success/cancel
     form.reset();
     setCurrentStep(1);
     setPreviousStep(1);
     setFileName(null);
     setIsSubmitting(false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    // Ensure file input is visually cleared if needed
+    if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+    }
+   // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Run once on mount
 
   const goToStep = (step: number) => {
     setPreviousStep(currentStep);
@@ -123,7 +128,8 @@ export function SubmitDemoForm({ onSuccess, onCancel, className }: SubmitDemoFor
        if (stepId === currentStep && currentStep < previousStep) return "animate-slide-in-from-left";
        if (stepId === previousStep && currentStep > previousStep) return "animate-slide-out-to-left";
        if (stepId === previousStep && currentStep < previousStep) return "animate-slide-out-to-right";
-       return stepId === currentStep ? "opacity-100" : "opacity-0 pointer-events-none absolute inset-0";
+       // Apply absolute positioning and opacity for non-active steps to allow smooth transition
+       return stepId === currentStep ? "opacity-100" : "opacity-0 pointer-events-none absolute inset-0 px-4 sm:px-6"; // Keep padding consistent
    };
 
 
@@ -165,20 +171,30 @@ export function SubmitDemoForm({ onSuccess, onCancel, className }: SubmitDemoFor
     else if (step === 5) fieldsToValidate = ["trackName"]; // Step 5 is now only track name
     else if (step === 6) fieldsToValidate = ["demoFile"]; // Step 6 is file upload
 
+    // Only validate optional fields if they have a value
     const fieldsWithValues = fieldsToValidate.filter(field => {
         const value = form.getValues(field);
-        if (field === 'socialLinks' || field === 'bio' || field === 'phoneNumber') return !!value;
+        // Optional fields (phone, links, bio) only need validation if they are not empty/null/undefined
+        if (field === 'phoneNumber' || field === 'socialLinks' || field === 'bio') {
+            return !!value; // Validate only if there's content
+        }
+        // Required fields always need validation attempt
         return true;
     });
 
-    if (fieldsWithValues.length === 0 && (step === 3 || step === 4)) return true;
+    // If no fields need validation on this step (e.g., optional step with no input), consider it valid.
+     if (fieldsWithValues.length === 0 && (step === 3 || step === 4)) {
+        return true; // Skip validation for empty optional steps
+     }
 
+    // Trigger validation only for relevant fields
     const result = await form.trigger(fieldsWithValues);
 
     if (!result) {
         const errors = form.formState.errors;
+        // Find the first error among the fields we tried to validate
         const firstErrorField = fieldsWithValues.find(field => errors[field]);
-        const errorMessage = firstErrorField ? errors[firstErrorField]?.message : "Please fix the errors before proceeding.";
+        const errorMessage = firstErrorField ? errors[firstErrorField]?.message : "Please check the field before proceeding.";
         toast({ title: "Oops!", description: String(errorMessage), variant: "destructive", duration: 2000 });
     }
     return result;
@@ -189,6 +205,7 @@ export function SubmitDemoForm({ onSuccess, onCancel, className }: SubmitDemoFor
       if (currentStep < DEMO_SUBMISSION_STEPS.length) {
         goToStep(currentStep + 1);
       } else {
+        // If on the last step, trigger the actual submission
         await form.handleSubmit(onSubmit)();
       }
     }
@@ -201,10 +218,12 @@ export function SubmitDemoForm({ onSuccess, onCancel, className }: SubmitDemoFor
   };
 
   async function onSubmit(values: DemoFormValues) {
+    // Ensure demoFile exists before submitting
     if (!values.demoFile) {
          toast({ title: "Whoops!", description: "Don't forget your demo track!", variant: "destructive" });
-         setIsSubmitting(false);
-         return;
+         // Optionally set currentStep back to file upload step if desired
+         // setCurrentStep(DEMO_SUBMISSION_STEPS.length);
+         return; // Stop submission
     }
     setIsSubmitting(true);
     const file = values.demoFile;
@@ -256,10 +275,11 @@ export function SubmitDemoForm({ onSuccess, onCancel, className }: SubmitDemoFor
                 </Button>
             </div>
 
-            {/* Form Area - Increased min-height and removed overflow-y-auto */}
+            {/* Form Area - Increased min-height and use relative positioning for transitions */}
             <div className="flex-grow p-4 sm:p-6 relative min-h-[350px] sm:min-h-[400px]">
                 <Form {...form}>
-                    <form onSubmit={(e) => {e.preventDefault(); handleNext();}} className="space-y-5" aria-live="polite">
+                    {/* Note: Removed onSubmit from form tag, handled by button click */}
+                    <form className="space-y-5" aria-live="polite">
 
                         {/* Step 1: Artist Name */}
                         <div className={cn("space-y-5", getAnimationClasses(1))} aria-hidden={currentStep !== 1}>
@@ -322,6 +342,7 @@ export function SubmitDemoForm({ onSuccess, onCancel, className }: SubmitDemoFor
                             )} />
                         </div>
 
+                        {/* Hidden submit for Enter key */}
                         <button type="submit" disabled={isSubmitting} style={{ display: 'none' }} aria-hidden="true"></button>
                     </form>
                 </Form>
@@ -344,8 +365,8 @@ export function SubmitDemoForm({ onSuccess, onCancel, className }: SubmitDemoFor
                         Cancel
                     </Button>
                     <Button
-                        type="button"
-                        onClick={handleNext}
+                        type="button" // Changed from submit to button
+                        onClick={handleNext} // Use handleNext for validation and step change/submission
                         disabled={isSubmitting || (currentStep === DEMO_SUBMISSION_STEPS.length && !fileName)}
                         className="bg-primary hover:bg-primary/90 text-primary-foreground"
                         size="lg"
