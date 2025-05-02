@@ -3,7 +3,7 @@
 
 import Link from "next/link";
 import Image from "next/image"; // Import next/image
-import UserProfile from "@/components/common/user-profile"; // Keep UserProfile
+import UserProfile from "@/components/common/user-profile"; // Changed to default import
 import { TimeWeather } from "@/components/common/time-weather"; // Import TimeWeather - Re-enabled
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 // Import relevant icons
@@ -15,8 +15,8 @@ import { useRouter } from 'next/navigation'; // Import useRouter
 import { useEffect, useState, useRef } from 'react'; // Import useEffect, useState, and useRef
 import { SplashScreen } from '@/components/common/splash-screen'; // Import SplashScreen
 import { Button } from "@/components/ui/button"; // Keep button for potential future use or structure
-import { getFirestore, doc, getDoc } from "firebase/firestore"; // Import Firestore functions
-import { app } from "@/services/firebase-config"; // Import Firebase app config
+// Import user service function
+import { getUserProfileByUid } from "@/services/user";
 import type { ProfileFormValues } from "@/components/profile/profile-form"; // Import profile type
 
 
@@ -61,22 +61,18 @@ const greetings = [
     "Yo, {{name}}!",
 ];
 
-// REMOVED: LOGIN_JINGLE_PATH and SESSION_SOUND_PLAYED_KEY
 
 export default function HomePage() {
     const { user, loading: authLoading } = useAuth(); // Use the auth context
     const router = useRouter();
-    const db = getFirestore(app);
+    // Removed db state as we use the service function now
     const [profileData, setProfileData] = useState<ProfileFormValues | null>(null);
     const [profileLoading, setProfileLoading] = useState(true);
     const [clientGreeting, setClientGreeting] = useState("");
-    const [showSplash, setShowSplash] = useState(false);
-    const [hasShownInitialSplash, setHasShownInitialSplash] = useState(false);
+    // Removed splash state and hasShownInitialSplash
     // REMOVED: audioRef
 
-    // REMOVED: useEffect for initializing audio and playLoginSound function
-
-    // Fetch profile data from Firestore
+    // Fetch profile data from Firestore using service function
     useEffect(() => {
         const fetchProfileData = async () => {
             if (authLoading || !user) {
@@ -87,12 +83,12 @@ export default function HomePage() {
 
             setProfileLoading(true);
             try {
-                const userDocRef = doc(db, "users", user.uid);
-                const docSnap = await getDoc(userDocRef);
-                if (docSnap.exists()) {
-                    setProfileData(docSnap.data() as ProfileFormValues);
+                // Fetch profile using UID from the service
+                const fetchedProfile = await getUserProfileByUid(user.uid);
+                if (fetchedProfile) {
+                    setProfileData(fetchedProfile);
                 } else {
-                    console.log("User profile not found in Firestore for greeting.");
+                    console.log("User profile not found in publicProfile for greeting.");
                     // If no profile, still proceed but name will fallback
                     setProfileData(null); // Explicitly set to null if not found
                 }
@@ -105,7 +101,7 @@ export default function HomePage() {
         };
 
         fetchProfileData();
-    }, [user, db, authLoading]);
+    }, [user, authLoading]); // Only depend on user and authLoading
 
     // Function to get a random greeting - client side only
     const getRandomGreeting = (name: string) => {
@@ -125,8 +121,9 @@ export default function HomePage() {
         const isLoading = authLoading || profileLoading;
 
         // Set greeting and check tutorial status
-        if (!isLoading && user) { // Removed profileData check here, fallback handles it
+        if (!isLoading && user) {
             // Tutorial Check
+            // Ensure profileData is not null before checking tutorial status
             if (profileData && profileData.hasCompletedTutorial === false) {
                 console.log("Redirecting to tutorial...");
                 router.replace('/tutorial');
@@ -141,27 +138,19 @@ export default function HomePage() {
             // Generate greeting on client side using the helper function
             setClientGreeting(getRandomGreeting(finalName));
 
-            // Splash logic (kept as is, assuming it's intended for something else now)
-            if (!hasShownInitialSplash) {
-                 setShowSplash(false);
-                 setHasShownInitialSplash(true);
-            } else {
-                 setShowSplash(false);
-            }
+            // Splash logic removed
 
         } else if (!isLoading && !user) {
              setClientGreeting("Welcome!");
-             setShowSplash(false);
+             // Splash logic removed
         } else {
             // Still loading or other state, set default greeting
             setClientGreeting("Welcome!");
-             if (!hasShownInitialSplash) {
-                setShowSplash(false);
-             }
+            // Splash logic removed
         }
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [user, authLoading, profileLoading, profileData, router, hasShownInitialSplash]);
+    }, [user, authLoading, profileLoading, profileData, router]);
 
 
     // Combined loading state
@@ -302,4 +291,3 @@ export default function HomePage() {
         </div>
     );
 }
-

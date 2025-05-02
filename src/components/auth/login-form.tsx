@@ -24,7 +24,8 @@ import { useToast } from "@/hooks/use-toast";
 import { ForgotPasswordModal } from "./forgot-password-modal"; // Import the modal
 import { useAuth } from "@/context/auth-context"; // Import useAuth hook
 import { cn } from "@/lib/utils"; // Import cn
-import { getUserProfileByEmail } from "@/services/user"; // Import service function
+// Updated to import getUserProfileByEmail from the user service
+import { getUserProfileByEmail } from "@/services/user";
 import type { ProfileFormValues } from "@/components/profile/profile-form"; // Import profile type
 import { Skeleton } from "@/components/ui/skeleton"; // Import Skeleton
 import { SplashScreen } from '@/components/common/splash-screen'; // Import SplashScreen
@@ -151,11 +152,11 @@ export function LoginForm({ onLoginComplete }: LoginFormProps) {
             const email = form.getValues("artistId");
             setEnteredEmail(email); // Store email
 
-            // Fetch profile data
+            // Fetch profile data using the service function
             setIsFetchingProfile(true);
             setProfileData(null); // Reset profile data
             try {
-                const fetchedProfile = await getUserProfileByEmail(email);
+                const fetchedProfile = await getUserProfileByEmail(email); // Fetch from publicProfile
                 setProfileData(fetchedProfile);
                 console.log("Fetched profile for password screen:", fetchedProfile);
             } catch (error) {
@@ -219,7 +220,7 @@ export function LoginForm({ onLoginComplete }: LoginFormProps) {
           });
       }
     } finally {
-        setIsSubmitting(false); // Reset submitting state
+        // Don't set isSubmitting false here, splash screen handles the visual state
     }
   }
 
@@ -378,9 +379,9 @@ export function LoginForm({ onLoginComplete }: LoginFormProps) {
                         disabled={authLoading || isFetchingProfile || isSubmitting || (currentStep === 1 && !form.watch('artistId')) || (currentStep === 2 && !form.watch('password'))}
                         className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-md disabled:shadow-none disabled:bg-muted disabled:text-muted-foreground"
                     >
-                        {(authLoading || isFetchingProfile || isSubmitting) && currentStep === 1 ? ( // Check isSubmitting
+                        {(authLoading || isFetchingProfile) && currentStep === 1 ? ( // Removed isSubmitting check here
                         <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Processing...</>
-                        ) : (authLoading || isSubmitting) && currentStep === 2 ? ( // Check isSubmitting
+                        ) : (authLoading || isSubmitting) && currentStep === 2 ? ( // Keep isSubmitting check for final step
                             <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Processing...</>
                         ) : currentStep === STEPS.length ? (
                             'Login'
@@ -402,4 +403,3 @@ export function LoginForm({ onLoginComplete }: LoginFormProps) {
     </>
   );
 }
-

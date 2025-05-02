@@ -3,13 +3,16 @@
 
 import { useState, useEffect } from "react";
 import { getAuth } from "firebase/auth";
-import { getFirestore, doc, getDoc, setDoc, updateDoc } from "firebase/firestore"; // Import updateDoc
+// Removed direct Firestore imports, relying on service functions
+// import { getFirestore, doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage"; // Import storage functions
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { app } from "@/services/firebase-config"; // Import your Firebase config
 import { useAuth } from "@/context/auth-context"; // Import useAuth to get the current user and logout
+// Import new user service functions
+import { getUserProfileByUid, setPublicProfile } from "@/services/user";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -25,12 +28,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { PasswordUpdateForm } from "@/components/profile/password-update-form"; // Import Password Update Form
 import { ProfileForm, type ProfileFormValues } from "@/components/profile/profile-form"; // Import Profile Form and its type
 import { useToast } from "@/hooks/use-toast";
-import { LogOut, UserCog, KeyRound, Loader2 } from "lucide-react"; // Removed FileText icon
+import { LogOut, UserCog, KeyRound, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation"; // Import useRouter from next/navigation
 import { SplashScreen } from '@/components/common/splash-screen'; // Import SplashScreen
 
 // --- Zod Schema for User Profile Data (Matches ProfileForm) ---
+// This schema is primarily used by the ProfileForm, keep it consistent
 const profileSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters.").max(50, "Name must be 50 characters or less."),
   email: z.string().email("Invalid email address."),
@@ -40,14 +44,14 @@ const profileSchema = z.object({
           message: "Invalid phone number format.",
        }),
   imageUrl: z.string().url("Invalid URL.").optional().nullable(),
-  hasCompletedTutorial: z.boolean().optional().default(false), // Add tutorial flag
+  hasCompletedTutorial: z.boolean().optional().default(false),
 });
 
 // Define the component as a default export
 export default function UserProfile() {
   const { user, logout, loading: authLoading } = useAuth(); // Get user, logout function, and auth loading state from context
   const { toast } = useToast();
-  const db = getFirestore(app); // Get Firestore instance
+  // Removed direct db instance
   const storage = getStorage(app); // Get Storage instance
   const router = useRouter(); // Use next/navigation router
 
@@ -58,7 +62,7 @@ export default function UserProfile() {
   const [isUpdating, setIsUpdating] = useState(false); // For profile update loading state
 
 
-  // Fetch profile data from Firestore
+  // Fetch profile data from Firestore using the service function
   useEffect(() => {
     const fetchProfileData = async () => {
       // Only fetch if the user exists and auth is not loading
@@ -70,29 +74,14 @@ export default function UserProfile() {
 
       setIsProfileLoading(true); // Start loading profile data
       try {
-        const userDocRef = doc(db, "users", user.uid); // Use user's UID
-        const docSnap = await getDoc(userDocRef);
+        // Use the service function to fetch profile by UID from the publicProfile subcollection
+        const fetchedProfile = await getUserProfileByUid(user.uid);
 
-        if (docSnap.exists()) {
-           // Validate fetched data against schema (optional but good practice)
-           const result = profileSchema.safeParse(docSnap.data());
-           if (result.success) {
-               setProfileData(result.data);
-           } else {
-               console.warn("Firestore data validation failed:", result.error);
-               // Handle potentially incomplete/invalid data, maybe set defaults
-               setProfileData({
-                   name: user.displayName || user.email?.split('@')[0] || "User", // Keep fallback here for partial profiles
-                   email: user.email || "",
-                   imageUrl: user.photoURL || null,
-                   bio: null,
-                   phoneNumber: null,
-                   hasCompletedTutorial: false, // Default to false if validation fails
-               });
-           }
+        if (fetchedProfile) {
+            setProfileData(fetchedProfile);
         } else {
-          // No profile document exists yet, create one with defaults
-          console.log("No profile found for user, creating default...");
+          // No public profile document exists yet, create one with defaults
+          console.log("No public profile found for user, creating default...");
           const defaultData: ProfileFormValues = {
             name: user.displayName || user.email?.split('@')[0] || "User", // Use display name or email part
             email: user.email || "", // Get email from auth user
@@ -101,7 +90,8 @@ export default function UserProfile() {
             phoneNumber: null,
             hasCompletedTutorial: false, // Initialize tutorial flag to false
           };
-          await setDoc(userDocRef, defaultData); // Create the document
+          // Use the setPublicProfile service to create the doc
+          await setPublicProfile(user.uid, defaultData, false); // Don't merge on initial creation
           setProfileData(defaultData);
         }
       } catch (error) {
@@ -111,7 +101,7 @@ export default function UserProfile() {
           description: "Could not load your profile data.",
           variant: "destructive",
         });
-        // Set some default state even on error?
+        // Set some default state even on error
         setProfileData({
             name: "Error",
             email: user.email || "unknown",
@@ -126,7 +116,7 @@ export default function UserProfile() {
     };
 
     fetchProfileData();
-  }, [user, db, toast, authLoading]); // Include authLoading in dependency array
+  }, [user, toast, authLoading]); // Include authLoading in dependency array
 
   // Handle user logout using the function from context
   const handleLogout = async () => {
@@ -168,14 +158,13 @@ export default function UserProfile() {
               hasCompletedTutorial: profileData?.hasCompletedTutorial || false, // Preserve existing tutorial status
           };
 
-          // 3. Update Firestore Document
-          const userDocRef = doc(db, "users", user.uid);
-          await updateDoc(userDocRef, dataToSave); // Use updateDoc to only change provided fields
+          // 3. Update Firestore Document using the service function
+          await setPublicProfile(user.uid, dataToSave, true); // Use merge=true for updates
 
           // 4. Update local state immediately for better UX
           setProfileData(dataToSave);
 
-          console.log("Profile updated successfully in Firestore.");
+          console.log("Public profile updated successfully in Firestore.");
           setIsProfileModalOpen(false); // Close modal on success
           return { updatedData: dataToSave };
 
