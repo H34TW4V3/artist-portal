@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect } from "react"; // Import React and useEffect
@@ -27,7 +26,7 @@ import { cn } from "@/lib/utils"; // Import cn
 import { getUserProfileByEmail } from "@/services/user"; // Import service function
 import type { ProfileFormValues } from "@/components/profile/profile-form"; // Import profile type
 import { Skeleton } from "@/components/ui/skeleton"; // Import Skeleton
-import { SplashScreen } from "@/components/common/splash-screen"; // Import SplashScreen
+import { SplashScreen } from '@/components/common/splash-screen'; // Import SplashScreen
 
 // Define steps
 const STEPS = [
@@ -95,6 +94,8 @@ export function LoginForm({ onLoginComplete }: LoginFormProps) {
   const [profileData, setProfileData] = useState<ProfileFormValues | null>(null); // Store fetched profile data
   const [isFetchingProfile, setIsFetchingProfile] = useState(false); // Loading state for profile fetch
   const [showSplash, setShowSplash] = useState(false); // State to control splash screen visibility
+  const [isSubmitting, setIsSubmitting] = useState(false); // Initialize isSubmitting state
+
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema), // Use combined schema for full validation context if needed
@@ -118,10 +119,13 @@ export function LoginForm({ onLoginComplete }: LoginFormProps) {
 
        if (isCurrent && currentStep > previousStep) return "animate-slide-in-from-right";
        if (isCurrent && currentStep < previousStep) return "animate-slide-in-from-left";
-       if (isPrevious && currentStep > previousStep) return "animate-slide-out-to-left absolute inset-0 px-6 pb-6 pt-6"; // Add positioning for exit animation
-       if (isPrevious && currentStep < previousStep) return "animate-slide-out-to-right absolute inset-0 px-6 pb-6 pt-6"; // Add positioning for exit animation
-       return isCurrent ? "opacity-100" : "opacity-0 pointer-events-none absolute inset-0 px-6 pb-6 pt-6"; // Hide non-active, non-animating steps
+       // Position animating-out steps absolutely to allow smooth transition
+       if (isPrevious && currentStep > previousStep) return "animate-slide-out-to-left absolute inset-0 px-6 pb-6 pt-6";
+       if (isPrevious && currentStep < previousStep) return "animate-slide-out-to-right absolute inset-0 px-6 pb-6 pt-6";
+       // Hide non-active, non-animating steps, but keep them in the layout initially
+       return isCurrent ? "opacity-100" : "opacity-0 pointer-events-none absolute inset-0 px-6 pb-6 pt-6";
    };
+
 
    // Validate current step before proceeding
    const validateStep = async (step: number): Promise<boolean> => {
@@ -181,12 +185,11 @@ export function LoginForm({ onLoginComplete }: LoginFormProps) {
 
 
   async function onSubmit(values: LoginFormValues) {
+    setIsSubmitting(true); // Set submitting state
     setShowSplash(true); // Show splash screen immediately on final submit click
     try {
       await login(values.artistId, values.password); // Use the validated values
        // Login success is handled by AuthProvider and onAuthStateChanged listener
-       // The listener will eventually set loading to false in AuthContext
-       // No need to call onLoginComplete immediately, wait for AuthContext update
        console.log("LoginForm: Login initiated, waiting for auth state change...");
         // Set a timer to call onLoginComplete after splash duration
        setTimeout(() => {
@@ -197,10 +200,10 @@ export function LoginForm({ onLoginComplete }: LoginFormProps) {
       setShowSplash(false); // Hide splash on error
       console.error("Login failed:", error);
       // If login fails due to wrong password, stay on password step
-      if (error instanceof Error && error.message.includes("password")) {
+      if (error instanceof Error && (error.message.includes("password") || error.message.includes("credential"))) { // Check for password or general credential error
         goToStep(2); // Ensure user stays on password step
         form.setError("password", { type: "manual", message: "Incorrect password." });
-      } else if (error instanceof Error && (error.message.includes("Artist ID") || error.message.includes("email") || error.message.includes("Invalid"))) { // Catch invalid credentials error
+      } else if (error instanceof Error && (error.message.includes("Artist ID") || error.message.includes("email") || error.message.includes("Invalid") || error.message.includes("user-not-found"))) { // Catch invalid user errors
           // If error related to email/user not found, go back to step 1
           goToStep(1);
           form.setError("artistId", { type: "manual", message: "Artist ID not found or invalid." });
@@ -214,6 +217,8 @@ export function LoginForm({ onLoginComplete }: LoginFormProps) {
             duration: 2000
           });
       }
+    } finally {
+        setIsSubmitting(false); // Reset submitting state
     }
   }
 
@@ -232,6 +237,7 @@ export function LoginForm({ onLoginComplete }: LoginFormProps) {
                loadingText={`Welcome ${artistNameStep2}`} // Use profile name in welcome message
                duration={5000} // Duration in ms
                className="p-6" // Add padding for card context
+               // Ensure audio plays on mount if desired, managed internally by SplashScreen now
            />
        );
     }
@@ -243,146 +249,149 @@ export function LoginForm({ onLoginComplete }: LoginFormProps) {
 
         {/* Use relative container for step animations - Adjusted min-height */}
         {/* Added key to force re-render on step change for reliable animations */}
-        <div className="relative overflow-hidden min-h-[240px]" key={currentStep}>
+        <div className="relative overflow-hidden min-h-[260px]" key={currentStep}> {/* Increased min-height slightly */}
 
              {/* Step 1 Header (Only shown on step 1) */}
-             {currentStep === 1 && (
+             <div className={cn(currentStep !== 1 && "hidden")}>
                 <CardHeader className="items-center text-center p-6 border-b border-border/30">
-                    <LoginIconStep1 /> {/* Always show the main logo */}
+                    <LoginIconStep1 />
                     <CardTitle className="text-2xl font-semibold tracking-tight text-primary">Artist Hub Login</CardTitle>
                     <CardDescription className="text-muted-foreground text-sm">
                         Enter your credentials to access your dashboard.
                     </CardDescription>
                 </CardHeader>
-             )}
+             </div>
 
 
-             <form
-               onSubmit={(e) => {
-                 e.preventDefault();
-                 handleNext(); // Trigger next/submit logic
-                }}
-                className={cn("space-y-4 px-6 pb-6 pt-6", getAnimationClasses(currentStep))} // Apply animation to the form itself
-                aria-live="polite"
-             >
-              {/* Step 1: Email */}
-              {currentStep === 1 && (
-                <div className="space-y-4 min-h-[80px]">
-                  <FormField
-                    control={form.control}
-                    name="artistId"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Artist ID (Email)</FormLabel>
-                        <FormControl>
-                          <Input
-                            type="email"
-                            placeholder="your.email@example.com"
-                            {...field}
-                            disabled={authLoading || isFetchingProfile}
-                            autoComplete="email"
-                            className="bg-background/50 dark:bg-background/30 border-input focus:ring-accent"
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-              )}
+             {/* Form Container with Animation */}
+             <div className={cn("absolute inset-0 px-6 pb-6 pt-6", getAnimationClasses(currentStep))}>
+                 <form
+                   onSubmit={(e) => {
+                     e.preventDefault();
+                     handleNext(); // Trigger next/submit logic
+                    }}
+                    className="space-y-4"
+                    aria-live="polite"
+                 >
+                  {/* Step 1: Email */}
+                  {currentStep === 1 && (
+                    <div className="space-y-4 min-h-[80px]">
+                      <FormField
+                        control={form.control}
+                        name="artistId"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Artist ID (Email)</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="email"
+                                placeholder="your.email@example.com"
+                                {...field}
+                                disabled={authLoading || isFetchingProfile || isSubmitting}
+                                autoComplete="email"
+                                className="bg-background/50 dark:bg-background/30 border-input focus:ring-accent"
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  )}
 
-              {/* Step 2: Password */}
-              {currentStep === 2 && (
-                <div className="space-y-4 flex flex-col items-center min-h-[180px]">
-                  <>
-                    {/* Show Avatar and Name */}
-                     {isFetchingProfile ? (
-                        <div className="flex flex-col items-center mb-4">
-                            <Skeleton className="h-20 w-20 rounded-full mb-2 bg-muted/50" />
-                            <Skeleton className="h-4 w-24 bg-muted/50" />
-                        </div>
-                     ) : (
-                         <div className="flex flex-col items-center mb-4 text-center">
-                             <Avatar className="h-20 w-20 mb-2 border-2 border-primary/40">
-                                 <AvatarImage src={displayImageUrlStep2 || undefined} alt={artistNameStep2} />
-                                 <AvatarFallback className="text-2xl bg-muted text-muted-foreground">
-                                    {getInitials(artistNameStep2)}
-                                 </AvatarFallback>
-                             </Avatar>
-                             <p className="text-lg font-medium text-foreground">
-                                {artistNameStep2} {/* Display artist name */}
-                             </p>
-                         </div>
-                     )}
+                  {/* Step 2: Password */}
+                  {currentStep === 2 && (
+                    <div className="space-y-4 flex flex-col items-center min-h-[200px]"> {/* Increased min-height */}
+                      <>
+                        {/* Show Avatar and Name */}
+                         {isFetchingProfile ? (
+                            <div className="flex flex-col items-center mb-4">
+                                <Skeleton className="h-20 w-20 rounded-full mb-2 bg-muted/50" />
+                                <Skeleton className="h-4 w-24 bg-muted/50" />
+                            </div>
+                         ) : (
+                             <div className="flex flex-col items-center mb-4 text-center">
+                                 <Avatar className="h-20 w-20 mb-2 border-2 border-primary/40">
+                                     <AvatarImage src={displayImageUrlStep2 || undefined} alt={artistNameStep2} />
+                                     <AvatarFallback className="text-2xl bg-muted text-muted-foreground">
+                                        {getInitials(artistNameStep2)}
+                                     </AvatarFallback>
+                                 </Avatar>
+                                 <p className="text-lg font-medium text-foreground">
+                                    {artistNameStep2} {/* Display artist name */}
+                                 </p>
+                             </div>
+                         )}
 
-                    {/* Password Field */}
-                    <FormField
-                      control={form.control}
-                      name="password"
-                      render={({ field }) => (
-                        <FormItem className="w-full">
-                          <FormLabel className="sr-only">Password</FormLabel>
-                          <FormControl>
-                            <Input
-                              type="password"
-                              placeholder="Password"
-                              {...field}
-                              disabled={authLoading || isFetchingProfile}
-                              autoComplete="current-password"
-                              className="bg-background/50 dark:bg-background/30 border-input focus:ring-accent w-full"
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                     {/* Forgot Password Link */}
-                     <div className="text-right w-full">
-                          <Button
-                            type="button"
-                            variant="link"
-                            className="text-sm font-medium text-primary hover:underline p-0 h-auto"
-                            onClick={() => setIsForgotPasswordModalOpen(true)}
-                            disabled={authLoading || isFetchingProfile}
-                          >
-                            Forgot Password?
-                          </Button>
-                      </div>
-                  </>
-                </div>
-              )}
+                        {/* Password Field */}
+                        <FormField
+                          control={form.control}
+                          name="password"
+                          render={({ field }) => (
+                            <FormItem className="w-full">
+                              <FormLabel className="sr-only">Password</FormLabel>
+                              <FormControl>
+                                <Input
+                                  type="password"
+                                  placeholder="Password"
+                                  {...field}
+                                  disabled={authLoading || isFetchingProfile || isSubmitting}
+                                  autoComplete="current-password"
+                                  className="bg-background/50 dark:bg-background/30 border-input focus:ring-accent w-full"
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                         {/* Forgot Password Link */}
+                         <div className="text-right w-full">
+                              <Button
+                                type="button"
+                                variant="link"
+                                className="text-sm font-medium text-primary hover:underline p-0 h-auto"
+                                onClick={() => setIsForgotPasswordModalOpen(true)}
+                                disabled={authLoading || isFetchingProfile || isSubmitting}
+                              >
+                                Forgot Password?
+                              </Button>
+                          </div>
+                      </>
+                    </div>
+                  )}
 
-              {/* Navigation Buttons - Placed outside step divs */}
-              <div className="flex justify-between pt-4">
-                  <Button
-                      type="button"
-                      variant="outline"
-                      onClick={handlePrevious}
-                      disabled={currentStep === 1 || authLoading || isFetchingProfile}
-                      className={cn(currentStep === 1 && "invisible")} // Hide if on first step
-                  >
-                     <ArrowLeft className="mr-2 h-4 w-4" /> Previous
-                  </Button>
-                  <Button
-                      type="button" // Change to button, handle logic in onClick
-                      onClick={handleNext} // Use handleNext for validation + step change/submit
-                      disabled={authLoading || isFetchingProfile || (currentStep === 1 && !form.watch('artistId')) || (currentStep === 2 && !form.watch('password'))}
-                      className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-md disabled:shadow-none disabled:bg-muted disabled:text-muted-foreground"
-                  >
-                      {(authLoading || isFetchingProfile) && currentStep === 1 ? (
-                        <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Processing...</>
-                      ) : authLoading && currentStep === 2 ? (
-                         <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Processing...</>
-                      ) : currentStep === STEPS.length ? (
-                         'Login'
-                      ) : (
-                         <>Next <ArrowRight className="ml-2 h-4 w-4" /></>
-                      )}
-                  </Button>
-              </div>
-               {/* Hidden submit for Enter key */}
-               <button type="submit" disabled={isSubmitting} style={{ display: 'none' }} aria-hidden="true"></button>
-            </form>
+                  {/* Navigation Buttons - Placed outside step divs */}
+                  <div className="flex justify-between pt-4">
+                      <Button
+                          type="button"
+                          variant="outline"
+                          onClick={handlePrevious}
+                          disabled={currentStep === 1 || authLoading || isFetchingProfile || isSubmitting}
+                          className={cn(currentStep === 1 && "invisible")} // Hide if on first step
+                      >
+                         <ArrowLeft className="mr-2 h-4 w-4" /> Previous
+                      </Button>
+                      <Button
+                          type="button" // Changed to button, handle logic in onClick
+                          onClick={handleNext} // Use handleNext for validation + step change/submit
+                          disabled={authLoading || isFetchingProfile || isSubmitting || (currentStep === 1 && !form.watch('artistId')) || (currentStep === 2 && !form.watch('password'))}
+                          className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-md disabled:shadow-none disabled:bg-muted disabled:text-muted-foreground"
+                      >
+                          {(authLoading || isFetchingProfile || isSubmitting) && currentStep === 1 ? ( // Check isSubmitting
+                            <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Processing...</>
+                          ) : (authLoading || isSubmitting) && currentStep === 2 ? ( // Check isSubmitting
+                             <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Processing...</>
+                          ) : currentStep === STEPS.length ? (
+                             'Login'
+                          ) : (
+                             <>Next <ArrowRight className="ml-2 h-4 w-4" /></>
+                          )}
+                      </Button>
+                  </div>
+                   {/* Hidden submit for Enter key */}
+                   <button type="submit" disabled={isSubmitting} style={{ display: 'none' }} aria-hidden="true"></button>
+                </form>
+             </div>
         </div>
       </Form>
 
