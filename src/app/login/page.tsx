@@ -3,11 +3,14 @@
 
 import { LoginForm } from '@/components/auth/login-form';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from '@/components/ui/button'; // Import Button
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/context/auth-context';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, useRef } from 'react'; // Import useState and useRef
 import { SplashScreen } from '@/components/common/splash-screen'; // Import SplashScreen
+import { Upload } from 'lucide-react'; // Import Upload icon
+import { useToast } from '@/hooks/use-toast'; // Import useToast
 
 // Placeholder URL for the GIF - replace with actual URL
 const LOGIN_BACKGROUND_GIF_URL = "https://giffiles.alphacoders.com/173/173157.gif"; // Updated GIF URL
@@ -17,8 +20,10 @@ const LOGIN_JINGLE_PATH = '/sounds/login-jingle.mp3'; // Path to the sound file
 export default function LoginPage() {
     const { user, loading } = useAuth();
     const router = useRouter();
+    const { toast } = useToast(); // Initialize toast
     const [showSplash, setShowSplash] = useState(false); // State to control splash visibility *after* login
-    const [isCardVisible, setIsCardVisible] = useState(true); // State to control login card visibility
+    const [isLoginFormVisible, setIsLoginFormVisible] = useState(true); // State to control login form card visibility
+    const [isDemoCardVisible, setIsDemoCardVisible] = useState(true); // State for demo card visibility
     const [splashUserName, setSplashUserName] = useState<string | null>(null); // State for splash user name
     const [splashUserImageUrl, setSplashUserImageUrl] = useState<string | null>(null); // State for splash user image
     const audioRef = useRef<HTMLAudioElement | null>(null); // Ref for the audio element
@@ -31,10 +36,6 @@ export default function LoginPage() {
                 audioRef.current = new Audio(LOGIN_JINGLE_PATH);
                 audioRef.current.preload = 'auto';
                 console.log("Audio element initialized and preloading:", LOGIN_JINGLE_PATH);
-                 // Attempt to play and immediately pause to ensure it's ready on some browsers
-                 // This might require user interaction on some browsers
-                 // audioRef.current.play().catch(() => {});
-                 // audioRef.current.pause();
             }
         }
     }, []);
@@ -69,8 +70,9 @@ export default function LoginPage() {
          setSplashUserName(name);
          setSplashUserImageUrl(imageUrl);
 
-         // Trigger animation: hide card, show splash
-         setIsCardVisible(false);
+         // Trigger animation: hide cards, show splash
+         setIsLoginFormVisible(false);
+         setIsDemoCardVisible(false); // Hide demo card as well
          setShowSplash(true);
 
          // Play the login sound as the splash appears
@@ -80,6 +82,17 @@ export default function LoginPage() {
         setTimeout(() => {
             router.replace('/'); // Redirect to home page
         }, 5000); // Set duration to 5 seconds
+    };
+
+    const handleDemoSubmitClick = () => {
+        // Placeholder action - replace with actual logic (e.g., open modal, redirect)
+         toast({
+             title: "Demo Submission",
+             description: "Demo submission feature coming soon!",
+             duration: 3000,
+         });
+        console.log("Submit Demo button clicked (placeholder).");
+        // Example: router.push('/submit-demo'); or open a modal
     };
 
 
@@ -119,24 +132,66 @@ export default function LoginPage() {
                  />
               )}
 
-            {/* Card container - Conditionally render based on visibility */}
-            {isCardVisible && (
-                 <div className={cn(
-                    "relative z-10 w-full max-w-md rounded-xl border border-border/30 shadow-xl overflow-hidden animate-fade-in-up bg-card/20 dark:bg-card/10", // Added background opacity, ensure relative and z-10
-                    !isCardVisible && "animate-fade-out" // Apply fade-out when card should hide
-                 )}>
-                    {/* Removed CardHeader - It's now inside LoginForm and conditional */}
+            {/* Container for Login and Demo Cards */}
+             {/* Use flex-col on small screens and flex-row on larger screens */}
+            <div className={cn(
+                "relative z-10 flex flex-col sm:flex-row gap-6 w-full max-w-4xl", // Adjusted max-width
+                // Apply fade-out animation to the whole container when splash shows
+                !isLoginFormVisible && !isDemoCardVisible && "animate-fade-out"
+                )}>
 
-                    {/* Card Content - LoginForm (Now multi-step) */}
-                     {/* Pass handleLoginSuccess to LoginForm */}
-                     <LoginForm onLoginSuccess={handleLoginSuccess} />
+                {/* Login Card container - Conditionally render based on visibility */}
+                {isLoginFormVisible && (
+                     <div className={cn(
+                        "flex-1 rounded-xl border border-border/30 shadow-xl overflow-hidden animate-fade-in-up bg-card/20 dark:bg-card/10", // flex-1 to take up space
+                        !isLoginFormVisible && "animate-fade-out" // Apply fade-out when card should hide
+                     )}>
+                        {/* Card Content - LoginForm (Now multi-step) */}
+                         {/* Pass handleLoginSuccess to LoginForm */}
+                         <LoginForm onLoginSuccess={handleLoginSuccess} />
 
-                    {/* Footer - Optional */}
-                    <div className="p-4 text-center text-xs text-muted-foreground border-t border-border/30 bg-muted/10 dark:bg-muted/5"> {/* Adjusted footer bg */}
-                        © {new Date().getFullYear()} Oxygen Group PLC. All rights reserved.
-                    </div>
-                 </div>
-             )}
+                        {/* Footer - Optional */}
+                        <div className="p-4 text-center text-xs text-muted-foreground border-t border-border/30 bg-muted/10 dark:bg-muted/5"> {/* Adjusted footer bg */}
+                            © {new Date().getFullYear()} Oxygen Group PLC. All rights reserved.
+                        </div>
+                     </div>
+                 )}
+
+                {/* Demo Submission Card */}
+                {isDemoCardVisible && (
+                     <Card className={cn(
+                         "flex-1 rounded-xl border border-border/30 shadow-xl overflow-hidden animate-fade-in-up bg-card/20 dark:bg-card/10 flex flex-col justify-between", // flex-1, added flex layout
+                         !isDemoCardVisible && "animate-fade-out", // Apply fade-out
+                         "animation-delay-100" // Slight delay for demo card animation
+                         )}
+                         style={{ animationDelay: '100ms' }} // Inline style for delay compatibility
+                         >
+                        <CardHeader className="items-center text-center p-6 border-b border-border/30">
+                            <Upload className="h-12 w-12 mb-3 text-primary" /> {/* Icon */}
+                            <CardTitle className="text-2xl font-semibold tracking-tight text-primary">Submit Your Demo</CardTitle>
+                            <CardDescription className="text-muted-foreground text-sm mt-1">
+                                Got music you think we should hear? Submit your demo here.
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent className="flex-grow flex items-center justify-center p-6">
+                            {/* Content of the demo card, e.g., button */}
+                             <Button
+                                 size="lg"
+                                 onClick={handleDemoSubmitClick}
+                                 className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-primary-foreground shadow-md"
+                             >
+                                 Submit Demo
+                             </Button>
+                        </CardContent>
+                         {/* Footer - Optional, matching login card style */}
+                         <div className="p-4 text-center text-xs text-muted-foreground border-t border-border/30 bg-muted/10 dark:bg-muted/5">
+                             Unsolicited submissions policy applies.
+                         </div>
+                     </Card>
+                 )}
+            </div>
         </div>
     );
 }
+
+    
