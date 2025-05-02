@@ -2,7 +2,8 @@
 import React, { useEffect, useRef } from 'react'; // Ensure React is imported
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'; // Import Avatar components
-import { Howl } from 'howler'; // Import Howl for audio
+// REMOVED: Howler import
+// import { Howl } from 'howler'; // Import Howl for audio
 
 interface SplashScreenProps {
     className?: string;
@@ -12,8 +13,9 @@ interface SplashScreenProps {
     userName?: string | null;
     appletIcon?: React.ReactNode;
     duration?: number; // Still potentially useful for internal state management if needed
-    playAudioUrl?: string | null; // URL of the audio to play
-    audioPlayedRef?: React.MutableRefObject<boolean>; // Ref to track if audio has played in this instance
+    // REMOVED: playAudioUrl, audioPlayedRef
+    // playAudioUrl?: string | null; // URL of the audio to play
+    // audioPlayedRef?: React.MutableRefObject<boolean>; // Ref to track if audio has played in this instance
 }
 
 // Helper to get initials
@@ -30,47 +32,17 @@ export function SplashScreen({
     userName,
     appletIcon,
     duration = 5000, // Default duration set here
-    playAudioUrl,
-    audioPlayedRef,
+    // REMOVED: playAudioUrl, audioPlayedRef
+    // playAudioUrl,
+    // audioPlayedRef,
 }: SplashScreenProps) {
-    const audioRef = useRef<Howl | null>(null); // Keep ref
-    const internalAudioPlayedRef = useRef(false);
-    const currentAudioPlayedRef = audioPlayedRef || internalAudioPlayedRef;
+    // REMOVED: audioRef, internalAudioPlayedRef, currentAudioPlayedRef
+    // const audioRef = useRef<Howl | null>(null); // Keep ref
+    // const internalAudioPlayedRef = useRef(false);
+    // const currentAudioPlayedRef = audioPlayedRef || internalAudioPlayedRef;
 
-    useEffect(() => {
-        if (playAudioUrl && typeof window !== 'undefined' && !audioRef.current) {
-            console.log("SplashScreen: Initializing Howler for", playAudioUrl);
-            audioRef.current = new Howl({
-                src: [playAudioUrl],
-                preload: true,
-                html5: true, // Force HTML5 audio
-                onload: () => {
-                    console.log('SplashScreen: Howler audio loaded:', playAudioUrl);
-                    // Attempt to play ONLY if the ref indicates it hasn't played yet
-                    if (currentAudioPlayedRef && !currentAudioPlayedRef.current) {
-                        console.log('SplashScreen: Attempting playback after load...');
-                        audioRef.current?.play();
-                        currentAudioPlayedRef.current = true; // Mark as played using the ref
-                    }
-                },
-                onloaderror: (id, error) => {
-                    console.error('SplashScreen: Howler load error:', id, error);
-                    // Maybe show a toast? Not ideal for splash screen.
-                },
-                onplayerror: (id, error) => {
-                    console.error('SplashScreen: Howler play error:', id, error);
-                }
-            });
-        }
-
-        // Cleanup on unmount or when playAudioUrl changes
-        return () => {
-            console.log("SplashScreen: Unloading Howler instance.");
-            audioRef.current?.unload();
-            audioRef.current = null;
-        };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [playAudioUrl]); // Re-run effect if the audio URL changes
+    // REMOVED: useEffect for audio initialization
+    // useEffect(() => { ... }, [playAudioUrl]);
 
     const animationClass = 'animate-fade-in opacity-100';
 

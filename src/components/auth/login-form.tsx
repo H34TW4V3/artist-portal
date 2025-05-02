@@ -7,7 +7,7 @@ import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { Loader2, ArrowLeft, ArrowRight } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { Howl } from 'howler';
+import { Howl } from 'howler'; // Keep Howler import if splash uses it
 
 import { Button } from "@/components/ui/button";
 import {
@@ -25,8 +25,8 @@ import { useToast } from "@/hooks/use-toast";
 import { ForgotPasswordModal } from "./forgot-password-modal";
 import { useAuth } from "@/context/auth-context";
 import { cn } from "@/lib/utils";
-import { getUserProfileByEmail } from "@/services/user";
-import type { ProfileFormValues } from "@/components/profile/profile-form";
+// REMOVED: getUserProfileByEmail import
+// REMOVED: ProfileFormValues import
 import { Skeleton } from "@/components/ui/skeleton";
 import { SplashScreen } from '@/components/common/splash-screen'; // Import the modified SplashScreen
 
@@ -54,14 +54,16 @@ interface LoginFormProps {
      onLoginComplete: () => void; // Callback for LoginPage to start redirect timer
 }
 
+// REMOVED: LOGIN_JINGLE_PATH and SESSION_SOUND_PLAYED_KEY
 // Path to the sound file
-const LOGIN_JINGLE_PATH = '/sounds/login-jingle.mp3';
-const SESSION_SOUND_PLAYED_KEY = 'loginSoundPlayed';
+// const LOGIN_JINGLE_PATH = '/sounds/login-jingle.mp3';
+// const SESSION_SOUND_PLAYED_KEY = 'loginSoundPlayed';
 
 
 // Helper to get initials
 const getInitials = (name: string | undefined | null) => {
-    return name?.split(' ').map(n => n[0]).join('').toUpperCase() || '?';
+    // Use a simple fallback if name is unavailable
+    return name?.split(' ').map(n => n[0]).join('').toUpperCase() || 'U';
 };
 
 // Login Icon Component
@@ -94,59 +96,19 @@ export function LoginForm({ onLoginComplete }: LoginFormProps) {
   const [currentStep, setCurrentStep] = useState(1);
   const [previousStep, setPreviousStep] = useState(1);
   const [enteredEmail, setEnteredEmail] = useState("");
-  const [profileData, setProfileData] = useState<ProfileFormValues | null>(null);
-  const [isFetchingProfile, setIsFetchingProfile] = useState(false);
-  const audioRef = useRef<Howl | null>(null);
+  // REMOVED: profileData, isFetchingProfile states
+  // const [profileData, setProfileData] = useState<ProfileFormValues | null>(null);
+  // const [isFetchingProfile, setIsFetchingProfile] = useState(false);
+  // REMOVED: audioRef, audioPlayedRef
+  // const audioRef = useRef<Howl | null>(null);
+  // const [audioPlayedRef, setAudioPlayedRef] = useState(false); // Ref to track if audio has played for this splash instance
   const [showLoginSplash, setShowLoginSplash] = useState(false); // State to show splash within the card
   const [splashInfo, setSplashInfo] = useState<{ name: string; imageUrl: string | null }>({ name: '', imageUrl: null });
-  const audioPlayedRef = useRef(false); // Ref to track if audio has played for this splash instance
   const [isSubmitting, setIsSubmitting] = useState(false); // Define isSubmitting state
 
 
-   // Initialize Howler - Runs only once on mount
-   useEffect(() => {
-    if (typeof window !== 'undefined' && !audioRef.current) {
-        console.log("LoginForm: Initializing Howler for login jingle...");
-        audioRef.current = new Howl({
-          src: [LOGIN_JINGLE_PATH],
-          preload: true,
-          html5: true, // Force HTML5 audio for better reliability
-          onload: () => {
-              console.log('LoginForm: Howler audio loaded:', LOGIN_JINGLE_PATH);
-          },
-          onloaderror: (id, error) => {
-              console.error('LoginForm: Howler load error:', id, error);
-              toast({ title: "Audio Error", description: "Could not load login sound.", variant: "destructive", duration: 2000 });
-          },
-          onplayerror: (id, error) => {
-              console.error('LoginForm: Howler playback error:', id, error);
-              // Attempt to play again after a short delay if it's a context issue (optional)
-              // setTimeout(() => audioRef.current?.play(), 100);
-          }
-        });
-    }
-    // Cleanup function
-    return () => {
-        console.log("LoginForm: Unloading Howler instance on unmount.");
-        audioRef.current?.unload(); // Ensure audio is unloaded
-        audioRef.current = null;
-    };
-   // eslint-disable-next-line react-hooks/exhaustive-deps
-   }, []);
-
-
-   // Function to play login sound - Triggered internally on success
-   const playLoginSound = () => {
-       if (audioRef.current && typeof window !== 'undefined') {
-           console.log("LoginForm: Attempting to play login sound...");
-            // Reset seek to start just in case
-            audioRef.current.seek(0);
-            audioRef.current.play();
-            audioPlayedRef.current = true; // Mark as played using the ref for splash
-       } else {
-           console.warn("LoginForm: Login sound audio element not ready or not initialized.");
-       }
-   };
+   // REMOVED: Howler initialization effect
+   // REMOVED: playLoginSound function
 
 
   const form = useForm<LoginFormValues>({
@@ -184,18 +146,20 @@ export function LoginForm({ onLoginComplete }: LoginFormProps) {
       if (currentStep === 1) {
             const email = form.getValues("artistId");
             setEnteredEmail(email);
-            setIsFetchingProfile(true);
-            setProfileData(null);
-            try {
-                const fetchedProfile = await getUserProfileByEmail(email);
-                setProfileData(fetchedProfile);
-            } catch (error) {
-                console.warn("Could not fetch profile by email:", error);
-                setProfileData(null);
-            } finally {
-                 setIsFetchingProfile(false);
-                 goToStep(currentStep + 1);
-            }
+            // REMOVED: Profile fetching logic
+            // setIsFetchingProfile(true);
+            // setProfileData(null);
+            // try {
+            //     const fetchedProfile = await getUserProfileByEmail(email);
+            //     setProfileData(fetchedProfile);
+            // } catch (error) {
+            //     console.warn("Could not fetch profile by email:", error);
+            //     setProfileData(null);
+            // } finally {
+            //      setIsFetchingProfile(false);
+            //      goToStep(currentStep + 1);
+            // }
+            goToStep(currentStep + 1); // Go directly to next step
       } else if (currentStep === 2) {
           // Trigger final submission on the last step
           await form.handleSubmit(onSubmit)();
@@ -208,28 +172,30 @@ export function LoginForm({ onLoginComplete }: LoginFormProps) {
 
   const handlePrevious = () => {
     if (currentStep > 1) {
-       setProfileData(null);
-       setIsFetchingProfile(false);
+       // REMOVED: Resetting profile data
+       // setProfileData(null);
+       // setIsFetchingProfile(false);
        goToStep(currentStep - 1);
     }
   };
 
 
   async function onSubmit(values: LoginFormValues) {
-     // Don't play sound immediately, wait for success
+    // Don't play sound immediately, wait for success
     setIsSubmitting(true); // Use the defined submitting state
     try {
         const loggedInUser = await login(values.artistId, values.password);
 
         // Login successful: Prepare splash info and show it
-        const nameForSplash = profileData?.name || loggedInUser?.displayName || values.artistId.split('@')[0] || "User";
-        const imageUrlForSplash = profileData?.imageUrl || loggedInUser?.photoURL || null;
+        // REMOVED: Use of profileData for splash info
+        const nameForSplash = loggedInUser?.displayName || values.artistId.split('@')[0] || "User";
+        const imageUrlForSplash = loggedInUser?.photoURL || null;
         setSplashInfo({ name: nameForSplash, imageUrl: imageUrlForSplash });
 
-        audioPlayedRef.current = false; // Reset audio played flag for this splash instance
+        // REMOVED: Reset audio played flag
+        // audioPlayedRef.current = false;
         setShowLoginSplash(true); // Show the embedded splash screen
-        // Play sound when splash becomes visible (handled by SplashScreen now)
-
+        // REMOVED: Play sound call
 
         // Inform parent page to start redirect timer AFTER splash duration
         setTimeout(() => {
@@ -246,7 +212,8 @@ export function LoginForm({ onLoginComplete }: LoginFormProps) {
         } else if (error instanceof Error && (error.message.includes("Artist ID") || error.message.includes("email") || error.message.includes("Invalid"))) {
             goToStep(1);
             form.setError("artistId", { type: "manual", message: "Artist ID not found or invalid." });
-            setProfileData(null);
+            // REMOVED: Resetting profile data
+            // setProfileData(null);
         } else {
             toast({
                 title: "Login Failed",
@@ -262,9 +229,11 @@ export function LoginForm({ onLoginComplete }: LoginFormProps) {
   }
 
   // Determine display name and image URL for step 2
-  const artistNameStep2 = profileData?.name || enteredEmail?.split('@')[0] || "User";
-  const displayImageUrlStep2 = profileData?.imageUrl || null;
-  // const isSubmittingCombined = authLoading || isFetchingProfile || isSubmitting; // Combine loading states
+  // REMOVED: Use of profileData, use entered email instead
+  const artistNameStep2 = enteredEmail?.split('@')[0] || "User";
+  const displayImageUrlStep2 = null; // No image fetched
+  // REMOVED: isFetchingProfile from combined loading state
+  // const isSubmittingCombined = authLoading || isFetchingProfile || isSubmitting;
 
 
   return (
@@ -279,12 +248,13 @@ export function LoginForm({ onLoginComplete }: LoginFormProps) {
                      // Use card-like styling, adjust as needed
                      className="flex-grow flex items-center justify-center"
                      style={{ animationDelay: '0s' }}
-                     loadingText={`Welcome, ${splashInfo.name}!`}
+                     loadingText={`Welcome, ${splashInfo.name}!`} // Updated text
                      userImageUrl={splashInfo.imageUrl}
                      userName={splashInfo.name}
-                     duration={0} // Let parent control timing, set to 0 to disable internal timer
-                     playAudioUrl={LOGIN_JINGLE_PATH}
-                     audioPlayedRef={audioPlayedRef} // Pass the ref to track playback
+                     duration={5000} // Pass duration to splash screen
+                     // REMOVED: playAudioUrl, audioPlayedRef
+                     // playAudioUrl={LOGIN_JINGLE_PATH}
+                     // audioPlayedRef={audioPlayedRef}
                  />
              ) : (
                  <>
@@ -337,25 +307,8 @@ export function LoginForm({ onLoginComplete }: LoginFormProps) {
                          <div className={cn("space-y-3 flex flex-col items-center", getAnimationClasses(2))}> {/* Reduced spacing */}
                              {currentStep === 2 && (
                                  <>
-                                     {/* Avatar and Name */}
-                                     {isFetchingProfile ? (
-                                         <div className="flex flex-col items-center mb-3"> {/* Reduced margin */}
-                                             <Skeleton className="h-16 w-16 rounded-full mb-1 bg-muted/50" /> {/* Reduced size */}
-                                             <Skeleton className="h-3 w-20 bg-muted/50" /> {/* Reduced size */}
-                                         </div>
-                                     ) : (
-                                         <div className="flex flex-col items-center mb-3 text-center"> {/* Reduced margin */}
-                                             <Avatar className="h-16 w-16 mb-1 border-2 border-primary/40"> {/* Reduced size */}
-                                                 <AvatarImage src={displayImageUrlStep2 || undefined} alt={artistNameStep2} />
-                                                 <AvatarFallback className="text-xl bg-muted text-muted-foreground"> {/* Reduced size */}
-                                                     {getInitials(artistNameStep2)}
-                                                 </AvatarFallback>
-                                             </Avatar>
-                                             <p className="text-base font-medium text-foreground"> {/* Reduced size */}
-                                                 {artistNameStep2}
-                                             </p>
-                                         </div>
-                                     )}
+                                     {/* REMOVED: Avatar and Name Display */}
+                                     {/* {isFetchingProfile ? ( ... ) : ( ... )} */}
 
                                      {/* Password Field */}
                                      <FormField
@@ -438,4 +391,3 @@ export function LoginForm({ onLoginComplete }: LoginFormProps) {
     </>
   );
 }
-
