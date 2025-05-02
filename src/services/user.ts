@@ -22,8 +22,15 @@ import {
    * @returns A promise resolving to the ProfileFormValues or null if not found/error.
    */
   export async function getUserProfileByUid(uid: string): Promise<ProfileFormValues | null> {
+    if (!uid) {
+      console.error("getUserProfileByUid: Received null or empty UID.");
+      return null; // Cannot fetch without a UID
+    }
+    console.log("getUserProfileByUid: Attempting to fetch profile for UID:", uid);
+
     // Correct path to the specific profile document within the subcollection
     const profileDocRef = doc(db, "users", uid, "publicProfile", "profile");
+
     try {
       const docSnap = await getDoc(profileDocRef);
       if (docSnap.exists()) {
@@ -34,13 +41,13 @@ import {
         // Example: if (data.createdAt && data.createdAt instanceof Timestamp) data.createdAt = data.createdAt.toDate();
         return data;
       } else {
-        console.log("getUserProfileByUid: No public profile document found for UID:", uid);
+        console.warn("getUserProfileByUid: No public profile document found at path:", profileDocRef.path);
         return null;
       }
     } catch (error) {
-      console.error("getUserProfileByUid: Error fetching user profile:", error);
-      // Throw a more specific error or handle it based on application needs
-      throw new Error("Failed to fetch user profile by UID.");
+      console.error(`getUserProfileByUid: Error fetching user profile for UID ${uid}:`, error);
+      // Rethrowing the error to be caught by the calling component
+      throw new Error(`Failed to fetch user profile for UID ${uid}.`);
     }
   }
 
@@ -53,6 +60,11 @@ import {
    * @returns A promise resolving to the ProfileFormValues or null if not found/error.
    */
   export async function getUserProfileByEmail(email: string): Promise<ProfileFormValues | null> {
+    if (!email) {
+        console.error("getUserProfileByEmail: Received null or empty email.");
+        return null;
+    }
+    console.log("getUserProfileByEmail: Querying for user with email:", email);
     // Query the root 'users' collection to find the document ID (UID) based on email
     const usersRef = collection(db, "users");
     const q = query(usersRef, where("email", "==", email), limit(1));
@@ -71,11 +83,11 @@ import {
              return profileData;
         } else {
              // User doc exists, but profile subcollection doc might not (edge case/initial setup)
-             console.log("getUserProfileByEmail: User found, but no public profile sub-document for email:", email);
+             console.warn("getUserProfileByEmail: User found, but no public profile sub-document for email:", email);
              return null;
         }
       } else {
-        console.log("getUserProfileByEmail: No user document found with email:", email);
+        console.warn("getUserProfileByEmail: No user document found with email:", email);
         return null;
       }
     } catch (error) {
@@ -94,6 +106,10 @@ import {
    * @returns A promise resolving when the operation is complete.
    */
   export async function setPublicProfile(uid: string, data: ProfileFormValues, merge: boolean = true): Promise<void> {
+     if (!uid) {
+       console.error("setPublicProfile: Received null or empty UID.");
+       throw new Error("Cannot set profile without a user ID.");
+     }
     // Correct path to the specific profile document within the subcollection
     const profileDocRef = doc(db, "users", uid, "publicProfile", "profile");
     try {

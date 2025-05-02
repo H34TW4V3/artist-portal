@@ -31,7 +31,7 @@ import { useToast } from "@/hooks/use-toast";
 import { LogOut, UserCog, KeyRound, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation"; // Import useRouter from next/navigation
-import { SplashScreen } from '@/components/common/splash-screen'; // Import SplashScreen
+// Removed SplashScreen import as it's handled by AuthProvider
 
 // --- Zod Schema for User Profile Data (Matches ProfileForm) ---
 // This schema is primarily used by the ProfileForm, keep it consistent
@@ -66,9 +66,9 @@ export default function UserProfile() {
   useEffect(() => {
     const fetchProfileData = async () => {
       // Only fetch if the user exists and auth is not loading
-      if (authLoading || !user) {
+      if (authLoading || !user?.uid) { // Check for user.uid specifically
         setIsProfileLoading(false); // Stop loading if auth is loading or no user
-        if (!user) setProfileData(null); // Clear profile data if no user
+        setProfileData(null); // Clear profile data if no user
         return;
       }
 
@@ -95,17 +95,17 @@ export default function UserProfile() {
           setProfileData(defaultData);
         }
       } catch (error) {
-        console.error("Error fetching/creating user profile:", error);
+        console.error("Error fetching/creating user profile in UserProfile component:", error);
         toast({
           title: "Error Loading Profile",
-          description: "Could not load your profile data.",
+          description: "Could not load your profile data. Please try refreshing.",
           variant: "destructive",
         });
-        // Set some default state even on error
+        // Set some default state even on error to avoid breaking UI
         setProfileData({
-            name: "Error",
+            name: user.displayName || "Error", // Use display name or fallback
             email: user.email || "unknown",
-            imageUrl: null,
+            imageUrl: user.photoURL || null,
             bio: null,
             phoneNumber: null,
             hasCompletedTutorial: false,
@@ -116,7 +116,7 @@ export default function UserProfile() {
     };
 
     fetchProfileData();
-  }, [user, toast, authLoading]); // Include authLoading in dependency array
+  }, [user, authLoading, toast]); // Include authLoading and toast in dependency array
 
   // Handle user logout using the function from context
   const handleLogout = async () => {
@@ -135,10 +135,11 @@ export default function UserProfile() {
       data: ProfileFormValues,
       newImageFile?: File
   ): Promise<{ updatedData: ProfileFormValues }> => {
-      if (!user) throw new Error("User not authenticated.");
+      if (!user?.uid) throw new Error("User not authenticated."); // Check user.uid
       setIsUpdating(true);
 
-      let newImageUrl = profileData?.imageUrl || null; // Start with current URL
+      // Use current profile state's imageUrl as the starting point
+      let newImageUrl = profileData?.imageUrl || null;
 
       try {
           // 1. Handle Image Upload (if newImageFile exists)
@@ -271,7 +272,6 @@ export default function UserProfile() {
                     />
                 ) : (
                  // Show loading indicator inside modal while profile data loads initially
-                 // Use SplashScreen for consistency if preferred over Loader2
                      <div className="flex justify-center items-center p-10">
                          {/* Using Skeleton as a simpler placeholder inside the modal */}
                          <div className="flex flex-col items-center gap-4">
@@ -279,9 +279,6 @@ export default function UserProfile() {
                               <Skeleton className="h-4 w-32" />
                               <Skeleton className="h-4 w-48" />
                          </div>
-                         {/* Or use SplashScreen:
-                         <SplashScreen loadingText="Loading Profile..." />
-                         */}
                      </div>
                  )}
            </DialogContent>

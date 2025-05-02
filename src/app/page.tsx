@@ -13,11 +13,12 @@ import { useAuth } from "@/context/auth-context"; // Import useAuth
 import { Skeleton } from "@/components/ui/skeleton"; // Import Skeleton
 import { useRouter } from 'next/navigation'; // Import useRouter
 import { useEffect, useState, useRef } from 'react'; // Import useEffect, useState, and useRef
-import { SplashScreen } from '@/components/common/splash-screen'; // Import SplashScreen
+// Removed SplashScreen import as it's handled by AuthProvider
 import { Button } from "@/components/ui/button"; // Keep button for potential future use or structure
 // Import user service function
 import { getUserProfileByUid } from "@/services/user"; // Correct import
 import type { ProfileFormValues } from "@/components/profile/profile-form"; // Import profile type
+import { useToast } from "@/hooks/use-toast"; // Import useToast
 
 
 // Pineapple Icon Component (retained from previous state)
@@ -65,7 +66,7 @@ const greetings = [
 export default function HomePage() {
     const { user, loading: authLoading } = useAuth(); // Use the auth context
     const router = useRouter();
-    // Removed db state as we use the service function now
+    const { toast } = useToast(); // Initialize toast
     // Initialize profileData state with undefined to distinguish initial state from loaded null
     const [profileData, setProfileData] = useState<ProfileFormValues | null | undefined>(undefined);
     const [profileLoading, setProfileLoading] = useState(true);
@@ -75,14 +76,9 @@ export default function HomePage() {
     // Fetch profile data from Firestore using service function
     useEffect(() => {
         const fetchProfileData = async () => {
-            if (authLoading || !user) {
+            if (authLoading || !user?.uid) { // Check for user.uid
                 setProfileLoading(false);
-                // Only set profileData to null if auth check is done and there's definitively no user
-                if (!authLoading && !user) {
-                    setProfileData(null);
-                } else {
-                     setProfileData(undefined); // Keep as undefined while auth is loading
-                }
+                setProfileData(authLoading ? undefined : null); // Undefined if auth still loading, null if done and no user
                 return;
             }
 
@@ -93,12 +89,18 @@ export default function HomePage() {
                 if (fetchedProfile) {
                     setProfileData(fetchedProfile);
                 } else {
-                    console.log("User profile not found in publicProfile for greeting.");
-                    // If no profile, still proceed but name will fallback
+                    console.warn("User profile not found in publicProfile for greeting. Will create default if needed elsewhere.");
+                    // Don't create default here, let UserProfile handle creation
                     setProfileData(null); // Explicitly set to null if not found after checking
                 }
             } catch (error) {
                 console.error("Error fetching user profile for greeting:", error);
+                toast({
+                     title: "Profile Error",
+                     description: "Could not load profile for greeting.",
+                     variant: "destructive",
+                     duration: 2000,
+                 });
                 setProfileData(null); // Set to null on error
             } finally {
                 setProfileLoading(false);
@@ -106,7 +108,7 @@ export default function HomePage() {
         };
 
         fetchProfileData();
-    }, [user, authLoading]); // Only depend on user and authLoading
+    }, [user, authLoading, toast]); // Include toast in dependency array
 
     // Function to get a random greeting - client side only
     const getRandomGreeting = (name: string) => {
@@ -158,17 +160,45 @@ export default function HomePage() {
 
     // Determine display name and image URL (consistent with greeting logic)
     // **PRIORITIZE profileData.name**
+    // Use optional chaining and provide fallback 'Artist' if everything is null/undefined
     const displayName = profileData?.name || user?.displayName || (user?.email ? user.email.split('@')[0] : 'Artist');
     const displayImageUrl = profileData?.imageUrl || user?.photoURL || null;
 
-    // Show Loading (Splash Screen) ONLY during initial auth/profile load
-     if (isLoading || profileData === undefined) { // Also show splash while profileData is undefined (initial fetch)
+    // Show Loading Skeleton ONLY during initial auth/profile load
+     if (isLoading || profileData === undefined) { // Also show skeleton while profileData is undefined (initial fetch)
         return (
-             <SplashScreen
-                 loadingText="Loading Hub..."
-                 userImageUrl={displayImageUrl} // Use determined URL
-                 userName={displayName}         // Use determined name
-             />
+             <div className="flex min-h-screen w-full flex-col bg-transparent">
+                 <main className="relative z-10 flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
+                     {/* Header Skeleton */}
+                     <Card className="mb-4 sm:mb-8 bg-card/60 dark:bg-card/50 shadow-lg rounded-lg border-border/30">
+                         <CardHeader className="flex flex-row items-center justify-between gap-4 flex-wrap">
+                             <div className="flex items-center gap-4">
+                                 <Skeleton className="h-8 w-8 hidden sm:block rounded-md" />
+                                 <div className="space-y-1">
+                                     <Skeleton className="h-6 w-48" />
+                                 </div>
+                             </div>
+                             <div className="flex-shrink-0 ml-auto hidden md:flex">
+                                <Skeleton className="h-5 w-32" />
+                            </div>
+                             <div className="flex-shrink-0">
+                                 <Skeleton className="h-12 w-12 rounded-full" />
+                             </div>
+                              <div className="w-full md:hidden mt-2">
+                                <Skeleton className="h-5 w-full" />
+                              </div>
+                         </CardHeader>
+                     </Card>
+                     {/* Navigation Grid Skeleton */}
+                     <div className="max-w-5xl mx-auto w-full">
+                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                             {Array.from({ length: navItems.length }).map((_, index) => (
+                                 <Skeleton key={index} className="aspect-[4/3] rounded-lg" />
+                             ))}
+                         </div>
+                     </div>
+                 </main>
+             </div>
         );
     }
 
@@ -192,7 +222,7 @@ export default function HomePage() {
                         <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="hsl(var(--primary))" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-8 w-8 hidden sm:block"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
                         <div className="text-center sm:text-left">
                             <CardTitle className="text-xl sm:text-3xl font-bold tracking-tight text-primary">
-                                {clientGreeting || "Welcome!"}
+                                {clientGreeting || `Welcome, ${displayName}!`}
                             </CardTitle>
                         </div>
                     </div>
