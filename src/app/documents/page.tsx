@@ -13,6 +13,8 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/auth-context"; // Import useAuth
 import { useRouter } from 'next/navigation'; // Import useRouter
 import { SplashScreen } from '@/components/common/splash-screen'; // Import SplashScreen
+import { DocumentPreviewModal } from "@/components/documents/document-preview-modal"; // Import the preview modal
+import { useToast } from "@/hooks/use-toast"; // Import useToast
 
 // Define content for each tab's header
 const tabHeaders = {
@@ -28,12 +30,18 @@ const tabHeaders = {
   },
 };
 
+const ARTIST_HANDBOOK_URL = "https://drive.google.com/file/d/1-O3KULYSrHWEChdJJITKiv82KmxykLzA/view?usp=sharing";
+
 export default function DocumentsPage() {
   const { user, loading } = useAuth(); // Get user info and loading state
   const router = useRouter();
+  const { toast } = useToast();
   // State to manage the active tab
   const [activeTab, setActiveTab] = useState<keyof typeof tabHeaders>("agreements");
-  // Removed artistName state
+  // State for preview modal
+  const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewTitle, setPreviewTitle] = useState<string>("Document Preview");
 
    // Redirect unauthenticated users
    useEffect(() => {
@@ -58,7 +66,7 @@ export default function DocumentsPage() {
     {
       title: "Artist Handbook",
       icon: <BookOpenText className="h-5 w-5 text-primary" />,
-      viewUrl: "https://drive.google.com/file/d/1-O3KULYSrHWEChdJJITKiv82KmxykLzA/view?usp=sharing" // Added URL
+      viewUrl: ARTIST_HANDBOOK_URL // Use constant for handbook URL
     },
     { title: "Release Submission Cheat Sheet", icon: <BookOpenText className="h-5 w-5 text-primary" /> },
      { title: "Social Media Best Practices", icon: <BookOpenText className="h-5 w-5 text-primary" /> },
@@ -77,6 +85,31 @@ export default function DocumentsPage() {
                appletIcon={loadingIcon} // Pass the appropriate icon
             />; // Pass custom text and user info
    }
+
+   // Handle click on the 'View' button of an AgreementCard
+   const handleViewClick = (url: string | undefined, title: string) => {
+       if (!url) {
+            toast({ title: "Action", description: `Viewing "${title}" (No link available)` });
+            return;
+       }
+
+       // Specific handling for the Artist Handbook to open in modal
+       if (url === ARTIST_HANDBOOK_URL) {
+           console.log("Opening handbook in modal:", url);
+           setPreviewUrl(url);
+           setPreviewTitle(title);
+           setIsPreviewModalOpen(true);
+       } else {
+           // Open other links in a new tab
+           try {
+               console.log("Opening link in new tab:", url);
+               window.open(url, '_blank', 'noopener,noreferrer');
+           } catch (error) {
+               console.error("Error opening URL:", error);
+               toast({ title: "Error", description: "Could not open the document link.", variant: "destructive" });
+           }
+       }
+   };
 
 
   return (
@@ -155,6 +188,8 @@ export default function DocumentsPage() {
                     key={`agreement-${index}`}
                     title={agreement.title}
                     icon={agreement.icon}
+                    // Pass the handler to the card
+                    onViewClick={(url) => handleViewClick(url, agreement.title)}
                   />
                 ))}
               </CardContent>
@@ -174,14 +209,23 @@ export default function DocumentsPage() {
                     title={guide.title}
                     icon={guide.icon}
                     viewUrl={guide.viewUrl} // Pass the URL to the card
+                     // Pass the handler to the card
+                    onViewClick={(url) => handleViewClick(url, guide.title)}
                   />
                 ))}
               </CardContent>
             </Card>
           </TabsContent>
         </Tabs>
+
+        {/* Document Preview Modal */}
+        <DocumentPreviewModal
+          isOpen={isPreviewModalOpen}
+          onClose={() => setIsPreviewModalOpen(false)}
+          url={previewUrl}
+          title={previewTitle}
+        />
       </main>
     </div>
   );
 }
-

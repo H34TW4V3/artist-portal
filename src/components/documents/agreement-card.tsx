@@ -1,5 +1,5 @@
 
-"use client"; // Add use client because useToast is a client-side hook
+"use client";
 
 import type React from 'react';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,16 +11,20 @@ import { useToast } from '@/hooks/use-toast'; // For placeholder actions
 interface AgreementCardProps {
   title: string;
   icon: React.ReactNode;
-  viewUrl?: string; // Add optional view URL prop
+  viewUrl?: string; // Keep view URL prop
+  onViewClick?: (url: string | undefined) => void; // Add onViewClick callback prop
   className?: string;
 }
 
-export function AgreementCard({ title, icon, viewUrl, className }: AgreementCardProps) {
+export function AgreementCard({ title, icon, viewUrl, onViewClick, className }: AgreementCardProps) {
   const { toast } = useToast();
 
-  // Updated view action
+  // Updated view action - Now calls the callback passed from parent
   const handleView = () => {
-    if (viewUrl) {
+    if (onViewClick) {
+        onViewClick(viewUrl); // Pass the URL to the parent handler
+    } else if (viewUrl) {
+        // Fallback if no specific handler is provided but URL exists
         try {
             window.open(viewUrl, '_blank', 'noopener,noreferrer');
         } catch (error) {
@@ -71,3 +75,4 @@ export function AgreementCard({ title, icon, viewUrl, className }: AgreementCard
     </Card>
   );
 }
+
