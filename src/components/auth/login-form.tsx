@@ -7,7 +7,7 @@ import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { Loader2, ArrowLeft, ArrowRight, User } from "lucide-react"; // Added User icon
 import { useRouter } from "next/navigation";
-import { Howl } from 'howler'; // Import Howl for audio
+// Removed Howler import
 
 import { Button } from "@/components/ui/button";
 import {
@@ -27,7 +27,8 @@ import { useAuth } from "@/context/auth-context";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SplashScreen } from '@/components/common/splash-screen';
-// Removed getUserProfileByEmail import
+import { getUserProfileByEmail } from '@/services/user'; // Import function to get profile by email
+import type { ProfileFormValues } from '@/components/profile/profile-form'; // Import profile type
 
 // Define steps
 const STEPS = [
@@ -79,12 +80,12 @@ const LoginIconStep1 = () => (
     </svg>
 );
 
-// Simple User Icon for Step 2
-const UserIconStep2 = () => (
-    <User className="h-16 w-16 mb-2 text-primary" /> // Adjusted size
-);
+// Simple User Icon for Step 2 - Using Lucide User icon
+// const UserIconStep2 = () => (
+//     <User className="h-16 w-16 mb-2 text-primary" /> // Adjusted size
+// );
 
-const LOGIN_JINGLE_PATH = '/sounds/login-jingle.mp3';
+// Removed LOGIN_JINGLE_PATH constant
 
 export function LoginForm({ onLoginComplete }: LoginFormProps) {
   const { login, loading: authLoading } = useAuth();
@@ -94,55 +95,17 @@ export function LoginForm({ onLoginComplete }: LoginFormProps) {
   const [currentStep, setCurrentStep] = useState(1);
   const [previousStep, setPreviousStep] = useState(1);
   const [enteredEmail, setEnteredEmail] = useState("");
-  const [artistNameStep2, setArtistNameStep2] = useState("User"); // State for artist name in step 2
+  const [artistNameStep2, setArtistNameStep2] = useState<string | null>(null); // Fetch artist name
+  const [artistImageStep2, setArtistImageStep2] = useState<string | null>(null); // Fetch artist image
+  const [isFetchingProfile, setIsFetchingProfile] = useState(false); // Loading state for profile fetch
   const [showLoginSplash, setShowLoginSplash] = useState(false);
   const [splashInfo, setSplashInfo] = useState<{ name: string; imageUrl: string | null }>({ name: '', imageUrl: null });
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const audioRef = useRef<Howl | null>(null);
+  // Removed audioRef
 
-  useEffect(() => {
-    // Initialize Howler only on client
-    if (typeof window !== 'undefined') {
-        audioRef.current = new Howl({
-            src: [LOGIN_JINGLE_PATH],
-            preload: true,
-            html5: true, // Important for reliability, especially on mobile
-            onloaderror: (id, error) => {
-                console.error('Howler load error:', id, error);
-                toast({ title: "Audio Load Error", description: "Could not load login sound.", variant: "destructive", duration: 2000 });
-            },
-            onplayerror: (id, error) => {
-                console.error('Howler play error:', id, error);
-                // Attempt to unlock audio context on play error, common on mobile
-                Howler.ctx.resume().then(() => {
-                    console.log("Audio context resumed after interaction.");
-                }).catch(e => console.error("Error resuming audio context:", e));
-                 toast({ title: "Audio Play Error", description: "Could not play login sound.", variant: "destructive", duration: 2000 });
-            }
-        });
-         console.log("Login form audio initialized");
-    }
+  // Removed useEffect for audio initialization
 
-    return () => {
-        // Cleanup Howler instance on component unmount
-        if (audioRef.current) {
-            audioRef.current.unload();
-             console.log("Login form audio unloaded");
-        }
-    };
-   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Empty dependency array ensures this runs only once
-
-   const playLoginSound = () => {
-     if (audioRef.current && typeof window !== 'undefined') {
-         // Attempt to play the sound
-         audioRef.current.play();
-         console.log("Attempting to play login sound...");
-     } else {
-         console.warn("Login sound audio element not ready or not initialized.");
-     }
-   };
-
+  // Removed playLoginSound function
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -173,13 +136,37 @@ export function LoginForm({ onLoginComplete }: LoginFormProps) {
      return isValid;
    };
 
+   // Fetch user profile data when email is entered
+   const fetchProfileForStep2 = async (email: string) => {
+       setIsFetchingProfile(true);
+       setArtistNameStep2(null); // Reset while fetching
+       setArtistImageStep2(null);
+       try {
+           const profile = await getUserProfileByEmail(email);
+           if (profile) {
+               setArtistNameStep2(profile.name || email.split('@')[0] || "User"); // Use profile name, fallback to email prefix
+               setArtistImageStep2(profile.imageUrl || null);
+               console.log("Fetched profile for step 2:", profile.name, profile.imageUrl);
+           } else {
+                setArtistNameStep2(email.split('@')[0] || "User"); // Fallback if no profile found
+                console.log("No profile found for step 2, using email prefix.");
+           }
+       } catch (error) {
+           console.error("Error fetching profile for login step 2:", error);
+           setArtistNameStep2(email.split('@')[0] || "User"); // Fallback on error
+           // Optionally show a toast error? Maybe not necessary here.
+       } finally {
+           setIsFetchingProfile(false);
+       }
+   };
+
+
   const handleNext = async () => {
     if (await validateStep(currentStep)) {
       if (currentStep === 1) {
             const email = form.getValues("artistId");
             setEnteredEmail(email);
-             // Set default name for step 2 (email prefix)
-             setArtistNameStep2(email.split('@')[0] || "User");
+            await fetchProfileForStep2(email); // Fetch profile before moving to step 2
             goToStep(currentStep + 1);
       } else if (currentStep === 2) {
           await form.handleSubmit(onSubmit)();
@@ -192,6 +179,8 @@ export function LoginForm({ onLoginComplete }: LoginFormProps) {
   const handlePrevious = () => {
     if (currentStep > 1) {
        goToStep(currentStep - 1);
+       setArtistNameStep2(null); // Clear fetched data when going back
+       setArtistImageStep2(null);
     }
   };
 
@@ -201,12 +190,13 @@ export function LoginForm({ onLoginComplete }: LoginFormProps) {
     try {
         const loggedInUser = await login(values.artistId, values.password);
 
-        const nameForSplash = loggedInUser?.displayName || artistNameStep2; // Use name from step 2 fetch or fallback
-        const imageUrlForSplash = loggedInUser?.photoURL || null;
-        setSplashInfo({ name: nameForSplash, imageUrl: imageUrlForSplash });
+        // Use name/image fetched in step 2 or fallback
+        const nameForSplash = artistNameStep2 || loggedInUser?.displayName || values.artistId.split('@')[0] || 'Artist';
+        const imageUrlForSplash = artistImageStep2 || loggedInUser?.photoURL || null;
 
+        setSplashInfo({ name: nameForSplash, imageUrl: imageUrlForSplash });
         setShowLoginSplash(true);
-        playLoginSound(); // Play sound when splash starts
+        // Removed audio playing logic
 
         setTimeout(() => {
             onLoginComplete();
@@ -217,7 +207,7 @@ export function LoginForm({ onLoginComplete }: LoginFormProps) {
         if (error instanceof Error && error.message.includes("password")) {
             goToStep(2);
             form.setError("password", { type: "manual", message: "Incorrect password." });
-        } else if (error instanceof Error && (error.message.includes("Artist ID") || error.message.includes("email") || error.message.includes("Invalid"))) {
+        } else if (error instanceof Error && (error.message.includes("Artist ID") || error.message.includes("email") || error.message.includes("Invalid") || error.message.includes("credential"))) {
             goToStep(1);
             form.setError("artistId", { type: "manual", message: "Artist ID not found or invalid." });
         } else {
@@ -236,42 +226,58 @@ export function LoginForm({ onLoginComplete }: LoginFormProps) {
   return (
     <>
       <Form {...form}>
+        {/* Removed card wrapper, added min-height to ensure space */}
         <div className="relative overflow-hidden min-h-[400px] flex flex-col">
 
              {showLoginSplash ? (
                  <SplashScreen
                      className="flex-grow flex items-center justify-center"
                      style={{ animationDelay: '0s' }}
-                     loadingText={`Welcome, ${splashInfo.name}!`}
+                     loadingText={`Welcome, ${splashInfo.name}!`} // Show welcome message
                      userImageUrl={splashInfo.imageUrl}
                      userName={splashInfo.name}
                      duration={5000}
                  />
              ) : (
                  <>
-                     {/* Step 1 Header */}
-                     {currentStep === 1 && (
-                         <CardHeader className={cn(
-                             "items-center text-center p-4 border-b border-border/30",
-                             getAnimationClasses(1)
-                         )}>
-                             <LoginIconStep1 />
-                             <CardTitle className="text-xl font-semibold tracking-tight text-primary">Artist Hub Login</CardTitle>
-                             <CardDescription className="text-muted-foreground text-xs">
+                     {/* Step 1 Header - Only visible on step 1 */}
+                     <div className={cn("flex flex-col items-center pt-6 pb-4", getAnimationClasses(1))}>
+                          {currentStep === 1 && <LoginIconStep1 />}
+                          {currentStep === 1 && (
+                             <>
+                               <CardTitle className="text-xl font-semibold tracking-tight text-primary mt-2">Artist Hub Login</CardTitle>
+                               <CardDescription className="text-muted-foreground text-xs">
                                  Enter your credentials to access your dashboard.
-                             </CardDescription>
-                         </CardHeader>
-                      )}
-                       {/* Step 2 Header (minimal) */}
-                       {currentStep === 2 && (
-                           <div className={cn(
-                               "flex flex-col items-center pt-4 pb-2", // Adjusted padding
-                               getAnimationClasses(2)
-                            )}>
-                               <UserIconStep2 />
-                               <p className="text-lg font-medium text-foreground">{artistNameStep2}</p>
-                           </div>
-                       )}
+                               </CardDescription>
+                             </>
+                          )}
+                     </div>
+
+                       {/* Step 2 Header (minimal) - Only visible on step 2 */}
+                       <div className={cn(
+                           "flex flex-col items-center pt-4 pb-2", // Adjusted padding
+                           getAnimationClasses(2)
+                        )}>
+                            {currentStep === 2 && (
+                                isFetchingProfile ? (
+                                    <Skeleton className="h-16 w-16 rounded-full mb-2" />
+                                ) : (
+                                     <Avatar className="h-16 w-16 mb-2 border-2 border-primary/30">
+                                         <AvatarImage src={artistImageStep2 || undefined} alt={artistNameStep2 || 'User'} />
+                                         <AvatarFallback className="text-2xl bg-muted text-muted-foreground">
+                                            {getInitials(artistNameStep2)}
+                                         </AvatarFallback>
+                                     </Avatar>
+                                )
+                            )}
+                           {currentStep === 2 && (
+                             isFetchingProfile ? (
+                                 <Skeleton className="h-5 w-24 mt-1" />
+                             ) : (
+                                 <p className="text-lg font-medium text-foreground">{artistNameStep2 || "User"}</p>
+                              )
+                            )}
+                       </div>
 
 
                      <form
@@ -306,7 +312,7 @@ export function LoginForm({ onLoginComplete }: LoginFormProps) {
                          </div>
 
                          {/* Step 2: Password */}
-                         <div className={cn("space-y-3", getAnimationClasses(2))}> {/* Removed flex alignment */}
+                         <div className={cn("space-y-3", getAnimationClasses(2))}>
                              {currentStep === 2 && (
                                  <>
                                      {/* Password Field */}
@@ -321,7 +327,7 @@ export function LoginForm({ onLoginComplete }: LoginFormProps) {
                                                          type="password"
                                                          placeholder="Password"
                                                          {...field}
-                                                         disabled={isSubmitting || currentStep !== 2}
+                                                         disabled={isSubmitting || currentStep !== 2 || isFetchingProfile} // Disable while fetching profile
                                                          autoComplete="current-password"
                                                          className="bg-background/50 dark:bg-background/30 border-input focus:ring-accent w-full text-sm h-9"
                                                      />
@@ -337,7 +343,7 @@ export function LoginForm({ onLoginComplete }: LoginFormProps) {
                                              variant="link"
                                              className="text-xs font-medium text-primary hover:underline p-0 h-auto"
                                              onClick={() => setIsForgotPasswordModalOpen(true)}
-                                             disabled={isSubmitting || currentStep !== 2}
+                                             disabled={isSubmitting || currentStep !== 2 || isFetchingProfile} // Disable while fetching profile
                                          >
                                              Forgot Password?
                                          </Button>
@@ -353,7 +359,7 @@ export function LoginForm({ onLoginComplete }: LoginFormProps) {
                                  variant="outline"
                                  size="sm"
                                  onClick={handlePrevious}
-                                 disabled={currentStep === 1 || isSubmitting}
+                                 disabled={currentStep === 1 || isSubmitting || isFetchingProfile} // Disable while fetching profile
                                  className={cn(currentStep === 1 && "invisible")}
                              >
                                  <ArrowLeft className="mr-1 h-4 w-4" /> Previous
@@ -362,10 +368,15 @@ export function LoginForm({ onLoginComplete }: LoginFormProps) {
                                  type="button"
                                  size="sm"
                                  onClick={handleNext}
-                                 disabled={isSubmitting || (currentStep === 1 && !form.watch('artistId')) || (currentStep === 2 && !form.watch('password'))}
+                                 disabled={
+                                     isSubmitting ||
+                                     isFetchingProfile || // Disable while fetching profile
+                                     (currentStep === 1 && !form.watch('artistId')) ||
+                                     (currentStep === 2 && !form.watch('password'))
+                                  }
                                  className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-md disabled:shadow-none disabled:bg-muted disabled:text-muted-foreground"
                              >
-                                 {isSubmitting ? (
+                                 {isSubmitting || isFetchingProfile ? ( // Show loading state if submitting or fetching profile
                                      <><Loader2 className="mr-1 h-4 w-4 animate-spin" /> Processing...</>
                                  ) : currentStep === STEPS.length ? (
                                      'Login'
@@ -390,3 +401,4 @@ export function LoginForm({ onLoginComplete }: LoginFormProps) {
     </>
   );
 }
+

@@ -3,7 +3,6 @@ import React, { useEffect, useRef } from 'react'; // Ensure React is imported
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'; // Import Avatar components
 // REMOVED: Howler import
-// import { Howl } from 'howler'; // Import Howl for audio
 
 interface SplashScreenProps {
     className?: string;
@@ -14,8 +13,6 @@ interface SplashScreenProps {
     appletIcon?: React.ReactNode;
     duration?: number; // Still potentially useful for internal state management if needed
     // REMOVED: playAudioUrl, audioPlayedRef
-    // playAudioUrl?: string | null; // URL of the audio to play
-    // audioPlayedRef?: React.MutableRefObject<boolean>; // Ref to track if audio has played in this instance
 }
 
 // Helper to get initials
@@ -33,16 +30,10 @@ export function SplashScreen({
     appletIcon,
     duration = 5000, // Default duration set here
     // REMOVED: playAudioUrl, audioPlayedRef
-    // playAudioUrl,
-    // audioPlayedRef,
 }: SplashScreenProps) {
     // REMOVED: audioRef, internalAudioPlayedRef, currentAudioPlayedRef
-    // const audioRef = useRef<Howl | null>(null); // Keep ref
-    // const internalAudioPlayedRef = useRef(false);
-    // const currentAudioPlayedRef = audioPlayedRef || internalAudioPlayedRef;
 
     // REMOVED: useEffect for audio initialization
-    // useEffect(() => { ... }, [playAudioUrl]);
 
     const animationClass = 'animate-fade-in opacity-100';
 
