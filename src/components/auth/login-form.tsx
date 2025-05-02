@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
@@ -102,6 +101,8 @@ export function LoginForm({ onLoginComplete }: LoginFormProps) {
   const [showLoginSplash, setShowLoginSplash] = useState(false); // State to show splash within the card
   const [splashInfo, setSplashInfo] = useState<{ name: string; imageUrl: string | null }>({ name: '', imageUrl: null });
   const audioPlayedRef = useRef(false); // Ref to track if audio has played for this splash instance
+  const [isSubmitting, setIsSubmitting] = useState(false); // Define isSubmitting state
+
 
    // Initialize Howler - Runs only once on mount
    useEffect(() => {
@@ -115,7 +116,10 @@ export function LoginForm({ onLoginComplete }: LoginFormProps) {
               console.error('Howler playback error:', error);
           },
           onloaderror: (id, error) => {
-              console.error('Howler load error:', error);
+              console.error('Howler load error:', id, error);
+          },
+          onload: () => {
+              console.log('Howler audio loaded:', LOGIN_JINGLE_PATH);
           }
         });
     }
@@ -135,7 +139,7 @@ export function LoginForm({ onLoginComplete }: LoginFormProps) {
             // Reset seek to start just in case
             audioRef.current.seek(0);
             audioRef.current.play();
-             // No session storage check needed here as it's tied to the splash display
+            audioPlayedRef.current = true; // Mark as played using the ref for splash
        } else {
            console.warn("LoginForm: Login sound audio element not ready or not initialized.");
        }
@@ -210,19 +214,19 @@ export function LoginForm({ onLoginComplete }: LoginFormProps) {
 
   async function onSubmit(values: LoginFormValues) {
      // Don't play sound immediately, wait for success
-    setIsSubmitting(true); // Use a local submitting state if needed
+    setIsSubmitting(true); // Use the defined submitting state
     try {
-        await login(values.artistId, values.password);
+        const loggedInUser = await login(values.artistId, values.password);
 
         // Login successful: Prepare splash info and show it
-        const nameForSplash = profileData?.name || enteredEmail?.split('@')[0] || "User";
-        const imageUrlForSplash = profileData?.imageUrl || null;
+        const nameForSplash = profileData?.name || loggedInUser?.displayName || values.artistId.split('@')[0] || "User";
+        const imageUrlForSplash = profileData?.imageUrl || loggedInUser?.photoURL || null;
         setSplashInfo({ name: nameForSplash, imageUrl: imageUrlForSplash });
 
-        audioPlayedRef.current = false; // Reset audio played flag for this instance
+        audioPlayedRef.current = false; // Reset audio played flag for this splash instance
         setShowLoginSplash(true); // Show the embedded splash screen
-        // Play sound when splash becomes visible (or slightly after)
-        setTimeout(() => playLoginSound(), 100); // Short delay to ensure splash renders
+        // Play sound when splash becomes visible (handled by SplashScreen now)
+
 
         // Inform parent page to start redirect timer AFTER splash duration
         setTimeout(() => {
@@ -257,7 +261,7 @@ export function LoginForm({ onLoginComplete }: LoginFormProps) {
   // Determine display name and image URL for step 2
   const artistNameStep2 = profileData?.name || enteredEmail?.split('@')[0] || "User";
   const displayImageUrlStep2 = profileData?.imageUrl || null;
-  const isSubmitting = authLoading || isFetchingProfile; // Combine loading states
+  // const isSubmittingCombined = authLoading || isFetchingProfile || isSubmitting; // Combine loading states
 
 
   return (
