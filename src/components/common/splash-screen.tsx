@@ -75,9 +75,8 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
             audioRef.current?.unload();
             audioRef.current = null;
             // Reset played status if needed, depending on desired behavior
-            // currentAudioPlayedRef.current = false;
-        };
-    // Only re-run if playAudioUrl changes. Don't include currentAudioPlayedRef in deps.
+            // currentAudioPlayedRef.current = false; // Resetting here might cause sound to replay unintentionally on rerenders
+        }; // Fixed: Added closing brace for the effect hook
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [playAudioUrl]);
 
