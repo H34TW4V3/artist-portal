@@ -15,7 +15,7 @@ import { SubmitDemoForm } from '@/components/demo/submit-demo-form';
 import { Separator } from '@/components/ui/separator';
 
 // Placeholder URL for the GIF - Updated URL
-const LOGIN_BACKGROUND_GIF_URL = "https://media3.giphy.com/media/v1.Y2lkPTc5MGI3NjExajlyMDFwYm53NWFpaGRybnljbDR6cXcyZ2xxaXFncmZobTF3MzNoaSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/l3CgcUcBFDmMJBtkZU/giphy.gif";
+const LOGIN_BACKGROUND_GIF_URL = "https://wallpapers-clan.com/wp-content/uploads/2024/03/starfall-night-sky-mountains-aesthetic-gif-preview-desktop-wallpaper.gif";
 
 
 export default function LoginPage() {
@@ -198,3 +198,6 @@ export default function LoginPage() {
     );
 }
 
+    
+
+    
