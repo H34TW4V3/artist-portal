@@ -45,11 +45,12 @@ export function DocumentPreviewModal({ isOpen, onClose, url, title = "Document P
       <DialogContent className="sm:max-w-xl md:max-w-3xl lg:max-w-5xl xl:max-w-7xl h-[90vh] flex flex-col bg-card/90 dark:bg-card/80 border-border/50">
         <DialogHeader className="flex-shrink-0">
           <DialogTitle className="text-primary">{title}</DialogTitle>
-          {url && (
+          {/* Removed the DialogDescription that showed the URL */}
+          {/* {url && (
             <DialogDescription className="text-muted-foreground text-xs truncate">
               Viewing: <a href={url} target="_blank" rel="noopener noreferrer" className="underline hover:text-primary">{url}</a>
             </DialogDescription>
-          )}
+          )} */}
         </DialogHeader>
 
         <div className="flex-grow relative border border-border/30 rounded-md overflow-hidden mt-2">
@@ -87,3 +88,4 @@ export function DocumentPreviewModal({ isOpen, onClose, url, title = "Document P
     </Dialog>
   );
 }
+
