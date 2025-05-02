@@ -99,8 +99,6 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
     const animationClass = 'animate-fade-in opacity-100';
 
     // Ensure clean syntax before return
-    // No misplaced characters or comments here
-
     return (
         <div
             className={cn(
