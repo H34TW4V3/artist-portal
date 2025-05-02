@@ -1,3 +1,4 @@
+
 "use client";
 
 import { LoginForm } from '@/components/auth/login-form';
@@ -11,6 +12,7 @@ import { SplashScreen } from '@/components/common/splash-screen'; // Import Spla
 import { Upload } from 'lucide-react'; // Import Upload icon
 import { useToast } from '@/hooks/use-toast'; // Import useToast
 import { SubmitDemoForm } from '@/components/demo/submit-demo-form'; // Import the form directly
+import { Separator } from '@/components/ui/separator'; // Import Separator
 
 // Placeholder URL for the GIF - replace with actual URL
 const LOGIN_BACKGROUND_GIF_URL = "https://25.media.tumblr.com/0a0ba077c5c32fc4eaa6778519e56781/tumblr_n1an6osbsL1tpegqko1_r1_500.gif"; // Updated GIF URL
@@ -151,15 +153,15 @@ export default function LoginPage() {
             {/* Container for Login and Demo Cards */}
              {/* Use flex-col on small screens and flex-row on larger screens */}
             <div className={cn(
-                "relative z-10 flex flex-col sm:flex-row gap-6 w-full max-w-4xl justify-center items-stretch", // Added justify-center, items-stretch
-                // Apply fade-out animation to the whole container when splash shows
+                "relative z-10 flex flex-col sm:flex-row gap-6 w-full max-w-4xl justify-center items-center", // Use items-center for vertical alignment
+                 // Apply fade-out animation to the whole container when splash shows
                  showSplash && "animate-fade-out" // Fade out container when splash appears
                 )}>
 
                 {/* Login Card container - Apply slide-out animation when demo starts or fade-out for splash */}
                 {/* Conditional rendering needed for animation exit */}
                 <div className={cn(
-                    "flex-1 rounded-xl border border-border/30 shadow-xl overflow-hidden bg-card/20 dark:bg-card/10 flex flex-col",
+                    "flex-1 rounded-xl border border-border/30 shadow-xl overflow-hidden bg-card/20 dark:bg-card/10 flex flex-col self-stretch", // Added self-stretch
                     isLoginFormVisible ? "animate-fade-in-up" : "animate-fade-out", // Use fade-in/fade-out for simplicity or change to slide
                     !showSplash && !isLoginFormVisible && "animate-slide-out-to-left", // Slide left when demo starts (and not splash)
                     !isLoginFormVisible && "pointer-events-none" // Disable interaction when hidden/animating out
@@ -174,11 +176,34 @@ export default function LoginPage() {
                     </div>
                 </div>
 
+                 {/* Vertical Separator with "Or" - visible only on sm screens and up */}
+                 <div className={cn(
+                      "hidden sm:flex flex-col items-center justify-center h-20", // Set a fixed height or use percentage
+                      (!isLoginFormVisible || !isDemoCardVisible) && "opacity-0 pointer-events-none transition-opacity duration-300" // Hide when form animates out
+                 )}>
+                     <Separator orientation="vertical" className="h-full bg-border/50" />
+                     <span className="my-2 px-2 text-xs font-medium text-muted-foreground bg-background/50 rounded-full backdrop-blur-sm">
+                         Or
+                     </span>
+                     <Separator orientation="vertical" className="h-full bg-border/50" />
+                 </div>
+                 {/* Horizontal Separator with "Or" - visible only below sm screens */}
+                 <div className={cn(
+                      "flex sm:hidden items-center justify-center w-full my-4", // Visible below sm, with margin
+                      (!isLoginFormVisible || !isDemoCardVisible) && "opacity-0 pointer-events-none transition-opacity duration-300" // Hide when form animates out
+                 )}>
+                     <Separator className="flex-grow bg-border/50" />
+                     <span className="mx-2 text-xs font-medium text-muted-foreground bg-background/50 px-2 py-0.5 rounded-full backdrop-blur-sm">
+                         Or
+                     </span>
+                     <Separator className="flex-grow bg-border/50" />
+                 </div>
+
 
                 {/* Demo Submission Card - Always present for layout, content changes */}
                 {/* Apply slide-in animation only when login form slides out */}
                 <Card className={cn(
-                    "flex-1 rounded-xl border border-border/30 shadow-xl overflow-hidden bg-card/20 dark:bg-card/10 flex flex-col relative", // flex-1, added flex layout, added relative for form positioning
+                    "flex-1 rounded-xl border border-border/30 shadow-xl overflow-hidden bg-card/20 dark:bg-card/10 flex flex-col relative self-stretch", // flex-1, added flex layout, added relative for form positioning, added self-stretch
                     isDemoCardVisible ? "animate-fade-in-up" : "animate-fade-out", // Fade-in initially, fade-out for splash
                     "animation-delay-100" // Slight delay for demo card animation
                     )}
