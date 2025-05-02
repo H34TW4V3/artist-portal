@@ -11,6 +11,7 @@ import { useEffect, useState, useRef } from 'react'; // Import useState and useR
 import { SplashScreen } from '@/components/common/splash-screen'; // Import SplashScreen
 import { Upload } from 'lucide-react'; // Import Upload icon
 import { useToast } from '@/hooks/use-toast'; // Import useToast
+import { SubmitDemoModal } from '@/components/demo/submit-demo-modal'; // Import the new modal
 
 // Placeholder URL for the GIF - replace with actual URL
 const LOGIN_BACKGROUND_GIF_URL = "https://giffiles.alphacoders.com/173/173157.gif"; // Updated GIF URL
@@ -24,6 +25,7 @@ export default function LoginPage() {
     const [showSplash, setShowSplash] = useState(false); // State to control splash visibility *after* login
     const [isLoginFormVisible, setIsLoginFormVisible] = useState(true); // State to control login form card visibility
     const [isDemoCardVisible, setIsDemoCardVisible] = useState(true); // State for demo card visibility
+    const [isSubmitDemoModalOpen, setIsSubmitDemoModalOpen] = useState(false); // State for demo modal
     const [splashUserName, setSplashUserName] = useState<string | null>(null); // State for splash user name
     const [splashUserImageUrl, setSplashUserImageUrl] = useState<string | null>(null); // State for splash user image
     const audioRef = useRef<HTMLAudioElement | null>(null); // Ref for the audio element
@@ -84,15 +86,20 @@ export default function LoginPage() {
         }, 5000); // Set duration to 5 seconds
     };
 
+    // Update handler to open the demo submission modal
     const handleDemoSubmitClick = () => {
-        // Placeholder action - replace with actual logic (e.g., open modal, redirect)
-         toast({
-             title: "Demo Submission",
-             description: "Demo submission feature coming soon!",
-             duration: 3000,
-         });
-        console.log("Submit Demo button clicked (placeholder).");
-        // Example: router.push('/submit-demo'); or open a modal
+        console.log("Submit Demo button clicked, opening modal.");
+        setIsSubmitDemoModalOpen(true);
+    };
+
+    const handleSubmitDemoSuccess = () => {
+        setIsSubmitDemoModalOpen(false);
+        // Optionally show a success toast here if the form doesn't
+        toast({
+            title: "Demo Submitted!",
+            description: "Thank you for submitting your demo. We'll review it shortly.",
+            duration: 4000,
+        });
     };
 
 
@@ -190,8 +197,14 @@ export default function LoginPage() {
                      </Card>
                  )}
             </div>
+
+             {/* Demo Submission Modal */}
+            <SubmitDemoModal
+                 isOpen={isSubmitDemoModalOpen}
+                 onClose={() => setIsSubmitDemoModalOpen(false)}
+                 onSuccess={handleSubmitDemoSuccess}
+             />
+
         </div>
     );
 }
-
-    
