@@ -54,6 +54,12 @@ const nextConfig: NextConfig = {
          port: '',
          pathname: '/**',
        },
+       { // Add media.licdn.com for Fourvenues logo
+        protocol: 'https',
+        hostname: 'media.licdn.com',
+        port: '',
+        pathname: '/**',
+       }
     ],
   },
 };

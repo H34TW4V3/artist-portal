@@ -7,6 +7,7 @@ import { TimeWeather } from "@/components/common/time-weather"; // Import TimeWe
 import { Card, CardDescription, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { CalendarClock, Home, PlusCircle, ExternalLink } from "lucide-react"; // Use CalendarClock icon, add PlusCircle, ExternalLink
 import Link from "next/link";
+import Image from "next/image"; // Import Image component
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/auth-context";
 import { useRouter } from 'next/navigation';
@@ -18,7 +19,11 @@ import type { Event } from "@/types/event"; // Import Event type (will create)
 import { getEvents } from "@/services/events"; // Import getEvents service (will create)
 import { useToast } from "@/hooks/use-toast";
 
-const FOURVENUES_AUTH_URL = "https://id.fourvenues.com/authorization/hma77i39k0431018zdmytb6uhwU4BNVZ";
+// Updated Fourvenues URL
+const FOURVENUES_PRO_URL = "https://pro.fourvenues.com";
+// Fourvenues logo URL
+const FOURVENUES_LOGO_URL = "https://media.licdn.com/dms/image/v2/D4D0BAQG3wpZFEoM1AA/company-logo_200_200/company-logo_200_200/0/1734353695315/fourvenues_logo?e=2147483647&v=beta&t=Xv08pE45sqvhf9uL2vmxs2JDHu25ZsNMPruhcz0X600";
+
 
 export default function EventsPage() {
   const { user, loading } = useAuth();
@@ -166,23 +171,30 @@ export default function EventsPage() {
 
           {/* Events List & Actions Column */}
           <div className="lg:col-span-2 space-y-6">
-             {/* Fourvenues Link Card */}
-             <Card className="bg-card/60 dark:bg-card/50 border-border/30 shadow-md rounded-lg">
-               <CardHeader>
-                 <CardTitle className="text-lg font-semibold text-foreground">External Event Platform</CardTitle>
-                 <CardDescription className="text-muted-foreground">
-                    Access the Fourvenues platform for additional event management features.
-                 </CardDescription>
-               </CardHeader>
-               <CardContent>
-                  <a href={FOURVENUES_AUTH_URL} target="_blank" rel="noopener noreferrer">
-                      <Button className="w-full sm:w-auto">
-                        <ExternalLink className="mr-2 h-4 w-4" />
-                        Go to Fourvenues
-                      </Button>
-                  </a>
-               </CardContent>
-             </Card>
+             {/* Fourvenues Link - Changed to Image link */}
+             <a
+               href={FOURVENUES_PRO_URL}
+               target="_blank"
+               rel="noopener noreferrer"
+               className="block group relative rounded-lg overflow-hidden shadow-md transition-all duration-200 ease-in-out hover:shadow-lg hover:border-primary/50 hover:-translate-y-1 hover-glow border border-border/30 bg-card/60 dark:bg-card/50"
+             >
+               <div className="p-4 flex flex-col items-center text-center">
+                  <Image
+                      src={FOURVENUES_LOGO_URL}
+                      alt="Fourvenues Logo"
+                      width={150} // Adjust size as needed
+                      height={150} // Adjust size as needed
+                      className="rounded-md mb-3"
+                      data-ai-hint="fourvenues event management logo"
+                  />
+                  <p className="text-sm font-medium text-foreground mb-1">Go to Fourvenues Pro</p>
+                  <p className="text-xs text-muted-foreground">
+                     Access the external platform for advanced event management features.
+                  </p>
+                   <ExternalLink className="h-4 w-4 text-muted-foreground absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity" />
+               </div>
+             </a>
+
 
             {/* Internal Events Card */}
             <Card className="bg-card/60 dark:bg-card/50 border-border/30 shadow-md rounded-lg"> {/* Adjusted opacity */}
