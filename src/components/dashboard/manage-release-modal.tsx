@@ -33,16 +33,17 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Label } from "@/components/ui/label"; // Keep Label for standalone labels
 import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form";
-// Updated import to include ReleaseMetadata type for updateRelease
-import { updateRelease, type ReleaseWithId, type TrackInfo, type ReleaseMetadata } from "@/services/music-platform";
-import { storage } from "@/services/firebase-config"; // Import storage instance
+// Updated import to include initiateTakedown service function
+import { updateRelease, initiateTakedown, type ReleaseWithId, type TrackInfo, type ReleaseMetadata } from "@/services/music-platform";
+import { storage } from "@/services/firebase-config"; // Import storage instance (if needed, maybe not here)
 import { useAuth } from "@/context/auth-context"; // To get user ID for storage path
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage"; // Import storage functions
+// Removed direct storage function imports as updateRelease handles it now
+// import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
 // Schema for managing/editing an existing release
 const manageReleaseSchema = z.object({
@@ -85,10 +86,10 @@ export function ManageReleaseModal({ isOpen, onClose, releaseData, onSuccess, on
           if (dateValue instanceof Timestamp) {
               return dateValue.toDate();
           } else if (typeof dateValue === 'string') {
-              // Try parsing ISO string (which YYYY-MM-DD is a subset of)
-               const parsed = parseISO(dateValue);
-               // Check if parseISO worked, otherwise fallback
-               return isNaN(parsed.getTime()) ? new Date(dateValue) : parsed;
+               // Try parsing ISO string (which YYYY-MM-DD is a subset of)
+                const parsed = new Date(dateValue + 'T00:00:00Z'); // Assume UTC if only date part
+                // Check if parseISO worked, otherwise fallback
+                return isNaN(parsed.getTime()) ? new Date() : parsed; // Fallback to current date if parsing fails
           } else if (dateValue instanceof Date) {
               return dateValue;
           }
@@ -198,10 +199,10 @@ export function ManageReleaseModal({ isOpen, onClose, releaseData, onSuccess, on
 
     try {
       // Prepare data for the update function
-      const dataToUpdate: Partial<Omit<ReleaseMetadata, 'userId' | 'createdAt' | 'zipUrl' | 'status' | 'artworkUrl' >> & { releaseDate?: string } = {
+      const dataToUpdate: Partial<Omit<ReleaseMetadata, 'userId' | 'createdAt' | 'zipUrl' | 'status' | 'artworkUrl' >> & { releaseDate?: string | Date } = {
         title: values.title,
         artist: values.artist,
-        releaseDate: format(values.releaseDate, "yyyy-MM-dd"), // Format date as string
+        releaseDate: values.releaseDate, // Pass Date object, service function handles formatting
         tracks: values.tracks,
         spotifyLink: values.spotifyLink || null,
       };
@@ -229,16 +230,16 @@ export function ManageReleaseModal({ isOpen, onClose, releaseData, onSuccess, on
     }
   };
 
-  // Handle Takedown Request
+  // Handle Takedown Request using the service function
   const handleTakedownRequest = async () => {
       if (!releaseData) return;
       setIsTakedownSubmitting(true);
       console.log(`Submitting takedown request for release: ${releaseData.id} - ${releaseData.title}`);
-      // Simulate API call for takedown
+
       try {
-          await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate network delay
-          // Assume success for now
-          console.log(`Takedown request for ${releaseData.title} processed (placeholder).`);
+          // Call the service function to update status and trigger backend (simulation)
+          await initiateTakedown(releaseData.id);
+
           toast({
               title: "Takedown Requested",
               description: `Request to takedown "${releaseData.title}" submitted. This may take some time to reflect on platforms.`,
@@ -247,9 +248,6 @@ export function ManageReleaseModal({ isOpen, onClose, releaseData, onSuccess, on
           setIsTakedownConfirmOpen(false); // Close confirmation dialog
           onClose(); // Close the main manage modal
           onTakedownSuccess(); // Notify parent to refetch/update list
-
-          // In a real scenario, you might update the release status in Firestore here
-          // await updateRelease(releaseData.id, { status: 'takedown_requested' });
 
       } catch (error) {
           console.error("Error submitting takedown request:", error);
@@ -296,6 +294,8 @@ export function ManageReleaseModal({ isOpen, onClose, releaseData, onSuccess, on
                              height={120}
                              className="rounded-md object-cover aspect-square border border-border bg-muted/20"
                              onError={(e) => { e.currentTarget.src = placeholderArtwork; e.currentTarget.srcset = ""; }}
+                             unoptimized // Good for dynamic or external URLs
+                             priority={false} // Only use priority if it's critical LCP
                          />
                          <div className="flex flex-col gap-2 flex-grow">
                              <Button
@@ -378,10 +378,11 @@ export function ManageReleaseModal({ isOpen, onClose, releaseData, onSuccess, on
                     <FormItem>
                         <FormLabel>Original Release Date</FormLabel>
                         <FormControl>
-                            {/* Displaying as read-only text, could be DatePicker if editing is desired */}
+                            {/* Displaying as read-only text */}
                             <Input
                                 type="text"
-                                value={field.value instanceof Date && !isNaN(field.value.getTime()) ? format(field.value, "PPP") : "Invalid Date"}
+                                // Use UTC date formatting for consistency
+                                value={field.value instanceof Date && !isNaN(field.value.getTime()) ? format(field.value, "PPP", { useAdditionalDayOfYearTokens: false }) : "Invalid Date"}
                                 readOnly
                                 disabled
                                 className="bg-muted/50 cursor-not-allowed"
@@ -495,9 +496,13 @@ export function ManageReleaseModal({ isOpen, onClose, releaseData, onSuccess, on
                              type="button"
                              variant="destructive"
                              onClick={() => setIsTakedownConfirmOpen(true)}
-                             disabled={isSubmitting || isTakedownSubmitting}
+                             disabled={isSubmitting || isTakedownSubmitting || releaseData.status === 'takedown_requested'} // Disable if already requested
                          >
-                              <AlertTriangle className="mr-2 h-4 w-4" /> Submit Takedown Request
+                              {releaseData.status === 'takedown_requested' ? 'Takedown In Progress' :
+                                <>
+                                 <AlertTriangle className="mr-2 h-4 w-4" /> Submit Takedown Request
+                                </>
+                              }
                          </Button>
                      </div>
                  </div>
@@ -559,4 +564,3 @@ export function ManageReleaseModal({ isOpen, onClose, releaseData, onSuccess, on
     </Dialog>
   );
 }
-
