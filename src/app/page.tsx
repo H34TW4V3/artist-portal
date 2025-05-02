@@ -61,8 +61,9 @@ const greetings = [
     "Yo, {{name}}!",
 ];
 
-const LOGIN_JINGLE_PATH = '/sounds/login-jingle.mp3'; // Path to the sound file
-const SESSION_SOUND_PLAYED_KEY = 'loginSoundPlayed'; // Key for session storage
+// REMOVED: LOGIN_JINGLE_PATH and SESSION_SOUND_PLAYED_KEY - Moved to LoginForm
+// const LOGIN_JINGLE_PATH = '/sounds/login-jingle.mp3';
+// const SESSION_SOUND_PLAYED_KEY = 'loginSoundPlayed';
 
 export default function HomePage() {
     const { user, loading: authLoading } = useAuth(); // Use the auth context
@@ -72,51 +73,19 @@ export default function HomePage() {
     const [profileData, setProfileData] = useState<ProfileFormValues | null>(null);
     const [profileLoading, setProfileLoading] = useState(true); // State for profile data loading
     const [clientGreeting, setClientGreeting] = useState(""); // State for client-side greeting generation
-    const [showSplash, setShowSplash] = useState(false); // State for splash screen visibility
+    const [showSplash, setShowSplash] = useState(false); // State for splash screen visibility - now controlled differently
     const [hasShownInitialSplash, setHasShownInitialSplash] = useState(false); // Track if initial splash was shown
-    const audioRef = useRef<HTMLAudioElement | null>(null); // Ref for the audio element
+    // REMOVED: audioRef - Moved to LoginForm
+    // const audioRef = useRef<HTMLAudioElement | null>(null);
 
-     // Initialize and preload audio element
-     useEffect(() => {
-        // Ensure this runs only on the client
-        if (typeof window !== 'undefined') {
-            if (!audioRef.current) {
-                audioRef.current = new Audio(LOGIN_JINGLE_PATH);
-                audioRef.current.preload = 'auto';
-                console.log("HomePage: Audio element initialized and preloading:", LOGIN_JINGLE_PATH);
-            }
-        }
-     }, []);
+    // REMOVED: useEffect for initializing audio - Moved to LoginForm
+    // REMOVED: playLoginSound function - Moved to LoginForm
 
-     // Function to play login sound
-     const playLoginSound = () => {
-         if (audioRef.current && typeof window !== 'undefined') {
-             // Check if sound has already been played in this session
-             if (sessionStorage.getItem(SESSION_SOUND_PLAYED_KEY)) {
-                 console.log("HomePage: Login sound already played this session.");
-                 return;
-             }
-
-             audioRef.current.currentTime = 0; // Rewind to start
-             audioRef.current.play().then(() => {
-                 console.log("HomePage: Login sound played successfully.");
-                 // Mark sound as played for this session
-                 sessionStorage.setItem(SESSION_SOUND_PLAYED_KEY, 'true');
-             }).catch(error => {
-                 console.error("HomePage: Error playing login sound:", error);
-                 // Handle autoplay restrictions if necessary
-             });
-         } else {
-             console.warn("HomePage: Login sound audio element not ready or not initialized.");
-         }
-     };
-
-
-    // Fetch profile data from Firestore
+    // Fetch profile data from Firestore - Remains the same
     useEffect(() => {
         const fetchProfileData = async () => {
             if (authLoading || !user) {
-                setProfileLoading(false); // Stop loading if auth is loading or no user
+                setProfileLoading(false);
                 if (!user) setProfileData(null);
                 return;
             }
@@ -128,13 +97,12 @@ export default function HomePage() {
                 if (docSnap.exists()) {
                     setProfileData(docSnap.data() as ProfileFormValues);
                 } else {
-                    // Handle case where profile might not exist yet, use defaults
                     console.log("User profile not found in Firestore for greeting.");
-                    setProfileData(null); // Or set default placeholder data if needed
+                    setProfileData(null);
                 }
             } catch (error) {
                 console.error("Error fetching user profile for greeting:", error);
-                setProfileData(null); // Clear on error
+                setProfileData(null);
             } finally {
                 setProfileLoading(false);
             }
@@ -143,9 +111,9 @@ export default function HomePage() {
         fetchProfileData();
     }, [user, db, authLoading]);
 
-    // Function to get a random greeting - client side only
+    // Function to get a random greeting - client side only - Remains the same
     const getRandomGreeting = (name: string) => {
-        if (typeof window === 'undefined') return `Welcome, ${name}!`; // Avoid Math.random on server
+        if (typeof window === 'undefined') return `Welcome, ${name}!`;
         const randomIndex = Math.floor(Math.random() * greetings.length);
         return greetings[randomIndex].replace("{{name}}", name);
     };
@@ -155,93 +123,77 @@ export default function HomePage() {
         // Redirect unauthenticated users
         if (!authLoading && !user) {
             router.replace('/login');
-            return; // Early return to prevent further processing
+            return;
         }
 
         const isLoading = authLoading || profileLoading;
 
-        // Set greeting and check tutorial status after both auth and profile data are loaded
-        if (!isLoading && user && profileData !== undefined) { // Check profileData is not undefined (initial state)
+        // Set greeting and check tutorial status
+        if (!isLoading && user && profileData !== undefined) {
 
-            // Tutorial Check - Redirect if not completed
+            // Tutorial Check
             if (profileData && profileData.hasCompletedTutorial === false) {
                 console.log("Redirecting to tutorial...");
-                router.replace('/tutorial'); // Redirect to the tutorial page
-                return; // Stop further processing for this render cycle
+                router.replace('/tutorial');
+                return;
             }
 
-            // Play sound only once per session when user data is available
-             playLoginSound();
+            // REMOVED: playLoginSound() call from here
 
-            // Proceed with setting greeting if tutorial is completed or not applicable
-            // Prioritize profileData.name (Artist Name), then displayName, then email, then 'Artist'
+            // Set greeting
             const artistNameFromProfile = profileData?.name;
             const nameFromAuth = user.displayName;
             const nameFromEmail = user.email?.split('@')[0];
             const finalName = artistNameFromProfile || nameFromAuth || nameFromEmail || 'Artist';
-
-            // Generate greeting on client side using the helper function
             setClientGreeting(getRandomGreeting(finalName));
 
-            // Only start the splash timer if it hasn't been shown before in this session/mount
+            // Splash screen logic can be simplified or removed if splash is handled differently now
+            // If splash is tied to login success animation, this might not be needed here
             if (!hasShownInitialSplash) {
-                 setShowSplash(true); // Ensure splash is shown if needed
-                 const timer = setTimeout(() => {
-                     setShowSplash(false);
-                     setHasShownInitialSplash(true); // Mark as shown
-                 }, 0); // Set delay to 0 if no splash animation needed or handle elsewhere
-
-                 // Cleanup timer only if it was started
-                 return () => clearTimeout(timer);
+                 setShowSplash(false); // Assume splash happens during/after login, not on home page load
+                 setHasShownInitialSplash(true); // Mark as "shown" (conceptually)
             } else {
-                // If splash already shown, ensure showSplash is false immediately
-                setShowSplash(false);
+                 setShowSplash(false);
             }
 
         } else if (!isLoading && !user) {
-            // Handle case where user logs out while on this page (redundant due to redirect?)
              setClientGreeting("Welcome!");
-             setShowSplash(false); // No splash if no user
+             setShowSplash(false);
         }
          else {
-            // Provide a default or loading greeting if still loading
             setClientGreeting("Welcome!");
-            // Keep showSplash true while loading, unless already shown
             if (!hasShownInitialSplash) {
-                setShowSplash(false); // Keep splash hidden until conditions met
+                setShowSplash(false);
             }
         }
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [user, authLoading, profileLoading, profileData, router, hasShownInitialSplash]); // Depend on hasShownInitialSplash
+    }, [user, authLoading, profileLoading, profileData, router, hasShownInitialSplash]);
 
 
     // Combined loading state
     const isLoading = authLoading || profileLoading;
 
-    // Determine display name and image URL based on loaded data or user defaults
+    // Determine display name and image URL
     const displayName = profileData?.name || user?.displayName || (user?.email ? user.email.split('@')[0] : 'Artist');
     const displayImageUrl = profileData?.imageUrl || user?.photoURL || null;
 
-    // Show Splash Screen only if loading OR if it's the initial timed splash display
-     if (isLoading) { // Simplified: Show loader only during actual loading phases
-        // Pass the generated greeting and user info
-        // Use SplashScreen instead of Loader2
+    // Show Loading (Splash Screen) ONLY during initial auth/profile load
+     if (isLoading) {
+        // Using SplashScreen component for consistency during load
         return (
              <SplashScreen
                  loadingText="Loading Hub..."
-                 userImageUrl={displayImageUrl} // Pass potential image url
-                 userName={displayName} // Pass potential name
-                 // Add other props as needed
+                 userImageUrl={displayImageUrl}
+                 userName={displayName}
              />
         );
     }
 
 
-    // If not loading and no user, let useEffect handle redirect (AuthProvider shows splash/loader)
+    // If not loading and no user, let useEffect handle redirect
      if (!user && !authLoading) {
-         // AuthProvider handles loading state display
-         return null; // Return null while redirecting or if stuck
+         return null; // AuthProvider/Middleware handles display/redirect
      }
 
 
@@ -254,27 +206,26 @@ export default function HomePage() {
                 <CardHeader className="flex flex-row items-center justify-between gap-4 flex-wrap"> {/* Added flex-wrap */}
                     {/* App Title/Greeting */}
                     <div className="flex items-center gap-4">
-                    {/* Placeholder Icon - could be a music note or app logo */}
+                    {/* Placeholder Icon */}
                         <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="hsl(var(--primary))" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-8 w-8 hidden sm:block"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
-                        <div className="text-center sm:text-left"> {/* Center align text */}
+                        <div className="text-center sm:text-left">
                             <CardTitle className="text-xl sm:text-3xl font-bold tracking-tight text-primary">
-                                {clientGreeting || "Welcome!"} {/* Display the client-side greeting */}
+                                {clientGreeting || "Welcome!"}
                             </CardTitle>
-                            {/* Removed CardDescription */}
                         </div>
                     </div>
 
-                     {/* Time and Weather - Re-enabled */}
+                     {/* Time and Weather */}
                     <div className="flex-shrink-0 ml-auto hidden md:flex">
                         <TimeWeather />
                     </div>
 
 
-                    {/* Render UserProfile component - added flex-shrink-0 */}
-                    <div className="flex-shrink-0"> {/* Removed ml-auto as weather is back */}
+                    {/* UserProfile */}
+                    <div className="flex-shrink-0">
                         <UserProfile />
                     </div>
-                    {/* Mobile Time and Weather - Re-enabled */}
+                    {/* Mobile Time and Weather */}
                      <div className="w-full md:hidden mt-2">
                          <TimeWeather />
                      </div>
@@ -282,65 +233,51 @@ export default function HomePage() {
                 </CardHeader>
                 </Card>
 
-                {/* Navigation Grid - App Screen Style */}
-                {/* Wrap grid in a container with max-width */}
+                {/* Navigation Grid */}
                 <div className="max-w-5xl mx-auto w-full">
-                     {/* Updated grid to accommodate 6 items - adjust columns if needed */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"> {/* Reduced gap */}
                     {navItems.map((item, index) => {
-                        // Common animation classes
                         const animationClass = "opacity-0 animate-fade-in-up";
-                        const animationDelay = `${index * 100}ms`; // Staggered delay
-                        // Common active state classes for click feedback
+                        const animationDelay = `${index * 100}ms`;
                         const activeStateClasses = "active:scale-95 active:opacity-80 transition-transform duration-100";
 
-                        // Check if the item has an imageSrc property
                         if (item.imageSrc) {
                             const cardContent = (
                                 <Card className={cn(
-                                    "bg-card/50 dark:bg-card/40 border border-border/30 shadow-md rounded-lg transition-all duration-200 ease-in-out cursor-pointer text-center h-full flex flex-col justify-center items-center overflow-hidden", // Added overflow-hidden
-                                    "hover:shadow-lg hover:border-primary/50 hover:-translate-y-1 hover-glow" // Hover effects
+                                    "bg-card/50 dark:bg-card/40 border border-border/30 shadow-md rounded-lg transition-all duration-200 ease-in-out cursor-pointer text-center h-full flex flex-col justify-center items-center overflow-hidden",
+                                    "hover:shadow-lg hover:border-primary/50 hover:-translate-y-1 hover-glow"
                                 )}>
-                                    {/* Render Image directly, filling the card */}
                                     <Image
                                         src={item.imageSrc}
-                                        alt={item.title} // Use title for alt text
-                                        layout="fill" // Fill the container
-                                        objectFit="cover" // Cover the container area
-                                        className="transition-transform duration-300 group-hover:scale-105" // Added scale effect on hover
-                                        data-ai-hint="spotify for artists banner" // Add hint if needed
-                                        unoptimized // Consider keeping if image causes issues
+                                        alt={item.title}
+                                        layout="fill"
+                                        objectFit="cover"
+                                        className="transition-transform duration-300 group-hover:scale-105 rounded-lg" // Added rounded-lg
+                                        data-ai-hint="spotify for artists banner"
+                                        unoptimized
                                     />
-                                    {/* Optional: Overlay title/description if desired */}
-                                    {/* <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex flex-col justify-end p-4">
-                                        <CardTitle className="text-lg font-semibold text-white">{item.title}</CardTitle>
-                                        <CardDescription className="text-sm text-white/80">{item.description}</CardDescription>
-                                    </div> */}
                                 </Card>
                             );
                             return (
                                 <a
                                     href={item.href}
                                     key={item.href}
-                                     // Apply animation class, style, and active state classes
                                     className={cn("block group relative aspect-[4/3]", animationClass, activeStateClasses)}
                                     style={{ animationDelay }}
-                                    target="_blank" // Open external links in new tab
+                                    target="_blank"
                                     rel="noopener noreferrer"
                                 >
                                     {cardContent}
                                 </a>
                             );
                         } else {
-                            // Original card content for items with icons
                             const cardContent = (
                                 <Card className={cn(
-                                    "bg-card/50 dark:bg-card/40 border border-border/30 shadow-md rounded-lg transition-all duration-200 ease-in-out cursor-pointer text-center h-full flex flex-col justify-center items-center p-6", // Adjusted opacity
-                                    "hover:shadow-lg hover:border-primary/50 hover:-translate-y-1 hover-glow" // Hover effects
+                                    "bg-card/50 dark:bg-card/40 border border-border/30 shadow-md rounded-lg transition-all duration-200 ease-in-out cursor-pointer text-center h-full flex flex-col justify-center items-center p-6",
+                                    "hover:shadow-lg hover:border-primary/50 hover:-translate-y-1 hover-glow"
                                 )}>
-                                    <CardContent className="flex flex-col items-center justify-center space-y-4 p-0"> {/* Increased space-y */}
-                                        <div className="p-4 rounded-full bg-primary/10 text-primary transition-colors group-hover:bg-primary/20 mb-2"> {/* Increased padding */}
-                                            {/* Render icon if it exists */}
+                                    <CardContent className="flex flex-col items-center justify-center space-y-4 p-0">
+                                        <div className="p-4 rounded-full bg-primary/10 text-primary transition-colors group-hover:bg-primary/20 mb-2">
                                             {item.icon}
                                         </div>
                                         <CardTitle className="text-lg font-semibold text-foreground">{item.title}</CardTitle>
@@ -352,18 +289,16 @@ export default function HomePage() {
                                 <a
                                     href={item.href}
                                     key={item.href}
-                                     // Apply animation class, style, and active state classes
                                     className={cn("block group aspect-[4/3]", animationClass, activeStateClasses)}
                                     style={{ animationDelay }}
-                                    target="_blank" // Open external links in new tab
+                                    target="_blank"
                                     rel="noopener noreferrer"
                                 >
                                     {cardContent}
                                 </a>
                             ) : (
                                 <Link href={item.href} key={item.href} passHref legacyBehavior>
-                                     {/* Apply animation class, style, and active state classes */}
-                                    <a className={cn("block group aspect-[4/3]", animationClass, activeStateClasses)} style={{ animationDelay }}> {/* Use anchor tag for legacyBehavior, added aspect ratio */}
+                                    <a className={cn("block group aspect-[4/3]", animationClass, activeStateClasses)} style={{ animationDelay }}>
                                         {cardContent}
                                     </a>
                                 </Link>

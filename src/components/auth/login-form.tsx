@@ -1,12 +1,13 @@
 
 "use client";
 
-import React, { useState, useEffect } from "react"; // Import React and useEffect
+import React, { useState, useEffect, useRef } from "react"; // Import React, useEffect, useRef
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { Loader2, ArrowLeft, ArrowRight } from "lucide-react"; // Add Arrow icons
 import { useRouter } from "next/navigation"; // Keep useRouter if needed for redirect parameter handling
+import { Howl } from 'howler'; // Import Howl for audio
 
 import { Button } from "@/components/ui/button";
 import {
@@ -48,10 +49,13 @@ const loginSchema = emailSchema.merge(passwordSchema);
 
 type LoginFormValues = z.infer<typeof loginSchema>;
 
-// REMOVED: onLoginSuccess prop definition
 interface LoginFormProps {
      onLoginSuccess: (name: string, imageUrl: string | null) => void; // Keep for splash screen info
 }
+
+// Path to the sound file
+const LOGIN_JINGLE_PATH = '/sounds/login-jingle.mp3';
+const SESSION_SOUND_PLAYED_KEY = 'loginSoundPlayed'; // Key for session storage
 
 
 // Helper to get initials
@@ -94,7 +98,47 @@ export function LoginForm({ onLoginSuccess }: LoginFormProps) {
   const [enteredEmail, setEnteredEmail] = useState(""); // Store email from step 1
   const [profileData, setProfileData] = useState<ProfileFormValues | null>(null); // Store fetched profile data
   const [isFetchingProfile, setIsFetchingProfile] = useState(false); // Loading state for profile fetch
-  // Removed audio state and useEffect for audio preloading
+  const audioRef = useRef<Howl | null>(null); // Ref for Howler instance for sound
+
+   // Initialize and preload audio element using Howler.js
+   useEffect(() => {
+    // Ensure this runs only on the client
+    if (typeof window !== 'undefined') {
+        if (!audioRef.current) {
+            audioRef.current = new Howl({
+              src: [LOGIN_JINGLE_PATH],
+              preload: true,
+              html5: true, // Crucial for broader browser compatibility, especially mobile
+            });
+            console.log("LoginForm: Audio element initialized and preloading:", LOGIN_JINGLE_PATH);
+        }
+    }
+     // Cleanup function to unload audio when component unmounts
+     return () => {
+         audioRef.current?.unload();
+         console.log("LoginForm: Audio element unloaded.");
+     };
+   }, []);
+
+
+   // Function to play login sound
+   const playLoginSound = () => {
+       if (audioRef.current && typeof window !== 'undefined') {
+           // Check if sound has already been played in this session
+           if (sessionStorage.getItem(SESSION_SOUND_PLAYED_KEY)) {
+               console.log("LoginForm: Login sound already played this session.");
+               return;
+           }
+
+           // Play the sound using Howler
+           audioRef.current.play();
+           console.log("LoginForm: Login sound played successfully.");
+           // Mark sound as played for this session
+           sessionStorage.setItem(SESSION_SOUND_PLAYED_KEY, 'true');
+       } else {
+           console.warn("LoginForm: Login sound audio element not ready or not initialized.");
+       }
+   };
 
 
   const form = useForm<LoginFormValues>({
@@ -187,6 +231,9 @@ export function LoginForm({ onLoginSuccess }: LoginFormProps) {
 
 
   async function onSubmit(values: LoginFormValues) {
+    // Play the login sound immediately when the final login button is clicked
+    playLoginSound();
+
     // Determine name and image URL *before* calling login/onLoginSuccess
     const nameForSplash = profileData?.name || enteredEmail?.split('@')[0] || "User";
     const imageUrlForSplash = profileData?.imageUrl || null;
@@ -227,18 +274,22 @@ export function LoginForm({ onLoginSuccess }: LoginFormProps) {
       <Form {...form}>
 
         {/* Use relative container for step animations - Adjusted min-height */}
-        <div className="relative overflow-hidden">
+        <div className="relative overflow-hidden min-h-[200px]">
 
              {/* Step 1 Header (Only shown on step 1) */}
              {currentStep === 1 && (
-                <CardHeader className="items-center text-center p-6 border-b border-border/30">
-                    <LoginIconStep1 /> {/* Always show the main logo */}
-                    <CardTitle className="text-2xl font-semibold tracking-tight text-primary">Artist Hub Login</CardTitle>
-                    <CardDescription className="text-muted-foreground text-sm">
-                        Enter your credentials to access your dashboard.
-                    </CardDescription>
-                </CardHeader>
-             )}
+                 <CardHeader className={cn(
+                     "items-center text-center p-6 border-b border-border/30",
+                      getAnimationClasses(1) // Apply animation to header as well
+                 )}>
+                     <LoginIconStep1 /> {/* Always show the main logo */}
+                     <CardTitle className="text-2xl font-semibold tracking-tight text-primary">Artist Hub Login</CardTitle>
+                     <CardDescription className="text-muted-foreground text-sm">
+                         Enter your credentials to access your dashboard.
+                     </CardDescription>
+                 </CardHeader>
+              )}
+
 
              <form
                onSubmit={(e) => {
@@ -262,7 +313,7 @@ export function LoginForm({ onLoginSuccess }: LoginFormProps) {
                             type="email"
                             placeholder="your.email@example.com"
                             {...field}
-                            disabled={authLoading}
+                            disabled={authLoading || currentStep !== 1} // Only enable on current step
                             autoComplete="email"
                             className="bg-background/50 dark:bg-background/30 border-input focus:ring-accent"
                           />
@@ -310,7 +361,7 @@ export function LoginForm({ onLoginSuccess }: LoginFormProps) {
                               type="password"
                               placeholder="Password"
                               {...field}
-                              disabled={authLoading || isFetchingProfile}
+                              disabled={authLoading || isFetchingProfile || currentStep !== 2} // Only enable on current step
                               autoComplete="current-password"
                               className="bg-background/50 dark:bg-background/30 border-input focus:ring-accent w-full"
                             />
@@ -326,7 +377,7 @@ export function LoginForm({ onLoginSuccess }: LoginFormProps) {
                             variant="link"
                             className="text-sm font-medium text-primary hover:underline p-0 h-auto"
                             onClick={() => setIsForgotPasswordModalOpen(true)}
-                            disabled={authLoading || isFetchingProfile}
+                            disabled={authLoading || isFetchingProfile || currentStep !== 2} // Only enable on current step
                           >
                             Forgot Password?
                           </Button>
@@ -348,23 +399,22 @@ export function LoginForm({ onLoginSuccess }: LoginFormProps) {
                   </Button>
                   <Button
                       type="button"
-                      onClick={handleNext}
+                      onClick={handleNext} // Use handleNext for both next step and final submit
                       disabled={authLoading || isFetchingProfile || (currentStep === 1 && !form.watch('artistId')) || (currentStep === 2 && !form.watch('password'))}
                       className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-md disabled:shadow-none disabled:bg-muted disabled:text-muted-foreground"
                   >
-                      {(authLoading || isFetchingProfile) && currentStep === 1 ? (
+                      {/* Show processing state if profile fetching or auth loading */}
+                      {(isFetchingProfile && currentStep === 1) || (authLoading && currentStep === 2) ? (
                         <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Processing...</>
-                      ) : authLoading && currentStep === 2 ? (
-                         <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Processing...</>
                       ) : currentStep === STEPS.length ? (
-                         'Login'
+                         'Login' // Change button text on last step
                       ) : (
                          <>Next <ArrowRight className="ml-2 h-4 w-4" /></>
                       )}
                   </Button>
               </div>
                {/* Hidden submit for Enter key */}
-               <button type="submit" style={{ display: 'none' }} aria-hidden="true"></button>
+               <button type="submit" disabled={isSubmitting} style={{ display: 'none' }} aria-hidden="true"></button>
             </form>
         </div>
       </Form>
