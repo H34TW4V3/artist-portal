@@ -14,7 +14,7 @@ import { useToast } from '@/hooks/use-toast'; // Import useToast
 import { SubmitDemoModal } from '@/components/demo/submit-demo-modal'; // Import the new modal
 
 // Placeholder URL for the GIF - replace with actual URL
-const LOGIN_BACKGROUND_GIF_URL = "https://giffiles.alphacoders.com/173/173157.gif"; // Updated GIF URL
+const LOGIN_BACKGROUND_GIF_URL = "https://25.media.tumblr.com/0a0ba077c5c32fc4eaa6778519e56781/tumblr_n1an6osbsL1tpegqko1_r1_500.gif"; // Updated GIF URL
 const LOGIN_JINGLE_PATH = '/sounds/login-jingle.mp3'; // Path to the sound file
 
 

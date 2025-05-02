@@ -42,9 +42,15 @@ const nextConfig: NextConfig = {
         port: '',
         pathname: '/**',
       },
-      { // Add alphacoders.com for login background GIF
+      { // Add alphacoders.com for old login background GIF
          protocol: 'https',
          hostname: 'giffiles.alphacoders.com',
+         port: '',
+         pathname: '/**',
+       },
+       { // Add tumblr.com for new login background GIF
+         protocol: 'https',
+         hostname: '25.media.tumblr.com',
          port: '',
          pathname: '/**',
        },
