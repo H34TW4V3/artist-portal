@@ -11,7 +11,7 @@ import { useEffect, useState, useRef } from 'react'; // Import useState and useR
 import { SplashScreen } from '@/components/common/splash-screen'; // Import SplashScreen
 import { Upload } from 'lucide-react'; // Import Upload icon
 import { useToast } from '@/hooks/use-toast'; // Import useToast
-import { SubmitDemoModal } from '@/components/demo/submit-demo-modal'; // Import the new modal
+import { SubmitDemoForm } from '@/components/demo/submit-demo-form'; // Import the form directly
 
 // Placeholder URL for the GIF - replace with actual URL
 const LOGIN_BACKGROUND_GIF_URL = "https://25.media.tumblr.com/0a0ba077c5c32fc4eaa6778519e56781/tumblr_n1an6osbsL1tpegqko1_r1_500.gif"; // Updated GIF URL
@@ -25,7 +25,7 @@ export default function LoginPage() {
     const [showSplash, setShowSplash] = useState(false); // State to control splash visibility *after* login
     const [isLoginFormVisible, setIsLoginFormVisible] = useState(true); // State to control login form card visibility
     const [isDemoCardVisible, setIsDemoCardVisible] = useState(true); // State for demo card visibility
-    const [isSubmitDemoModalOpen, setIsSubmitDemoModalOpen] = useState(false); // State for demo modal
+    const [isDemoFormActive, setIsDemoFormActive] = useState(false); // State for showing demo form *inside* card
     const [splashUserName, setSplashUserName] = useState<string | null>(null); // State for splash user name
     const [splashUserImageUrl, setSplashUserImageUrl] = useState<string | null>(null); // State for splash user image
     const audioRef = useRef<HTMLAudioElement | null>(null); // Ref for the audio element
@@ -86,21 +86,24 @@ export default function LoginPage() {
         }, 5000); // Set duration to 5 seconds
     };
 
-    // Update handler to open the demo submission modal
+    // Update handler to show the embedded demo form
     const handleDemoSubmitClick = () => {
-        console.log("Submit Demo button clicked, opening modal.");
-        setIsSubmitDemoModalOpen(true);
+        console.log("Submit Demo button clicked, activating embedded form.");
+        setIsDemoFormActive(true); // Show the form inside the card
     };
 
     const handleSubmitDemoSuccess = () => {
-        setIsSubmitDemoModalOpen(false);
-        // Optionally show a success toast here if the form doesn't
+        setIsDemoFormActive(false); // Hide form, show initial card content again
         toast({
             title: "Demo Submitted!",
             description: "Thank you for submitting your demo. We'll review it shortly.",
             duration: 4000,
         });
     };
+
+    const handleDemoFormCancel = () => {
+         setIsDemoFormActive(false); // Hide form, show initial card content
+    }
 
 
     // Show loading state (handled by AuthProvider now)
@@ -167,43 +170,71 @@ export default function LoginPage() {
                 {/* Demo Submission Card */}
                 {isDemoCardVisible && (
                      <Card className={cn(
-                         "flex-1 rounded-xl border border-border/30 shadow-xl overflow-hidden animate-fade-in-up bg-card/20 dark:bg-card/10 flex flex-col justify-between", // flex-1, added flex layout
+                         "flex-1 rounded-xl border border-border/30 shadow-xl overflow-hidden animate-fade-in-up bg-card/20 dark:bg-card/10 flex flex-col justify-between relative", // flex-1, added flex layout, added relative for form positioning
                          !isDemoCardVisible && "animate-fade-out", // Apply fade-out
                          "animation-delay-100" // Slight delay for demo card animation
                          )}
                          style={{ animationDelay: '100ms' }} // Inline style for delay compatibility
                          >
-                        <CardHeader className="items-center text-center p-6 border-b border-border/30">
-                            <Upload className="h-12 w-12 mb-3 text-primary" /> {/* Icon */}
-                            <CardTitle className="text-2xl font-semibold tracking-tight text-primary">Submit Your Demo</CardTitle>
-                            <CardDescription className="text-muted-foreground text-sm mt-1">
-                                Got music you think we should hear? Submit your demo here.
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent className="flex-grow flex items-center justify-center p-6">
-                            {/* Content of the demo card, e.g., button */}
-                             <Button
-                                 size="lg"
-                                 onClick={handleDemoSubmitClick}
-                                 className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-primary-foreground shadow-md"
-                             >
-                                 Submit Demo
-                             </Button>
-                        </CardContent>
-                         {/* Footer - Optional, matching login card style */}
-                         <div className="p-4 text-center text-xs text-muted-foreground border-t border-border/30 bg-muted/10 dark:bg-muted/5">
-                             Unsolicited submissions policy applies.
-                         </div>
+                        {/* Conditionally render Initial Content OR SubmitDemoForm */}
+                        {!isDemoFormActive ? (
+                             <>
+                                <CardHeader className={cn(
+                                    "items-center text-center p-6 border-b border-border/30 transition-opacity duration-300",
+                                    isDemoFormActive && "opacity-0 pointer-events-none" // Fade out initial header
+                                )}>
+                                    <Upload className="h-12 w-12 mb-3 text-primary" /> {/* Icon */}
+                                    <CardTitle className="text-2xl font-semibold tracking-tight text-primary">Submit Your Demo</CardTitle>
+                                    <CardDescription className="text-muted-foreground text-sm mt-1">
+                                        Got music you think we should hear? Submit your demo here.
+                                    </CardDescription>
+                                </CardHeader>
+                                <CardContent className={cn(
+                                    "flex-grow flex items-center justify-center p-6 transition-opacity duration-300",
+                                    isDemoFormActive && "opacity-0 pointer-events-none" // Fade out initial content
+                                )}>
+                                     <Button
+                                         size="lg"
+                                         onClick={handleDemoSubmitClick}
+                                         className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-primary-foreground shadow-md"
+                                     >
+                                         Submit Demo
+                                     </Button>
+                                </CardContent>
+                                {/* Footer - Always visible or fade? */}
+                                <div className={cn(
+                                    "p-4 text-center text-xs text-muted-foreground border-t border-border/30 bg-muted/10 dark:bg-muted/5 transition-opacity duration-300",
+                                    isDemoFormActive && "opacity-0 pointer-events-none" // Fade out initial footer
+                                    )}>
+                                    Unsolicited submissions policy applies.
+                                </div>
+                             </>
+                         ) : (
+                              <div className={cn(
+                                  "absolute inset-0 flex flex-col transition-opacity duration-500", // Use absolute positioning for form overlay
+                                  !isDemoFormActive && "opacity-0 pointer-events-none", // Fade in form
+                                  isDemoFormActive && "opacity-100"
+                                  )}>
+                                    {/* Embed the SubmitDemoForm directly */}
+                                    <SubmitDemoForm
+                                        onSuccess={handleSubmitDemoSuccess}
+                                        onCancel={handleDemoFormCancel}
+                                        className="flex-grow p-6 overflow-y-auto" // Add padding and allow scroll if needed
+                                    />
+                              </div>
+                         )}
                      </Card>
                  )}
             </div>
 
-             {/* Demo Submission Modal */}
-            <SubmitDemoModal
+             {/* Remove the Demo Submission Modal Trigger */}
+             {/*
+             <SubmitDemoModal
                  isOpen={isSubmitDemoModalOpen}
                  onClose={() => setIsSubmitDemoModalOpen(false)}
                  onSuccess={handleSubmitDemoSuccess}
              />
+             */}
 
         </div>
     );

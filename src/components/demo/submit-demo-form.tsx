@@ -98,16 +98,24 @@ export function SubmitDemoForm({ onSuccess, onCancel, className }: SubmitDemoFor
 
   // Reset step when form is reset (e.g., on modal close/reopen)
   useEffect(() => {
-      // Check if the form is truly reset (not just initially rendered)
-      const isReset = !form.formState.isDirty && !form.formState.isSubmitted && form.formState.submitCount === 0;
-       if (isReset) {
+      // Simple check: if the form context changes significantly (like reset is called)
+      // This might need refinement based on how the parent component handles state
+       const resetListener = () => {
+           console.log("SubmitDemoForm detecting reset, setting step to 1");
            setCurrentStep(1);
            setPreviousStep(1);
            setFileName(null);
-           setIsSubmitting(false); // Also reset submitting state
-       }
-   // Monitor relevant form state properties
-   }, [form.formState.isDirty, form.formState.isSubmitted, form.formState.submitCount]);
+           setIsSubmitting(false);
+       };
+
+       // Since we don't have a direct reset event, we can check default values or use a key prop on the component
+       // For simplicity, we'll reset based on initial render/prop changes if needed
+       // Or rely on the parent component remounting this form (e.g., via closing/opening the modal/card section)
+       resetListener(); // Call initially
+
+       // Clean up listener if needed (though this approach doesn't set up a persistent listener)
+   // Monitor relevant form state properties or use a key in the parent
+   }, [form]); // Re-run if form context object reference changes
 
 
   // Function to handle step change and animation state
@@ -234,7 +242,7 @@ export function SubmitDemoForm({ onSuccess, onCancel, className }: SubmitDemoFor
            <form
                // Prevent default needed for forms inside forms or complex structures sometimes
                onSubmit={(e) => e.preventDefault()}
-               className={cn("space-y-4 absolute w-full transition-opacity duration-300", getAnimationClasses(1))}
+               className={cn("space-y-4 absolute w-full transition-opacity duration-300", getAnimationClasses(1), className)} // Added className prop here
                aria-hidden={currentStep !== 1}
            >
                {/* Step 1 Fields */}
@@ -313,7 +321,7 @@ export function SubmitDemoForm({ onSuccess, onCancel, className }: SubmitDemoFor
            <form
                // Prevent default needed
                onSubmit={(e) => e.preventDefault()}
-               className={cn("space-y-4 absolute w-full transition-opacity duration-300", getAnimationClasses(2))}
+               className={cn("space-y-4 absolute w-full transition-opacity duration-300", getAnimationClasses(2), className)} // Added className prop here
                aria-hidden={currentStep !== 2}
            >
                {/* Step 2 Fields */}
@@ -389,6 +397,7 @@ export function SubmitDemoForm({ onSuccess, onCancel, className }: SubmitDemoFor
                 <ArrowLeft className="mr-2 h-4 w-4" /> Previous
             </Button>
              <div className="flex gap-2">
+                  {/* Call onCancel prop when this button is clicked */}
                   <Button type="button" variant="outline" onClick={onCancel} disabled={isSubmitting}>
                       Cancel
                   </Button>
