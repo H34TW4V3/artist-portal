@@ -48,7 +48,8 @@ import {
 
   export interface ReleaseMetadata extends ReleaseMetadataBase {
     artworkUrl: string | null; // Allow null
-    zipUrl?: string | null; // Optional zipUrl, allow null - conceptually this might be a GDrive link ID now
+    // IMPORTANT: zipUrl now conceptually stores a Google Drive File ID or similar identifier
+    zipUrl?: string | null; // Optional zipUrl, stores Google Drive ID/link placeholder
     userId: string;
     createdAt?: Timestamp;
     status?: 'processing' | 'completed' | 'failed' | 'takedown_requested' | 'existing'; // Added 'existing' status
@@ -87,22 +88,35 @@ import {
         } else if (dateValue instanceof Date) {
             date = dateValue;
         } else { // Assuming string
-             const parsed = new Date(dateValue); // Try parsing various string formats
+             // Try parsing ISO string (which YYYY-MM-DD is a subset of)
+             // Ensure interpretation assumes local time if no timezone specified, then format to YYYY-MM-DD
+             // Adjusting parsing: If only date, treat as local date.
+             let parsed: Date;
+             if (dateValue.includes('T')) {
+                 parsed = new Date(dateValue); // Treat as ISO string with timezone info
+             } else if (dateValue.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                 // Split YYYY-MM-DD and create date respecting local timezone
+                 const [year, month, day] = dateValue.split('-').map(Number);
+                 parsed = new Date(year, month - 1, day); // This uses local timezone
+             } else {
+                 parsed = new Date(dateValue); // Fallback for other formats
+             }
+
              if (isNaN(parsed.getTime())) throw new Error("Invalid date string");
              date = parsed;
         }
-        // Format date using UTC values to avoid timezone issues with YYYY-MM-DD
-        const year = date.getUTCFullYear();
-        const month = (date.getUTCMonth() + 1).toString().padStart(2, '0');
-        const day = date.getUTCDate().toString().padStart(2, '0');
+        // Format to YYYY-MM-DD based on the local date interpretation
+        const year = date.getFullYear();
+        const month = (date.getMonth() + 1).toString().padStart(2, '0');
+        const day = date.getDate().toString().padStart(2, '0');
         return `${year}-${month}-${day}`;
     } catch (e) {
         console.error("Error formatting date:", dateValue, e);
-        // Fallback to today's date in YYYY-MM-DD format
+        // Fallback to today's date in local YYYY-MM-DD format
         const today = new Date();
-        const year = today.getUTCFullYear();
-        const month = (today.getUTCMonth() + 1).toString().padStart(2, '0');
-        const day = today.getUTCDate().toString().padStart(2, '0');
+        const year = today.getFullYear();
+        const month = (today.getMonth() + 1).toString().padStart(2, '0');
+        const day = today.getDate().toString().padStart(2, '0');
         return `${year}-${month}-${day}`;
     }
   };
@@ -125,7 +139,8 @@ import {
     if (!userId) return []; // Return empty if no user
 
     const releasesRef = collection(db, "users", userId, "releases");
-    const q = query(releasesRef, orderBy("createdAt", "desc")); // Order by creation time descending
+    // Order by releaseDate descending, then createdAt descending as fallback
+    const q = query(releasesRef, orderBy("releaseDate", "desc"), orderBy("createdAt", "desc"));
 
     try {
         const querySnapshot = await getDocs(q);
@@ -147,6 +162,7 @@ import {
       if (!userId) return null; // No user, no artwork
 
       const releasesRef = collection(db, "users", userId, "releases");
+      // Order by creation date to likely get the most recent upload
       const q = query(releasesRef, orderBy("createdAt", "desc"), limit(1));
 
       try {
@@ -175,32 +191,45 @@ import {
 
 
   /**
-   * Simulates uploading a release ZIP, intended for Google Drive integration (not implemented).
-   * Creates metadata in Firestore.
+   * Simulates initiating a release upload to Google Drive via a backend function.
+   * Creates metadata in Firestore with a placeholder GDrive ID.
+   * IMPORTANT: This function DOES NOT actually upload to Google Drive.
+   * A backend implementation (e.g., Cloud Function) is required for the real upload.
+   *
    * @param uploadMetadata - Release name and date.
-   * @param zipFile - The ZIP file to upload.
+   * @param zipFile - The ZIP file intended for upload.
    * @returns The ID of the newly created Firestore document.
    */
   export async function uploadReleaseZip(uploadMetadata: ReleaseUploadMetadata, zipFile: File): Promise<string> {
     const userId = getCurrentUserId();
     if (!userId) throw new Error("Authentication required. Please log in.");
 
-    console.log("Simulating ZIP upload for:", zipFile.name);
+    console.log("Initiating simulated Google Drive upload for:", zipFile.name);
+    console.warn("NOTE: This is a simulation. Actual Google Drive upload requires a backend function.");
 
-    // --- START: Conceptual Google Drive Upload Placeholder ---
-    // In a real application, this section would involve:
-    // 1. Securely calling a backend function (e.g., Cloud Function).
-    // 2. The backend function would use the Google Drive API with service account credentials.
-    // 3. Upload the `zipFile` to a designated folder structure in Google Drive.
-    // 4. Obtain the Google Drive file ID or a shareable link.
-    // 5. Store this GDrive ID/link in the Firestore metadata instead of a direct Cloud Storage URL.
-    const googleDriveFileIdPlaceholder = `gdrive_${userId}_${Date.now()}`; // Placeholder
-    console.log("Conceptual GDrive Upload: File ID would be:", googleDriveFileIdPlaceholder);
-    // --- END: Conceptual Google Drive Upload Placeholder ---
+    // --- BACKEND CALL SIMULATION ---
+    // In a real app, you would call your backend API endpoint here,
+    // passing the file and metadata. The backend would handle the GDrive upload.
+    // Example conceptual backend call:
+    // const backendResponse = await fetch('/api/upload-release-to-drive', {
+    //   method: 'POST',
+    //   // Include authentication (e.g., Firebase ID token)
+    //   // Send file data (e.g., using FormData)
+    // });
+    // if (!backendResponse.ok) {
+    //   throw new Error("Backend failed to upload to Google Drive.");
+    // }
+    // const { googleDriveFileId } = await backendResponse.json();
+    // -----------------------------
+
+    // Use a placeholder ID to represent the file in Google Drive
+    const googleDriveFileIdPlaceholder = `gdrive_placeholder_${userId}_${Date.now()}`;
+    console.log("Using placeholder Google Drive File ID:", googleDriveFileIdPlaceholder);
 
     // Fetch artist name from Firestore profile using getUserProfileByUid
     const userProfile = await getUserProfileByUid(userId);
     const auth = getAuth(app);
+    // Fallback logic for artist name
     const artistName = userProfile?.name || auth.currentUser?.displayName || auth.currentUser?.email?.split('@')[0] || "Unknown Artist";
 
     // Prepare data for Firestore document
@@ -208,10 +237,10 @@ import {
       title: uploadMetadata.releaseName,
       artist: artistName,
       releaseDate: formatDateToString(uploadMetadata.releaseDate), // Standardize date format
-      artworkUrl: null, // Backend function processing the GDrive upload might extract and set this
-      zipUrl: googleDriveFileIdPlaceholder, // Store the conceptual GDrive link/ID
+      artworkUrl: null, // Backend function processing the GDrive upload might extract and set this later
+      zipUrl: googleDriveFileIdPlaceholder, // Store the placeholder Google Drive ID
       userId: userId,
-      status: 'processing', // Initial status
+      status: 'processing', // Initial status - backend would update this
       tracks: [], // Initialize empty tracks array (backend might populate this from ZIP)
       spotifyLink: null,
     };
@@ -222,6 +251,10 @@ import {
       createdAt: serverTimestamp(), // Add server timestamp
     });
     console.log("New release metadata document created in Firestore with ID:", docRef.id);
+
+    // TODO: Trigger the actual backend upload process (e.g., call a Cloud Function)
+    // Example: triggerBackendUpload(docRef.id, zipFile);
+
     return docRef.id; // Return the ID of the newly created document
   }
 
@@ -331,6 +364,7 @@ import {
              }
         } else {
             // 3. Keep Existing Artwork (if no new file and artworkUrl not explicitly set to null in `data`)
+            // If data.artworkUrl is provided (and not null), use it. Otherwise, keep current.
             finalArtworkUrl = data.artworkUrl !== undefined ? data.artworkUrl : currentData.artworkUrl;
         }
 
@@ -348,9 +382,9 @@ import {
        }
 
        // Remove fields that shouldn't be updated directly here
-       delete dataToUpdate.userId;
-       delete dataToUpdate.createdAt;
-       delete dataToUpdate.zipUrl;
+       delete (dataToUpdate as any).userId; // Type assertion needed as userId is not in the Partial type here
+       delete (dataToUpdate as any).createdAt;
+       delete (dataToUpdate as any).zipUrl;
        // Allow status updates if passed in `data` (e.g., for takedown requests)
        // delete dataToUpdate.status;
 
@@ -404,6 +438,7 @@ import {
   /**
    * Deletes the release document from Firestore AND associated files from Cloud Storage.
    * USE WITH CAUTION - This is intended for permanent deletion, not typical takedowns.
+   * Requires backend function for Google Drive deletion.
    * @param releaseId - The ID of the release document to delete.
    * @returns A promise resolving when the deletion is complete.
    */
@@ -419,20 +454,22 @@ import {
       if (docSnap.exists()) {
         const data = docSnap.data() as ReleaseMetadata;
 
-        // Delete files from Storage if URLs exist (use actual Cloud Storage URLs if applicable)
-        // Note: This example assumes GDrive IDs are stored in zipUrl, adjust if using Cloud Storage
-        // if (data.zipUrl && !data.zipUrl.startsWith('gdrive_')) { // Example: Check if it's a Cloud Storage URL
-        //     try { await deleteObject(ref(storage, data.zipUrl)); console.log("Deleted ZIP file from Cloud Storage"); }
-        //     catch (e: any) { if (e.code !== 'storage/object-not-found') console.error("Error deleting ZIP:", e);}
-        // }
-        if (data.artworkUrl && !data.artworkUrl.includes('placeholder')) { // Delete artwork from Cloud Storage
+        // Delete Artwork from Cloud Storage if URL exists and is not placeholder
+        if (data.artworkUrl && !data.artworkUrl.includes('placeholder')) {
              try { await deleteObject(ref(storage, data.artworkUrl)); console.log("Deleted artwork file from Cloud Storage"); }
              catch (e: any) { if (e.code !== 'storage/object-not-found') console.error("Error deleting artwork:", e);}
         }
-        // Add deletion logic for Google Drive file if zipUrl stores a GDrive ID (requires backend function)
+
+        // Handle Google Drive deletion (Requires Backend Function)
         if (data.zipUrl && data.zipUrl.startsWith('gdrive_')) {
-            console.warn(`Manual Google Drive deletion required for file associated with zipUrl: ${data.zipUrl}`);
-            // Call a backend function here: deleteFromGoogleDrive(data.zipUrl);
+            console.warn(`Google Drive deletion required for file associated with zipUrl: ${data.zipUrl}. This requires a backend function.`);
+            // Conceptual backend call:
+            // try {
+            //   await fetch('/api/delete-from-drive', { method: 'POST', body: JSON.stringify({ fileId: data.zipUrl }) });
+            //   console.log("Backend notified to delete Google Drive file.");
+            // } catch (backendError) {
+            //   console.error("Error triggering backend Google Drive deletion:", backendError);
+            // }
         }
 
       } else {
