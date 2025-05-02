@@ -190,41 +190,44 @@ import {
   }
 
 
-  /**
+ /**
+   * !! SIMULATION ONLY - REQUIRES BACKEND !!
    * Simulates initiating a release upload to Google Drive via a backend function.
    * Creates metadata in Firestore with a placeholder GDrive ID.
-   * IMPORTANT: This function DOES NOT actually upload to Google Drive.
-   * A backend implementation (e.g., Cloud Function) is required for the real upload.
    *
    * @param uploadMetadata - Release name and date.
    * @param zipFile - The ZIP file intended for upload.
    * @returns The ID of the newly created Firestore document.
+   * @throws Error if authentication fails.
+   *
+   * @important Actual Google Drive upload requires a backend implementation
+   *            (e.g., Next.js API route, Cloud Function) due to security and
+   *            authentication requirements. The backend would:
+   *            1. Receive the file and metadata from the client.
+   *            2. Authenticate with the Google Drive API (OAuth 2.0 or Service Account).
+   *            3. Upload the file to a designated folder in Google Drive.
+   *            4. Obtain the Google Drive file ID.
+   *            5. Optionally, process the ZIP: extract artwork, get track names.
+   *            6. Update the corresponding Firestore document ('releases/{docRef.id}')
+   *               with the actual Google Drive file ID, extracted artwork URL,
+   *               track list, and set status to 'completed' or 'failed'.
    */
   export async function uploadReleaseZip(uploadMetadata: ReleaseUploadMetadata, zipFile: File): Promise<string> {
     const userId = getCurrentUserId();
     if (!userId) throw new Error("Authentication required. Please log in.");
 
-    console.log("Initiating simulated Google Drive upload for:", zipFile.name);
-    console.warn("NOTE: This is a simulation. Actual Google Drive upload requires a backend function.");
+    console.warn("--- START Google Drive Upload SIMULATION ---");
+    console.log(`File to upload: ${zipFile.name}, Size: ${zipFile.size}`);
+    console.log("Metadata:", uploadMetadata);
+    console.warn("NOTE: This is a SIMULATION. No file is being uploaded to Google Drive.");
 
-    // --- BACKEND CALL SIMULATION ---
-    // In a real app, you would call your backend API endpoint here,
-    // passing the file and metadata. The backend would handle the GDrive upload.
-    // Example conceptual backend call:
-    // const backendResponse = await fetch('/api/upload-release-to-drive', {
-    //   method: 'POST',
-    //   // Include authentication (e.g., Firebase ID token)
-    //   // Send file data (e.g., using FormData)
-    // });
-    // if (!backendResponse.ok) {
-    //   throw new Error("Backend failed to upload to Google Drive.");
-    // }
-    // const { googleDriveFileId } = await backendResponse.json();
-    // -----------------------------
+    // --- Simulate Backend Processing Delay ---
+    await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate network/upload time
 
-    // Use a placeholder ID to represent the file in Google Drive
-    const googleDriveFileIdPlaceholder = `gdrive_placeholder_${userId}_${Date.now()}`;
-    console.log("Using placeholder Google Drive File ID:", googleDriveFileIdPlaceholder);
+    // --- Generate Placeholder ID ---
+    // Use a clear placeholder format to indicate this is not a real ID.
+    const simulatedGoogleDriveFileId = `SIMULATED_GDRIVE_UPLOAD_${userId}_${Date.now()}`;
+    console.log("Using simulated Google Drive File ID:", simulatedGoogleDriveFileId);
 
     // Fetch artist name from Firestore profile using getUserProfileByUid
     const userProfile = await getUserProfileByUid(userId);
@@ -232,31 +235,58 @@ import {
     // Fallback logic for artist name
     const artistName = userProfile?.name || auth.currentUser?.displayName || auth.currentUser?.email?.split('@')[0] || "Unknown Artist";
 
-    // Prepare data for Firestore document
+    // Prepare data for Firestore document (as if backend wasn't implemented yet)
     const newReleaseData: Omit<ReleaseMetadata, 'id' | 'createdAt'> = {
       title: uploadMetadata.releaseName,
       artist: artistName,
       releaseDate: formatDateToString(uploadMetadata.releaseDate), // Standardize date format
-      artworkUrl: null, // Backend function processing the GDrive upload might extract and set this later
-      zipUrl: googleDriveFileIdPlaceholder, // Store the placeholder Google Drive ID
+      artworkUrl: null, // SIMULATION: Backend would extract this
+      zipUrl: simulatedGoogleDriveFileId, // Store the SIMULATED Google Drive ID
       userId: userId,
-      status: 'processing', // Initial status - backend would update this
-      tracks: [], // Initialize empty tracks array (backend might populate this from ZIP)
+      status: 'processing', // Initial status - SIMULATION: Backend would update this
+      tracks: [], // SIMULATION: Backend would extract this
       spotifyLink: null,
     };
 
+    // --- Create Firestore Document ---
     const releasesRef = collection(db, "users", userId, "releases");
     const docRef = await addDoc(releasesRef, {
       ...newReleaseData,
       createdAt: serverTimestamp(), // Add server timestamp
     });
     console.log("New release metadata document created in Firestore with ID:", docRef.id);
+    console.warn("--- END Google Drive Upload SIMULATION ---");
+    console.warn("REMINDER: Implement backend logic for actual Google Drive upload and Firestore update.");
 
-    // TODO: Trigger the actual backend upload process (e.g., call a Cloud Function)
-    // Example: triggerBackendUpload(docRef.id, zipFile);
+
+    // TODO: Trigger the *actual* backend upload process (e.g., call a Cloud Function)
+    // Example (conceptual):
+    // try {
+    //   const formData = new FormData();
+    //   formData.append('file', zipFile);
+    //   formData.append('releaseName', uploadMetadata.releaseName);
+    //   formData.append('releaseDate', formatDateToString(uploadMetadata.releaseDate));
+    //   formData.append('firestoreDocId', docRef.id);
+    //
+    //   const response = await fetch('/api/upload-to-drive', { // Your backend endpoint
+    //     method: 'POST',
+    //     body: formData,
+    //     // Include authentication headers if needed
+    //   });
+    //
+    //   if (!response.ok) {
+    //     // Handle backend error - maybe update Firestore status to 'failed'
+    //     throw new Error('Backend upload trigger failed.');
+    //   }
+    //   console.log("Successfully triggered backend upload process.");
+    // } catch (backendError) {
+    //   console.error("Error triggering backend upload:", backendError);
+    //   // Optionally update Firestore status to 'failed' here as well
+    // }
 
     return docRef.id; // Return the ID of the newly created document
   }
+
 
   /**
    * Adds data for an existing release (not uploaded via ZIP) to Firestore.
@@ -461,11 +491,12 @@ import {
         }
 
         // Handle Google Drive deletion (Requires Backend Function)
-        if (data.zipUrl && data.zipUrl.startsWith('gdrive_')) {
-            console.warn(`Google Drive deletion required for file associated with zipUrl: ${data.zipUrl}. This requires a backend function.`);
+        if (data.zipUrl && data.zipUrl.startsWith('SIMULATED_GDRIVE_UPLOAD_')) { // Check for simulated ID
+            console.warn(`Deletion of simulated Google Drive file required for zipUrl: ${data.zipUrl}. This requires a backend function.`);
             // Conceptual backend call:
             // try {
-            //   await fetch('/api/delete-from-drive', { method: 'POST', body: JSON.stringify({ fileId: data.zipUrl }) });
+            //   const realDriveId = data.zipUrl.replace('SIMULATED_GDRIVE_UPLOAD_', ''); // Extract potential real ID if backend stored it differently
+            //   await fetch('/api/delete-from-drive', { method: 'POST', body: JSON.stringify({ fileId: realDriveId }) });
             //   console.log("Backend notified to delete Google Drive file.");
             // } catch (backendError) {
             //   console.error("Error triggering backend Google Drive deletion:", backendError);
