@@ -12,7 +12,7 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/auth-context"; // Import useAuth
 import { Skeleton } from "@/components/ui/skeleton"; // Import Skeleton
 import { useRouter } from 'next/navigation'; // Import useRouter
-import { useEffect, useState } from 'react'; // Import useEffect and useState
+import { useEffect, useState, useRef } from 'react'; // Import useEffect, useState, and useRef
 import { SplashScreen } from '@/components/common/splash-screen'; // Import SplashScreen
 import { Button } from "@/components/ui/button"; // Keep button for potential future use or structure
 import { getFirestore, doc, getDoc } from "firebase/firestore"; // Import Firestore functions
@@ -61,6 +61,8 @@ const greetings = [
     "Yo, {{name}}!",
 ];
 
+const LOGIN_JINGLE_PATH = '/sounds/login-jingle.mp3'; // Path to the sound file
+const SESSION_SOUND_PLAYED_KEY = 'loginSoundPlayed'; // Key for session storage
 
 export default function HomePage() {
     const { user, loading: authLoading } = useAuth(); // Use the auth context
@@ -72,6 +74,43 @@ export default function HomePage() {
     const [clientGreeting, setClientGreeting] = useState(""); // State for client-side greeting generation
     const [showSplash, setShowSplash] = useState(false); // State for splash screen visibility
     const [hasShownInitialSplash, setHasShownInitialSplash] = useState(false); // Track if initial splash was shown
+    const audioRef = useRef<HTMLAudioElement | null>(null); // Ref for the audio element
+
+     // Initialize and preload audio element
+     useEffect(() => {
+        // Ensure this runs only on the client
+        if (typeof window !== 'undefined') {
+            if (!audioRef.current) {
+                audioRef.current = new Audio(LOGIN_JINGLE_PATH);
+                audioRef.current.preload = 'auto';
+                console.log("HomePage: Audio element initialized and preloading:", LOGIN_JINGLE_PATH);
+            }
+        }
+     }, []);
+
+     // Function to play login sound
+     const playLoginSound = () => {
+         if (audioRef.current && typeof window !== 'undefined') {
+             // Check if sound has already been played in this session
+             if (sessionStorage.getItem(SESSION_SOUND_PLAYED_KEY)) {
+                 console.log("HomePage: Login sound already played this session.");
+                 return;
+             }
+
+             audioRef.current.currentTime = 0; // Rewind to start
+             audioRef.current.play().then(() => {
+                 console.log("HomePage: Login sound played successfully.");
+                 // Mark sound as played for this session
+                 sessionStorage.setItem(SESSION_SOUND_PLAYED_KEY, 'true');
+             }).catch(error => {
+                 console.error("HomePage: Error playing login sound:", error);
+                 // Handle autoplay restrictions if necessary
+             });
+         } else {
+             console.warn("HomePage: Login sound audio element not ready or not initialized.");
+         }
+     };
+
 
     // Fetch profile data from Firestore
     useEffect(() => {
@@ -130,6 +169,9 @@ export default function HomePage() {
                 router.replace('/tutorial'); // Redirect to the tutorial page
                 return; // Stop further processing for this render cycle
             }
+
+            // Play sound only once per session when user data is available
+             playLoginSound();
 
             // Proceed with setting greeting if tutorial is completed or not applicable
             // Prioritize profileData.name (Artist Name), then displayName, then email, then 'Artist'

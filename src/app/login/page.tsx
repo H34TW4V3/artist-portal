@@ -16,7 +16,7 @@ import { Separator } from '@/components/ui/separator'; // Import Separator
 
 // Placeholder URL for the GIF - replace with actual URL
 const LOGIN_BACKGROUND_GIF_URL = "https://25.media.tumblr.com/0a0ba077c5c32fc4eaa6778519e56781/tumblr_n1an6osbsL1tpegqko1_r1_500.gif"; // Updated GIF URL
-const LOGIN_JINGLE_PATH = '/sounds/login-jingle.mp3'; // Path to the sound file
+// REMOVED: const LOGIN_JINGLE_PATH = '/sounds/login-jingle.mp3'; // Path to the sound file
 
 
 export default function LoginPage() {
@@ -29,19 +29,9 @@ export default function LoginPage() {
     const [isDemoFlowActive, setIsDemoFlowActive] = useState(false); // State for showing demo form *steps* inside the card
     const [splashUserName, setSplashUserName] = useState<string | null>(null); // State for splash user name
     const [splashUserImageUrl, setSplashUserImageUrl] = useState<string | null>(null); // State for splash user image
-    const audioRef = useRef<HTMLAudioElement | null>(null); // Ref for the audio element
+    // REMOVED: const audioRef = useRef<HTMLAudioElement | null>(null); // Ref for the audio element
 
-    // Initialize and preload audio element
-    useEffect(() => {
-        // Ensure this runs only on the client
-        if (typeof window !== 'undefined') {
-            if (!audioRef.current) {
-                audioRef.current = new Audio(LOGIN_JINGLE_PATH);
-                audioRef.current.preload = 'auto';
-                console.log("Audio element initialized and preloading:", LOGIN_JINGLE_PATH);
-            }
-        }
-    }, []);
+    // REMOVED: Initialize and preload audio element useEffect
 
     useEffect(() => {
         // Redirect authenticated users away from login page
@@ -50,38 +40,21 @@ export default function LoginPage() {
         }
     }, [user, loading, router]);
 
-    // Play login sound function now local to LoginPage
-    const playLoginSound = () => {
-        if (audioRef.current) {
-            audioRef.current.currentTime = 0; // Rewind to start
-            audioRef.current.play().then(() => {
-                console.log("Login sound played successfully.");
-            }).catch(error => {
-                 // Autoplay might be blocked
-                 console.error("Error playing login sound:", error);
-                 // Consider showing a UI element to enable sound if autoplay fails
-             });
-        } else {
-            console.warn("Login sound audio element not ready or not initialized.");
-        }
-    };
+    // REMOVED: Play login sound function
 
-
-    // Update handleLoginSuccess - it now calls the local playLoginSound
+    // Update handleLoginSuccess - remove playLoginSound call
     const handleLoginSuccess = (name: string, imageUrl: string | null) => {
          // Store name and image URL for the splash screen
          setSplashUserName(name);
          setSplashUserImageUrl(imageUrl);
 
          // Trigger animation: hide cards, show splash
-         // Apply fade-out immediately for the cards container
-         // We will rely on the parent div's animation triggered by !isLoginFormVisible && !isDemoCardVisible
          setIsLoginFormVisible(false);
          setIsDemoCardVisible(false); // Hide demo card as well
          setShowSplash(true); // Show splash screen
 
-         // Play the login sound as the splash appears
-         playLoginSound();
+         // REMOVED: Play the login sound as the splash appears
+         // playLoginSound();
 
         // Set timer to redirect after splash animation completes
         setTimeout(() => {

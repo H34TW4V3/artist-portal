@@ -48,9 +48,9 @@ const loginSchema = emailSchema.merge(passwordSchema);
 
 type LoginFormValues = z.infer<typeof loginSchema>;
 
-// Update onLoginSuccess prop - removed playLoginSound function
+// REMOVED: onLoginSuccess prop definition
 interface LoginFormProps {
-    onLoginSuccess: (name: string, imageUrl: string | null) => void;
+     onLoginSuccess: (name: string, imageUrl: string | null) => void; // Keep for splash screen info
 }
 
 
@@ -193,7 +193,7 @@ export function LoginForm({ onLoginSuccess }: LoginFormProps) {
 
     try {
       await login(values.artistId, values.password); // Use the validated values
-      onLoginSuccess(nameForSplash, imageUrlForSplash); // Call success handler without sound function
+      onLoginSuccess(nameForSplash, imageUrlForSplash); // Call success handler for splash info
     } catch (error) {
       console.error("Login failed:", error);
       // If login fails due to wrong password, stay on password step
