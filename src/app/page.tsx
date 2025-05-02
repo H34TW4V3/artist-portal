@@ -61,27 +61,22 @@ const greetings = [
     "Yo, {{name}}!",
 ];
 
-// REMOVED: LOGIN_JINGLE_PATH and SESSION_SOUND_PLAYED_KEY - Moved to LoginForm
-// const LOGIN_JINGLE_PATH = '/sounds/login-jingle.mp3';
-// const SESSION_SOUND_PLAYED_KEY = 'loginSoundPlayed';
+// REMOVED: LOGIN_JINGLE_PATH and SESSION_SOUND_PLAYED_KEY
 
 export default function HomePage() {
     const { user, loading: authLoading } = useAuth(); // Use the auth context
     const router = useRouter();
     const db = getFirestore(app);
-    // Removed greeting state, use clientGreeting
     const [profileData, setProfileData] = useState<ProfileFormValues | null>(null);
-    const [profileLoading, setProfileLoading] = useState(true); // State for profile data loading
-    const [clientGreeting, setClientGreeting] = useState(""); // State for client-side greeting generation
-    const [showSplash, setShowSplash] = useState(false); // State for splash screen visibility - now controlled differently
-    const [hasShownInitialSplash, setHasShownInitialSplash] = useState(false); // Track if initial splash was shown
-    // REMOVED: audioRef - Moved to LoginForm
-    // const audioRef = useRef<HTMLAudioElement | null>(null);
+    const [profileLoading, setProfileLoading] = useState(true);
+    const [clientGreeting, setClientGreeting] = useState("");
+    const [showSplash, setShowSplash] = useState(false);
+    const [hasShownInitialSplash, setHasShownInitialSplash] = useState(false);
+    // REMOVED: audioRef
 
-    // REMOVED: useEffect for initializing audio - Moved to LoginForm
-    // REMOVED: playLoginSound function - Moved to LoginForm
+    // REMOVED: useEffect for initializing audio and playLoginSound function
 
-    // Fetch profile data from Firestore - Remains the same
+    // Fetch profile data from Firestore
     useEffect(() => {
         const fetchProfileData = async () => {
             if (authLoading || !user) {
@@ -98,11 +93,12 @@ export default function HomePage() {
                     setProfileData(docSnap.data() as ProfileFormValues);
                 } else {
                     console.log("User profile not found in Firestore for greeting.");
-                    setProfileData(null);
+                    // If no profile, still proceed but name will fallback
+                    setProfileData(null); // Explicitly set to null if not found
                 }
             } catch (error) {
                 console.error("Error fetching user profile for greeting:", error);
-                setProfileData(null);
+                setProfileData(null); // Set to null on error
             } finally {
                 setProfileLoading(false);
             }
@@ -111,9 +107,9 @@ export default function HomePage() {
         fetchProfileData();
     }, [user, db, authLoading]);
 
-    // Function to get a random greeting - client side only - Remains the same
+    // Function to get a random greeting - client side only
     const getRandomGreeting = (name: string) => {
-        if (typeof window === 'undefined') return `Welcome, ${name}!`;
+        if (typeof window === 'undefined') return `Welcome, ${name}!`; // Server fallback
         const randomIndex = Math.floor(Math.random() * greetings.length);
         return greetings[randomIndex].replace("{{name}}", name);
     };
@@ -129,8 +125,7 @@ export default function HomePage() {
         const isLoading = authLoading || profileLoading;
 
         // Set greeting and check tutorial status
-        if (!isLoading && user && profileData !== undefined) {
-
+        if (!isLoading && user) { // Removed profileData check here, fallback handles it
             // Tutorial Check
             if (profileData && profileData.hasCompletedTutorial === false) {
                 console.log("Redirecting to tutorial...");
@@ -138,20 +133,17 @@ export default function HomePage() {
                 return;
             }
 
-            // REMOVED: playLoginSound() call from here
-
-            // Set greeting
-            const artistNameFromProfile = profileData?.name;
+            // Set greeting using profile name first, then auth, then email prefix
+            const artistNameFromProfile = profileData?.name; // Use optional chaining
             const nameFromAuth = user.displayName;
             const nameFromEmail = user.email?.split('@')[0];
-            const finalName = artistNameFromProfile || nameFromAuth || nameFromEmail || 'Artist';
+            const finalName = artistNameFromProfile || nameFromAuth || nameFromEmail || 'Artist'; // Use profile name if available
             setClientGreeting(getRandomGreeting(finalName));
 
-            // Splash screen logic can be simplified or removed if splash is handled differently now
-            // If splash is tied to login success animation, this might not be needed here
+            // Splash logic (kept as is, assuming it's intended for something else now)
             if (!hasShownInitialSplash) {
-                 setShowSplash(false); // Assume splash happens during/after login, not on home page load
-                 setHasShownInitialSplash(true); // Mark as "shown" (conceptually)
+                 setShowSplash(false);
+                 setHasShownInitialSplash(true);
             } else {
                  setShowSplash(false);
             }
@@ -159,12 +151,12 @@ export default function HomePage() {
         } else if (!isLoading && !user) {
              setClientGreeting("Welcome!");
              setShowSplash(false);
-        }
-         else {
+        } else {
+            // Still loading or other state, set default greeting
             setClientGreeting("Welcome!");
-            if (!hasShownInitialSplash) {
+             if (!hasShownInitialSplash) {
                 setShowSplash(false);
-            }
+             }
         }
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -174,13 +166,12 @@ export default function HomePage() {
     // Combined loading state
     const isLoading = authLoading || profileLoading;
 
-    // Determine display name and image URL
+    // Determine display name and image URL (consistent with greeting logic)
     const displayName = profileData?.name || user?.displayName || (user?.email ? user.email.split('@')[0] : 'Artist');
     const displayImageUrl = profileData?.imageUrl || user?.photoURL || null;
 
     // Show Loading (Splash Screen) ONLY during initial auth/profile load
      if (isLoading) {
-        // Using SplashScreen component for consistency during load
         return (
              <SplashScreen
                  loadingText="Loading Hub..."
@@ -311,3 +302,4 @@ export default function HomePage() {
         </div>
     );
 }
+

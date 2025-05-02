@@ -14,6 +14,7 @@ import {
     orderBy,
     limit, // Import limit
     addDoc, // Use addDoc for creating new documents with auto-generated IDs
+    getDoc, // Import getDoc to fetch a single document
   } from "firebase/firestore";
   import {
     getStorage,
@@ -24,6 +25,7 @@ import {
   } from "firebase/storage";
   import { getAuth } from "firebase/auth";
   import { app, db, storage } from './firebase-config';
+  import { getUserProfileByUid } from './user'; // Import function to get profile by UID
 
   // --- Interfaces ---
 
@@ -149,14 +151,15 @@ import {
     const zipUrl = await getDownloadURL(snapshot.ref);
     console.log("ZIP Upload successful, URL:", zipUrl);
 
-
+    // Fetch artist name from Firestore profile, fallback to Auth info
     const auth = getAuth(app);
-    const artistName = auth.currentUser?.displayName || auth.currentUser?.email?.split('@')[0] || "Unknown Artist";
+    const userProfile = await getUserProfileByUid(userId);
+    const artistName = userProfile?.name || auth.currentUser?.displayName || auth.currentUser?.email?.split('@')[0] || "Unknown Artist";
 
     // Prepare data for Firestore document
     const newReleaseData: Omit<ReleaseMetadata, 'id' | 'createdAt'> = {
       title: uploadMetadata.releaseName,
-      artist: artistName,
+      artist: artistName, // Use fetched/fallback artist name
       releaseDate: uploadMetadata.releaseDate, // Use YYYY-MM-DD string
       artworkUrl: null, // Initially no artwork URL; might be set by backend function
       zipUrl: zipUrl,
@@ -187,8 +190,12 @@ import {
       if (!userId) throw new Error("Authentication required. Please log in.");
 
       const auth = getAuth(app);
-      // Use provided artist name or fallback to auth user's display name/email
-      const artistName = data.artist || auth.currentUser?.displayName || auth.currentUser?.email?.split('@')[0] || "Unknown Artist";
+      // Use provided artist name OR fetch from profile, fallback to Auth info
+      let artistName = data.artist;
+      if (!artistName) {
+          const userProfile = await getUserProfileByUid(userId);
+          artistName = userProfile?.name || auth.currentUser?.displayName || auth.currentUser?.email?.split('@')[0] || "Unknown Artist";
+      }
 
       const releaseData: Omit<ReleaseMetadata, 'id' | 'createdAt' | 'zipUrl' | 'status'> = {
           title: data.title,
@@ -295,3 +302,4 @@ import {
     await deleteDoc(releaseDocRef);
     console.log("Release document deleted:", releaseId);
   }
+

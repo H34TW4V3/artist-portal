@@ -7,7 +7,7 @@ import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { Loader2, ArrowLeft, ArrowRight, User } from "lucide-react"; // Added User icon
 import { useRouter } from "next/navigation";
-// import { Howl } from 'howler'; // Removed Howler import
+import { Howl } from 'howler'; // Import Howl for audio
 
 import { Button } from "@/components/ui/button";
 import {
@@ -27,6 +27,7 @@ import { useAuth } from "@/context/auth-context";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SplashScreen } from '@/components/common/splash-screen';
+// Removed getUserProfileByEmail import
 
 // Define steps
 const STEPS = [
@@ -59,7 +60,7 @@ const getInitials = (name: string | undefined | null) => {
 
 // Login Icon Component for Step 1
 const LoginIconStep1 = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 100 100" className="h-20 w-20 mb-2 text-primary animate-subtle-pulse"> {/* Reduced size */}
+    <svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 100 100" className="h-16 w-16 mb-2 text-primary animate-subtle-pulse"> {/* Adjusted size */}
       <defs>
         <linearGradient id="oxygenGradient" x1="0%" y1="0%" x2="100%" y2="100%">
           <stop offset="0%" style={{stopColor: 'hsl(180, 100%, 70%)', stopOpacity: 1}} />
@@ -83,6 +84,7 @@ const UserIconStep2 = () => (
     <User className="h-16 w-16 mb-2 text-primary" /> // Adjusted size
 );
 
+const LOGIN_JINGLE_PATH = '/sounds/login-jingle.mp3';
 
 export function LoginForm({ onLoginComplete }: LoginFormProps) {
   const { login, loading: authLoading } = useAuth();
@@ -92,9 +94,55 @@ export function LoginForm({ onLoginComplete }: LoginFormProps) {
   const [currentStep, setCurrentStep] = useState(1);
   const [previousStep, setPreviousStep] = useState(1);
   const [enteredEmail, setEnteredEmail] = useState("");
-  const [showLoginSplash, setShowLoginSplash] = useState(false); // State to show splash within the card
+  const [artistNameStep2, setArtistNameStep2] = useState("User"); // State for artist name in step 2
+  const [showLoginSplash, setShowLoginSplash] = useState(false);
   const [splashInfo, setSplashInfo] = useState<{ name: string; imageUrl: string | null }>({ name: '', imageUrl: null });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const audioRef = useRef<Howl | null>(null);
+
+  useEffect(() => {
+    // Initialize Howler only on client
+    if (typeof window !== 'undefined') {
+        audioRef.current = new Howl({
+            src: [LOGIN_JINGLE_PATH],
+            preload: true,
+            html5: true, // Important for reliability, especially on mobile
+            onloaderror: (id, error) => {
+                console.error('Howler load error:', id, error);
+                toast({ title: "Audio Load Error", description: "Could not load login sound.", variant: "destructive", duration: 2000 });
+            },
+            onplayerror: (id, error) => {
+                console.error('Howler play error:', id, error);
+                // Attempt to unlock audio context on play error, common on mobile
+                Howler.ctx.resume().then(() => {
+                    console.log("Audio context resumed after interaction.");
+                }).catch(e => console.error("Error resuming audio context:", e));
+                 toast({ title: "Audio Play Error", description: "Could not play login sound.", variant: "destructive", duration: 2000 });
+            }
+        });
+         console.log("Login form audio initialized");
+    }
+
+    return () => {
+        // Cleanup Howler instance on component unmount
+        if (audioRef.current) {
+            audioRef.current.unload();
+             console.log("Login form audio unloaded");
+        }
+    };
+   // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Empty dependency array ensures this runs only once
+
+   const playLoginSound = () => {
+     if (audioRef.current && typeof window !== 'undefined') {
+         // Attempt to play the sound
+         audioRef.current.play();
+         console.log("Attempting to play login sound...");
+     } else {
+         console.warn("Login sound audio element not ready or not initialized.");
+     }
+   };
+
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -107,9 +155,8 @@ export function LoginForm({ onLoginComplete }: LoginFormProps) {
       setCurrentStep(step);
   };
 
-  // Animation classes
    const getAnimationClasses = (stepId: number): string => {
-       if (showLoginSplash) return "hidden"; // Hide steps if splash is showing
+       if (showLoginSplash) return "hidden";
        if (stepId === currentStep && currentStep > previousStep) return "animate-slide-in-from-right";
        if (stepId === currentStep && currentStep < previousStep) return "animate-slide-in-from-left";
        if (stepId === previousStep && currentStep > previousStep) return "animate-slide-out-to-left";
@@ -131,12 +178,12 @@ export function LoginForm({ onLoginComplete }: LoginFormProps) {
       if (currentStep === 1) {
             const email = form.getValues("artistId");
             setEnteredEmail(email);
-            goToStep(currentStep + 1); // Go directly to next step
+             // Set default name for step 2 (email prefix)
+             setArtistNameStep2(email.split('@')[0] || "User");
+            goToStep(currentStep + 1);
       } else if (currentStep === 2) {
-          // Trigger final submission on the last step
           await form.handleSubmit(onSubmit)();
       } else {
-          // For future steps if any
           goToStep(currentStep + 1);
       }
     }
@@ -154,21 +201,19 @@ export function LoginForm({ onLoginComplete }: LoginFormProps) {
     try {
         const loggedInUser = await login(values.artistId, values.password);
 
-        // Login successful: Prepare splash info and show it
-        const nameForSplash = loggedInUser?.displayName || values.artistId.split('@')[0] || "User";
+        const nameForSplash = loggedInUser?.displayName || artistNameStep2; // Use name from step 2 fetch or fallback
         const imageUrlForSplash = loggedInUser?.photoURL || null;
         setSplashInfo({ name: nameForSplash, imageUrl: imageUrlForSplash });
 
-        setShowLoginSplash(true); // Show the embedded splash screen
+        setShowLoginSplash(true);
+        playLoginSound(); // Play sound when splash starts
 
-        // Inform parent page to start redirect timer AFTER splash duration
         setTimeout(() => {
-            onLoginComplete(); // Call parent callback
-        }, 5000); // Match splash duration (5 seconds)
+            onLoginComplete();
+        }, 5000); // Match splash duration
 
     } catch (error) {
         console.error("Login failed:", error);
-        // Handle errors as before
         if (error instanceof Error && error.message.includes("password")) {
             goToStep(2);
             form.setError("password", { type: "manual", message: "Incorrect password." });
@@ -183,20 +228,16 @@ export function LoginForm({ onLoginComplete }: LoginFormProps) {
                 duration: 2000
             });
         }
-        setIsSubmitting(false); // Reset submitting state on error
+        setIsSubmitting(false);
     }
   }
 
-  // Derive artist name from email for Step 2 display
-  const artistNameStep2 = enteredEmail?.split('@')[0] || "User";
 
   return (
     <>
       <Form {...form}>
-        {/* Relative container for steps and splash */}
-        <div className="relative overflow-hidden min-h-[400px] flex flex-col"> {/* Ensure flex column */}
+        <div className="relative overflow-hidden min-h-[400px] flex flex-col">
 
-             {/* Conditional Rendering: Show Form Steps OR Splash */}
              {showLoginSplash ? (
                  <SplashScreen
                      className="flex-grow flex items-center justify-center"
@@ -208,7 +249,7 @@ export function LoginForm({ onLoginComplete }: LoginFormProps) {
                  />
              ) : (
                  <>
-                     {/* Step 1 Header (Only shown on step 1) */}
+                     {/* Step 1 Header */}
                      {currentStep === 1 && (
                          <CardHeader className={cn(
                              "items-center text-center p-4 border-b border-border/30",
@@ -221,6 +262,17 @@ export function LoginForm({ onLoginComplete }: LoginFormProps) {
                              </CardDescription>
                          </CardHeader>
                       )}
+                       {/* Step 2 Header (minimal) */}
+                       {currentStep === 2 && (
+                           <div className={cn(
+                               "flex flex-col items-center pt-4 pb-2", // Adjusted padding
+                               getAnimationClasses(2)
+                            )}>
+                               <UserIconStep2 />
+                               <p className="text-lg font-medium text-foreground">{artistNameStep2}</p>
+                           </div>
+                       )}
+
 
                      <form
                        onSubmit={(e) => { e.preventDefault(); handleNext(); }}
@@ -254,15 +306,9 @@ export function LoginForm({ onLoginComplete }: LoginFormProps) {
                          </div>
 
                          {/* Step 2: Password */}
-                         <div className={cn("space-y-3 flex flex-col items-center", getAnimationClasses(2))}>
+                         <div className={cn("space-y-3", getAnimationClasses(2))}> {/* Removed flex alignment */}
                              {currentStep === 2 && (
                                  <>
-                                      {/* Display Logo and Artist Name on Step 2 */}
-                                      <div className="flex flex-col items-center pt-4 pb-2">
-                                          <UserIconStep2 />
-                                          <p className="text-lg font-medium text-foreground">{artistNameStep2}</p>
-                                      </div>
-
                                      {/* Password Field */}
                                      <FormField
                                          control={form.control}
@@ -300,7 +346,7 @@ export function LoginForm({ onLoginComplete }: LoginFormProps) {
                              )}
                          </div>
 
-                         {/* Navigation Buttons - Placed outside step divs */}
+                         {/* Navigation Buttons */}
                          <div className="flex justify-between pt-3">
                              <Button
                                  type="button"
