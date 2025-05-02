@@ -43,31 +43,34 @@ export function SplashScreen({
             audioRef.current = new Howl({
                 src: [playAudioUrl],
                 preload: true,
-                html5: true,
-                onplayerror: (id, error) => {
-                    console.error('Howler playback error:', error);
-                },
-                onloaderror: (id, error) => {
-                    console.error('Howler load error:', error);
-                },
+                html5: true, // Force HTML5 audio
                 onload: () => {
-                    console.log('Howler audio loaded:', playAudioUrl);
+                    console.log('SplashScreen: Howler audio loaded:', playAudioUrl);
+                    // Attempt to play ONLY if the ref indicates it hasn't played yet
                     if (currentAudioPlayedRef && !currentAudioPlayedRef.current) {
-                        console.log('Attempting playback after load (splash)...');
+                        console.log('SplashScreen: Attempting playback after load...');
                         audioRef.current?.play();
                         currentAudioPlayedRef.current = true; // Mark as played using the ref
                     }
+                },
+                onloaderror: (id, error) => {
+                    console.error('SplashScreen: Howler load error:', id, error);
+                    // Maybe show a toast? Not ideal for splash screen.
+                },
+                onplayerror: (id, error) => {
+                    console.error('SplashScreen: Howler play error:', id, error);
                 }
             });
         }
 
+        // Cleanup on unmount or when playAudioUrl changes
         return () => {
             console.log("SplashScreen: Unloading Howler instance.");
             audioRef.current?.unload();
             audioRef.current = null;
         };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [playAudioUrl]);
+    }, [playAudioUrl]); // Re-run effect if the audio URL changes
 
     const animationClass = 'animate-fade-in opacity-100';
 

@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
@@ -50,8 +51,6 @@ const loginSchema = emailSchema.merge(passwordSchema);
 type LoginFormValues = z.infer<typeof loginSchema>;
 
 interface LoginFormProps {
-     // Removed onLoginSuccess prop, handled internally now
-     // onLoginSuccess: (name: string, imageUrl: string | null) => void;
      onLoginComplete: () => void; // Callback for LoginPage to start redirect timer
 }
 
@@ -111,24 +110,28 @@ export function LoginForm({ onLoginComplete }: LoginFormProps) {
         audioRef.current = new Howl({
           src: [LOGIN_JINGLE_PATH],
           preload: true,
-          html5: true,
-          onplayerror: (id, error) => {
-              console.error('Howler playback error:', error);
+          html5: true, // Force HTML5 audio for better reliability
+          onload: () => {
+              console.log('LoginForm: Howler audio loaded:', LOGIN_JINGLE_PATH);
           },
           onloaderror: (id, error) => {
-              console.error('Howler load error:', id, error);
+              console.error('LoginForm: Howler load error:', id, error);
+              toast({ title: "Audio Error", description: "Could not load login sound.", variant: "destructive", duration: 2000 });
           },
-          onload: () => {
-              console.log('Howler audio loaded:', LOGIN_JINGLE_PATH);
+          onplayerror: (id, error) => {
+              console.error('LoginForm: Howler playback error:', id, error);
+              // Attempt to play again after a short delay if it's a context issue (optional)
+              // setTimeout(() => audioRef.current?.play(), 100);
           }
         });
     }
     // Cleanup function
     return () => {
         console.log("LoginForm: Unloading Howler instance on unmount.");
-        audioRef.current?.unload();
+        audioRef.current?.unload(); // Ensure audio is unloaded
         audioRef.current = null;
     };
+   // eslint-disable-next-line react-hooks/exhaustive-deps
    }, []);
 
 
@@ -435,3 +438,4 @@ export function LoginForm({ onLoginComplete }: LoginFormProps) {
     </>
   );
 }
+
