@@ -106,12 +106,14 @@ export function ReleaseList({ className }: ReleaseListProps) {
   }
 
   // Callback for successful edit/upload/add existing from respective forms/modals
+  // This function IS called by the modals on success and triggers a data refresh.
   const handleSuccess = async () => {
-      setIsManageModalOpen(false); // Close manage dialog
-      setIsUploadModalOpen(false); // Close upload modal
-      setIsAddExistingModalOpen(false); // Close add existing modal
-      setSelectedRelease(null);
-      await fetchReleases(); // Refetch the list
+      setIsManageModalOpen(false); // Close manage dialog if open
+      setIsUploadModalOpen(false); // Close upload modal if open
+      setIsAddExistingModalOpen(false); // Close add existing modal if open
+      setSelectedRelease(null); // Clear selection regardless
+      console.log("handleSuccess called, fetching releases..."); // Add log
+      await fetchReleases(); // Refetch the list to show the newly added/updated release
   }
 
 
@@ -261,7 +263,7 @@ export function ReleaseList({ className }: ReleaseListProps) {
          onClose={handleManageDialogClose}
          releaseData={selectedRelease} // Pass the selected release data
          onSuccess={handleSuccess} // Re-use the success handler
-         // Pass fetchReleases to refresh list after takedown if needed
+         // Pass fetchReleases to refresh list after takedown
          onTakedownSuccess={fetchReleases}
      />
 
@@ -269,16 +271,15 @@ export function ReleaseList({ className }: ReleaseListProps) {
      <UploadReleaseModal
         isOpen={isUploadModalOpen}
         onClose={() => setIsUploadModalOpen(false)}
-        onSuccess={handleSuccess}
+        onSuccess={handleSuccess} // Use the same handler to refresh the list
      />
 
       {/* Add Existing Release Modal */}
       <AddExistingReleaseModal
           isOpen={isAddExistingModalOpen}
           onClose={() => setIsAddExistingModalOpen(false)}
-          onSuccess={handleSuccess}
+          onSuccess={handleSuccess} // Use the same handler to refresh the list
       />
     </>
   );
 }
-
