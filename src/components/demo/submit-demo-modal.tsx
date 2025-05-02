@@ -1,3 +1,4 @@
+
 "use client";
 
 import {
@@ -18,21 +19,22 @@ interface SubmitDemoModalProps {
 export function SubmitDemoModal({ isOpen, onClose, onSuccess }: SubmitDemoModalProps) {
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-lg md:max-w-2xl bg-card/85 dark:bg-card/70 border-border/50"> {/* Increased width */}
+      <DialogContent className="sm:max-w-lg md:max-w-xl bg-card/85 dark:bg-card/70 border-border/50"> {/* Adjusted width slightly */}
         <DialogHeader>
           <DialogTitle className="text-primary">Submit Your Demo</DialogTitle>
-          <DialogDescription className="text-muted-foreground">
-            Fill out the form below to submit your demo track for review.
+           {/* Description moved below progress bar in the form */}
+           <DialogDescription className="text-muted-foreground pt-1"> {/* Adjusted description slightly */}
+              Follow the steps below to submit your track for review.
           </DialogDescription>
         </DialogHeader>
 
         <SubmitDemoForm
           onSuccess={onSuccess} // Pass the success callback
           onCancel={onClose}   // Pass the close callback for cancel action
-          className="pt-4"     // Add some top padding to the form within the modal
+          className="pt-2"     // Reduced top padding slightly
         />
 
-        {/* Footer might not be needed if form handles Cancel/Submit */}
+        {/* Footer is now handled within the multi-step form */}
       </DialogContent>
     </Dialog>
   );
