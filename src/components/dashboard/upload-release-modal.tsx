@@ -5,7 +5,8 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { format } from "date-fns";
-import { Loader2, UploadCloud, X, CalendarIcon, FileArchive, HelpCircle, Info, ArrowLeft, ArrowRight } from "lucide-react"; // Added Arrows
+// Added CheckCircle, AlertTriangle icons
+import { Loader2, UploadCloud, X, CalendarIcon, FileArchive, HelpCircle, Info, ArrowLeft, ArrowRight, CheckCircle, AlertTriangle } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -104,13 +105,15 @@ export function UploadReleaseModal({ isOpen, onClose, onSuccess }: UploadRelease
        if (stepId === currentStep && currentStep < previousStep) {
            return "animate-slide-in-from-left"; // Entering from left
        }
+       // Apply absolute positioning for smooth transitions
        if (stepId === previousStep && currentStep > previousStep) {
-           return "animate-slide-out-to-left"; // Exiting to left
-       }
-       if (stepId === previousStep && currentStep < previousStep) {
-           return "animate-slide-out-to-right"; // Exiting to right
-       }
-       return stepId === currentStep ? "" : "hidden"; // Only current step is visible (unless animating out)
+            return "animate-slide-out-to-left absolute inset-0 px-6 pb-6 pt-4"; // Exiting to left, keep padding
+        }
+        if (stepId === previousStep && currentStep < previousStep) {
+            return "animate-slide-out-to-right absolute inset-0 px-6 pb-6 pt-4"; // Exiting to right, keep padding
+        }
+        // Hide non-active steps, but keep padding consistent for layout
+       return stepId === currentStep ? "px-6 pb-6 pt-4" : "opacity-0 pointer-events-none absolute inset-0 px-6 pb-6 pt-4";
    };
 
 
@@ -169,7 +172,11 @@ export function UploadReleaseModal({ isOpen, onClose, onSuccess }: UploadRelease
 
      const isValid = await form.trigger(fieldsToValidate);
      if (!isValid) {
-          toast({ title: "Validation Error", description: "Please fix the errors before proceeding.", variant: "destructive" });
+          toast({
+                title: "Hold Up!",
+                description: "Please fix the errors before proceeding.",
+                variant: "destructive",
+                duration: 2000 });
      }
      return isValid;
    };
@@ -225,13 +232,26 @@ export function UploadReleaseModal({ isOpen, onClose, onSuccess }: UploadRelease
       // Success/Close is handled by handleConfirmationClose
     } catch (error) {
       console.error("Error uploading release ZIP:", error);
-      toast({ title: "Upload Failed", description: error instanceof Error ? error.message : "An unexpected error occurred during upload.", variant: "destructive" });
+      toast({
+          title: "Upload Failed",
+          description: (error instanceof Error ? error.message : "An unexpected error occurred during upload.") + " Please try again.", // More user-friendly
+          variant: "destructive",
+          duration: 4000, // Longer duration for error
+       });
       setIsSubmitting(false); // Reset submitting state on error
     }
+    // No finally here, success path handled by confirmation dialog
   }
 
   const handleConfirmationClose = () => {
         setShowConfirmationDialog(false);
+        // Display success toast AFTER confirmation dialog is closed
+        toast({
+            title: "Upload Successful!",
+            description: `Your release "${confirmedReleaseName}" is being processed.`,
+            variant: "default", // Use default variant for success
+            duration: 3000,
+        });
         onSuccess();
         onClose();
         // Resetting happens in useEffect
@@ -250,6 +270,15 @@ export function UploadReleaseModal({ isOpen, onClose, onSuccess }: UploadRelease
           <Progress value={(currentStep / STEPS.length) * 100} className="w-full h-1.5 mt-2" />
         </DialogHeader>
 
+        {/* Indeterminate Progress Bar during submission */}
+        {isSubmitting && (
+            <div className="px-6 pb-2 pt-0"> {/* Add padding */}
+                <Progress indeterminate className="w-full h-1.5" />
+                 <p className="text-xs text-center text-muted-foreground mt-1">Uploading, please wait...</p>
+             </div>
+        )}
+
+
         <Form {...form}>
             {/* Form content is wrapped for animation */}
             <div className="relative overflow-hidden min-h-[350px]"> {/* Container for steps */}
@@ -258,12 +287,12 @@ export function UploadReleaseModal({ isOpen, onClose, onSuccess }: UploadRelease
                    e.preventDefault(); // Prevent default form submission
                    handleNext(); // Trigger next/submit logic
                   }}
-                  className="space-y-4 pt-4"
+                  className="space-y-4" // Removed padding here, applied in step divs
                   aria-live="polite" // Announce step changes
                >
 
                 {/* Step 1: Release Details */}
-                <div className={cn("space-y-4", getAnimationClasses(1))}>
+                <div className={cn("space-y-4", getAnimationClasses(1))} aria-hidden={currentStep !== 1}>
                    {currentStep === 1 && ( // Ensure fields are only interactive on the current step
                     <>
                     <FormField
@@ -308,7 +337,7 @@ export function UploadReleaseModal({ isOpen, onClose, onSuccess }: UploadRelease
                 </div>
 
                 {/* Step 2: Upload Package */}
-                 <div className={cn("space-y-4", getAnimationClasses(2))}>
+                 <div className={cn("space-y-4", getAnimationClasses(2))} aria-hidden={currentStep !== 2}>
                    {currentStep === 2 && (
                     <>
                     <FormField
@@ -371,7 +400,7 @@ export function UploadReleaseModal({ isOpen, onClose, onSuccess }: UploadRelease
                                       <span>Select ZIP file</span>
                                       <input id="releaseZip" name="releaseZip" type="file" className="sr-only" accept=".zip,application/zip,application/x-zip-compressed" onChange={handleFileChange} disabled={isSubmitting} />
                                     </label>
-                                    <p className="pl-1">or drag and drop</p>
+                                    {/* <p className="pl-1">or drag and drop</p> */}
                                   </div>
                                   <p className="text-xs text-muted-foreground">ZIP archive up to 500MB</p>
                                 </div>
@@ -395,6 +424,7 @@ export function UploadReleaseModal({ isOpen, onClose, onSuccess }: UploadRelease
             </div>
         </Form>
 
+        {/* Standard Footer - always visible */}
         <DialogFooter className="pt-4 border-t border-border/50">
            {currentStep > 1 && (
              <Button type="button" variant="outline" onClick={handlePrevious} disabled={isSubmitting}>
@@ -426,15 +456,17 @@ export function UploadReleaseModal({ isOpen, onClose, onSuccess }: UploadRelease
         {/* Upload Success Confirmation Dialog */}
         <AlertDialog open={showConfirmationDialog} onOpenChange={setShowConfirmationDialog}>
             <AlertDialogContent className="bg-card/85 dark:bg-card/70 border-border">
-                <AlertDialogHeader>
-                    <AlertDialogTitle className="text-primary flex items-center gap-2"><Info className="h-5 w-5" /> Upload Submitted Successfully</AlertDialogTitle>
+                <AlertDialogHeader className="items-center text-center"> {/* Center align header */}
+                    {/* Success Icon */}
+                    <CheckCircle className="h-12 w-12 text-green-500 mb-2" />
+                    <AlertDialogTitle className="text-primary">Upload Submitted!</AlertDialogTitle>
                     <AlertDialogDescription className="text-muted-foreground pt-2 space-y-3">
                          <p>Your release &quot;{confirmedReleaseName}&quot; has been submitted for processing.</p>
-                         <p className="font-semibold">Please note:</p>
-                         <p>It can take up to <strong>10 business days</strong> for your release to appear on all streaming platforms after processing is complete. You can track its status on the releases page.</p>
+                         <p className="font-semibold text-foreground">What Happens Next?</p>
+                         <p>It typically takes up to <strong>10 business days</strong> for your release to appear on all streaming platforms after our team reviews and processes it. You can track its status on the Releases page.</p>
                      </AlertDialogDescription>
                 </AlertDialogHeader>
-                <AlertDialogFooter>
+                <AlertDialogFooter className="justify-center"> {/* Center align footer button */}
                      <AlertDialogAction onClick={handleConfirmationClose} className="bg-primary hover:bg-primary/90 text-primary-foreground">OK, Got It</AlertDialogAction>
                 </AlertDialogFooter>
             </AlertDialogContent>
