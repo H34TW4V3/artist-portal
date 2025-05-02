@@ -8,7 +8,8 @@ import { cn } from '@/lib/utils';
 import { useAuth } from '@/context/auth-context';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, useRef } from 'react';
-// import { SplashScreen } from '@/components/common/splash-screen'; // No longer needed here for full screen splash
+// Import Loader2 for loading animation (if needed, though AuthProvider handles splash)
+// import { Loader2 } from 'lucide-react';
 import { Upload } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { SubmitDemoForm } from '@/components/demo/submit-demo-form';
@@ -81,11 +82,12 @@ export default function LoginPage() {
 
     // Show loading state (handled by AuthProvider now)
     if (loading) {
-         return null;
+         return null; // Or a minimal loading indicator if preferred
     }
 
+     // If user is already logged in, prevent rendering the login page content
      if (user) {
-         return null;
+         return null; // Middleware/AuthProvider handles redirect, but this prevents flicker
      }
 
 
@@ -98,54 +100,48 @@ export default function LoginPage() {
              />
 
             {/* Container for Login and Demo Cards */}
+            {/* Apply text-foreground which is light in dark mode */}
             <div className={cn(
-                "relative z-10 flex flex-col sm:flex-row gap-6 w-full max-w-5xl justify-center items-stretch",
-                 // Removed fade-out for whole container, LoginForm handles its transition internally
-                 // showSplash && "animate-fade-out"
+                "relative z-10 flex flex-col sm:flex-row gap-6 w-full max-w-5xl justify-center items-stretch text-foreground",
                 )}>
 
                 {/* Login Card container - LoginForm handles internal transitions */}
+                {/* Ensure text inside LoginForm inherits foreground color */}
                 <div className={cn(
                     "flex-1 rounded-xl border border-border/30 shadow-xl overflow-hidden bg-card/20 dark:bg-card/10 flex flex-col",
-                    // Control visibility based on demo flow state if needed, butLoginForm handles splash transition
-                    // isLoginFormVisible ? "animate-fade-in-up" : "animate-fade-out",
-                    // !isLoginFormVisible && "pointer-events-none"
                  )}>
                     {/* Pass handleLoginCompletion callback */}
                     <LoginForm onLoginComplete={handleLoginCompletion} />
                 </div>
 
-                 {/* Vertical Separator */}
+                 {/* Vertical Separator - Force white text */}
                  <div className={cn(
                       "hidden sm:flex flex-col items-center justify-center py-10",
                       (!isLoginFormVisible || !isDemoCardVisible) && "opacity-0 pointer-events-none transition-opacity duration-300"
                  )}>
                      <Separator orientation="vertical" className="flex-grow bg-border/50" />
-                     <span className="my-4 px-2 text-xl font-medium text-muted-foreground bg-transparent rounded-full">
+                     <span className="my-4 px-2 text-xl font-medium text-foreground/80 bg-transparent rounded-full"> {/* Use foreground */}
                          Or
                      </span>
                      <Separator orientation="vertical" className="flex-grow bg-border/50" />
                  </div>
-                 {/* Horizontal Separator */}
+                 {/* Horizontal Separator - Force white text */}
                  <div className={cn(
                       "flex sm:hidden items-center justify-center w-full my-4",
                       (!isLoginFormVisible || !isDemoCardVisible) && "opacity-0 pointer-events-none transition-opacity duration-300"
                  )}>
                      <Separator className="flex-grow bg-border/50" />
-                     <span className="mx-2 text-xl font-medium text-muted-foreground px-2 py-0.5 bg-transparent rounded-full">
+                     <span className="mx-2 text-xl font-medium text-foreground/80 px-2 py-0.5 bg-transparent rounded-full"> {/* Use foreground */}
                          Or
                      </span>
                      <Separator className="flex-grow bg-border/50" />
                  </div>
 
 
-                {/* Demo Submission Card */}
+                {/* Demo Submission Card - Ensure text inside inherits foreground color */}
                 <Card className={cn(
                     "flex-2 rounded-xl border border-border/30 shadow-xl overflow-hidden bg-card/20 dark:bg-card/10 flex flex-col relative",
-                    // isDemoCardVisible ? "animate-fade-in-up" : "animate-fade-out", // Keep fade-in/out for the card itself
-                    // "animation-delay-100"
                     )}
-                    // style={{ animationDelay: '100ms' }}
                     >
                     {/* Initial Content OR SubmitDemoForm */}
                     <div className={cn(
@@ -153,9 +149,11 @@ export default function LoginPage() {
                         isDemoFlowActive && "opacity-0 pointer-events-none"
                     )}>
                         <CardHeader className="items-center text-center p-6 border-b border-border/30">
+                            {/* Set icon color explicitly if needed, otherwise inherits */}
                             <Upload className="h-12 w-12 mb-3 text-primary" />
+                            {/* Use foreground for title and description */}
                             <CardTitle className="text-2xl font-semibold tracking-tight text-primary">Submit Your Demo</CardTitle>
-                            <CardDescription className="text-muted-foreground text-sm mt-1">
+                            <CardDescription className="text-foreground/80 text-sm mt-1"> {/* Use foreground */}
                                 Got music you think we should hear? Submit your demo here.
                             </CardDescription>
                         </CardHeader>
@@ -171,10 +169,9 @@ export default function LoginPage() {
                                 Submit Demo
                             </Button>
                         </CardContent>
-                        {/* Removed footer */}
                     </div>
 
-                    {/* SubmitDemoForm Container */}
+                    {/* SubmitDemoForm Container - Ensure text inherits */}
                     {isDemoFlowActive && (
                         <div className={cn(
                             "absolute inset-0 flex flex-col transition-opacity duration-500 ease-in-out",
@@ -183,21 +180,17 @@ export default function LoginPage() {
                             <SubmitDemoForm
                                 onSuccess={handleSubmitDemoSuccess}
                                 onCancel={handleDemoFormCancel}
-                                className="flex-grow flex flex-col"
+                                className="flex-grow flex flex-col text-foreground" // Apply text-foreground here too
                             />
                         </div>
                     )}
                 </Card>
 
             </div>
-             {/* Moved copyright footer here */}
-             <div className="absolute bottom-4 w-full text-center text-xs text-muted-foreground z-10">
+             {/* Moved copyright footer here - Force white text */}
+             <div className="absolute bottom-4 w-full text-center text-xs text-foreground/70 z-10"> {/* Use foreground */}
                  © {new Date().getFullYear()} Oxygen Group PLC. All rights reserved.
              </div>
         </div>
     );
 }
-
-    
-
-    

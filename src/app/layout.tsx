@@ -18,7 +18,7 @@ import { getImageBrightness } from '@/lib/imageUtils'; // Import the brightness 
 // Default wallpaper URL
 const DEFAULT_WALLPAPER_URL = "https://t4.ftcdn.net/jpg/08/62/54/35/360_F_862543518_D0LQEQDZqkbTNM8CMB6iuiauhfaj4wr6.jpg";
 const LOCAL_STORAGE_WALLPAPER_KEY = 'artistHubWallpaperUrl';
-const LOCAL_STORAGE_THEME_KEY = 'artistHubPreferredTheme'; // Renamed for clarity
+const LOCAL_STORAGE_THEME_KEY = 'artistHubPreferredTheme'; // Key for user's preferred theme
 const LOCAL_STORAGE_WEATHER_ANIMATION_KEY = 'artistHubWeatherAnimationEnabled';
 
 interface RootLayoutProps {
@@ -57,8 +57,11 @@ export default function RootLayout({ children }: RootLayoutProps) {
 
     if (savedPreferredTheme === 'light' || savedPreferredTheme === 'dark') {
       setPreferredTheme(savedPreferredTheme);
+      // Set initial effective theme based on preference before analysis
+      setEffectiveTheme(savedPreferredTheme);
     } else {
        setPreferredTheme('dark'); // Default preference
+       setEffectiveTheme('dark'); // Default effective theme
     }
 
     setShowWeatherAnimations(savedWeatherAnimationPref === 'false' ? false : true);
@@ -67,8 +70,8 @@ export default function RootLayout({ children }: RootLayoutProps) {
 
   // Effect to analyze wallpaper brightness and set effective theme
   const analyzeAndSetTheme = useCallback(async (url: string) => {
+    // On login page or before mount, use preferred theme directly
     if (!isMounted || pathname === '/login') {
-        // On login page or before mount, use preferred theme
         setEffectiveTheme(preferredTheme);
         return;
     }
@@ -94,9 +97,9 @@ export default function RootLayout({ children }: RootLayoutProps) {
     } finally {
          setIsAnalyzingWallpaper(false);
     }
-  }, [isMounted, pathname, preferredTheme]);
+  }, [isMounted, pathname, preferredTheme]); // Add preferredTheme dependency for fallback
 
-  // Analyze wallpaper whenever URL or mounted status changes
+  // Analyze wallpaper whenever URL or mounted status changes, or preference changes
   useEffect(() => {
       analyzeAndSetTheme(wallpaperUrl);
   }, [wallpaperUrl, analyzeAndSetTheme]); // Include analyzeAndSetTheme in dependency array
@@ -107,7 +110,6 @@ export default function RootLayout({ children }: RootLayoutProps) {
       const root = window.document.documentElement;
       root.classList.remove('light', 'dark');
       root.classList.add(effectiveTheme);
-      // No need to save effectiveTheme to localStorage, it's dynamic
       // console.log("Applied theme class:", effectiveTheme);
     }
   }, [effectiveTheme, isMounted]);
@@ -131,7 +133,9 @@ export default function RootLayout({ children }: RootLayoutProps) {
     setPreferredTheme((prevTheme) => {
         const newPref = prevTheme === 'dark' ? 'light' : 'dark';
         localStorage.setItem(LOCAL_STORAGE_THEME_KEY, newPref);
-         // Re-analyze wallpaper with new preference as fallback if needed
+         // Re-analyze wallpaper immediately with new preference as fallback if needed
+         // This is slightly redundant if analyzeAndSetTheme already depends on preferredTheme,
+         // but ensures immediate fallback application if analysis is skipped (e.g., on login page).
          analyzeAndSetTheme(wallpaperUrl);
         return newPref;
     });
@@ -149,21 +153,25 @@ export default function RootLayout({ children }: RootLayoutProps) {
   return (
     <html lang={browserLang} className={`${GeistSans.variable} ${isMounted ? effectiveTheme : 'dark'}`}>
       <head>
+         {/* Preload placeholder artwork if used frequently */}
          <link rel="preload" href="/placeholder-artwork.png" as="image" />
       </head>
       <body className="font-sans antialiased bg-background text-foreground relative min-h-screen">
         <AuthProvider>
           <WeatherProvider>
+             {/* Apply wallpaper background only if not on login page */}
              {pathname !== '/login' && (
                 <div
                     className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat opacity-[0.15] dark:opacity-[0.20] transition-all duration-500 ease-in-out"
                     style={{ backgroundImage: `url('${wallpaperUrl}')` }}
                 />
              )}
+             {/* Show weather animations only if enabled and not on login page */}
              {pathname !== '/login' && showWeatherAnimations && <WeatherAnimationOverlay />}
             <div className="relative z-10 min-h-screen flex flex-col">
                  {children}
             </div>
+            {/* Show settings button only when mounted and not on login page */}
             {isMounted && pathname !== '/login' && (
               <>
                 <SettingsMenuButton
@@ -172,7 +180,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
                     currentTheme={preferredTheme} // Show preference in menu
                     onToggleWeatherAnimations={handleToggleWeatherAnimations}
                     weatherAnimationsEnabled={showWeatherAnimations}
-                    showWeatherToggle={true}
+                    showWeatherToggle={true} // Keep weather toggle visible
                     onOpenAboutModal={() => setIsAboutModalOpen(true)}
                 />
                 <WallpaperCustomizerModal

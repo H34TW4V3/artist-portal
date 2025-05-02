@@ -66,9 +66,11 @@ export function SettingsMenuButton({
                 ) : (
                     <Moon className="mr-2 h-4 w-4" />
                 )}
+                {/* Text now reflects setting preference */}
                 <span>Set Preferred: {currentTheme === 'dark' ? 'Light' : 'Dark'}</span>
            </div>
-           <span className="text-xs text-muted-foreground pl-6">Theme adjusts to wallpaper brightness</span>
+           {/* Add note about dynamic adaptation */}
+           <span className="text-xs text-muted-foreground pl-6">Theme adapts to wallpaper</span>
         </DropdownMenuItem>
          {showWeatherToggle && (
              <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="cursor-default focus:bg-transparent focus:text-popover-foreground">

@@ -1,12 +1,12 @@
 
 "use client";
 
-import React, { useState, useEffect, useRef } from "react"; // Import React and useEffect, useRef
+import React, { useState, useEffect, useRef } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
-import { Loader2, ArrowLeft, ArrowRight } from "lucide-react"; // Add Arrow icons
-import { useRouter } from "next/navigation"; // Keep useRouter if needed for redirect parameter handling
+import { Loader2, ArrowLeft, ArrowRight } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -18,17 +18,16 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"; // Import Avatar components
-import { CardDescription, CardHeader, CardTitle } from "@/components/ui/card"; // Import Card components for header
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { ForgotPasswordModal } from "./forgot-password-modal"; // Import the modal
-import { useAuth } from "@/context/auth-context"; // Import useAuth hook
-import { cn } from "@/lib/utils"; // Import cn
-// Updated to import getUserProfileByEmail from the user service
-import { getUserProfileByEmail } from "@/services/user"; // Correct import path
-import type { ProfileFormValues } from "@/components/profile/profile-form"; // Import profile type
-import { Skeleton } from "@/components/ui/skeleton"; // Import Skeleton
-import { SplashScreen } from '@/components/common/splash-screen'; // Import SplashScreen
+import { ForgotPasswordModal } from "./forgot-password-modal";
+import { useAuth } from "@/context/auth-context";
+import { cn } from "@/lib/utils";
+import { getUserProfileByEmail } from "@/services/user";
+import type { ProfileFormValues } from "@/components/profile/profile-form";
+import { Skeleton } from "@/components/ui/skeleton";
+import { SplashScreen } from '@/components/common/splash-screen';
 
 // Define steps
 const STEPS = [
@@ -51,7 +50,7 @@ const loginSchema = emailSchema.merge(passwordSchema);
 type LoginFormValues = z.infer<typeof loginSchema>;
 
 interface LoginFormProps {
-    onLoginComplete: () => void; // Updated callback name
+    onLoginComplete: () => void;
 }
 
 
@@ -86,26 +85,26 @@ const LoginIconStep1 = () => (
 
 
 export function LoginForm({ onLoginComplete }: LoginFormProps) {
-  const { login, loading: authLoading } = useAuth(); // Get login function and loading state from context
+  const { login, loading: authLoading } = useAuth();
   const { toast } = useToast();
-  const router = useRouter(); // Keep for potential future use (e.g., reading redirect param)
+  const router = useRouter();
   const [isForgotPasswordModalOpen, setIsForgotPasswordModalOpen] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
-  const [previousStep, setPreviousStep] = useState(1); // For animation direction
-  const [enteredEmail, setEnteredEmail] = useState(""); // Store email from step 1
-  const [profileData, setProfileData] = useState<ProfileFormValues | null>(null); // Store fetched profile data
-  const [isFetchingProfile, setIsFetchingProfile] = useState(false); // Loading state for profile fetch
-  const [showSplash, setShowSplash] = useState(false); // State to control splash screen visibility
-  const [isSubmitting, setIsSubmitting] = useState(false); // Initialize isSubmitting state
+  const [previousStep, setPreviousStep] = useState(1);
+  const [enteredEmail, setEnteredEmail] = useState("");
+  const [profileData, setProfileData] = useState<ProfileFormValues | null>(null);
+  const [isFetchingProfile, setIsFetchingProfile] = useState(false);
+  const [showSplash, setShowSplash] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
 
   const form = useForm<LoginFormValues>({
-    resolver: zodResolver(loginSchema), // Use combined schema for full validation context if needed
+    resolver: zodResolver(loginSchema),
     defaultValues: {
       artistId: "",
       password: "",
     },
-    mode: "onChange", // Validate on change
+    mode: "onChange",
   });
 
   // Function to handle step change and animation state
@@ -250,14 +249,15 @@ export function LoginForm({ onLoginComplete }: LoginFormProps) {
       <Form {...form}>
           {/* Use relative container for step animations - Adjusted min-height */}
           {/* Added key to force re-render on step change for reliable animations */}
-          <div className="relative overflow-hidden min-h-[300px]" key={currentStep}> {/* Increased min-height */}
+          {/* Ensure text color is white (foreground in dark mode) */}
+          <div className="relative overflow-hidden min-h-[300px] text-foreground" key={currentStep}>
 
              {/* Step 1 Header (Only shown on step 1) */}
               <div className={cn(currentStep !== 1 && "hidden")}>
                  <CardHeader className="items-center text-center p-6 border-b border-border/30">
                      <LoginIconStep1 />
                      <CardTitle className="text-2xl font-semibold tracking-tight text-primary">Artist Hub Login</CardTitle>
-                     <CardDescription className="text-muted-foreground text-sm">
+                     <CardDescription className="text-foreground/80 text-sm"> {/* Use foreground */}
                          Enter your credentials to access your dashboard.
                      </CardDescription>
                  </CardHeader>
@@ -282,7 +282,8 @@ export function LoginForm({ onLoginComplete }: LoginFormProps) {
                     name="artistId"
                     render={({ field }) => (
                         <FormItem>
-                        <FormLabel>Artist ID (Email)</FormLabel>
+                        {/* Ensure label text is white */}
+                        <FormLabel className="text-foreground">Artist ID (Email)</FormLabel>
                         <FormControl>
                             <Input
                             type="email"
@@ -290,10 +291,10 @@ export function LoginForm({ onLoginComplete }: LoginFormProps) {
                             {...field}
                             disabled={authLoading || isFetchingProfile || isSubmitting}
                             autoComplete="email"
-                            className="bg-background/50 dark:bg-background/30 border-input focus:ring-accent"
+                            className="bg-background/50 dark:bg-background/30 border-input focus:ring-accent text-foreground placeholder:text-muted-foreground" // Ensure text/placeholder colors
                             />
                         </FormControl>
-                        <FormMessage />
+                        <FormMessage className="text-destructive-foreground dark:text-destructive" /> {/* Adjust message color if needed */}
                         </FormItem>
                     )}
                     />
@@ -303,7 +304,7 @@ export function LoginForm({ onLoginComplete }: LoginFormProps) {
               {/* Step 2: Password (Inside animated container) */}
               <div className={cn("absolute inset-0 px-6 pb-6 pt-6", getAnimationClasses(2))}>
                   {currentStep === 2 && (
-                    <div className="space-y-4 flex flex-col items-center min-h-[200px]"> {/* Increased min-height */}
+                    <div className="space-y-4 flex flex-col items-center min-h-[200px]">
                       <>
                         {/* Show Avatar and Name */}
                          {isFetchingProfile ? (
@@ -319,6 +320,7 @@ export function LoginForm({ onLoginComplete }: LoginFormProps) {
                                         {getInitials(artistNameStep2)}
                                      </AvatarFallback>
                                  </Avatar>
+                                 {/* Ensure name text is white */}
                                  <p className="text-lg font-medium text-foreground">
                                     {artistNameStep2} {/* Display artist name */}
                                  </p>
@@ -331,7 +333,8 @@ export function LoginForm({ onLoginComplete }: LoginFormProps) {
                           name="password"
                           render={({ field }) => (
                             <FormItem className="w-full">
-                              <FormLabel className="sr-only">Password</FormLabel>
+                              {/* Ensure label text is white */}
+                              <FormLabel className="sr-only text-foreground">Password</FormLabel>
                               <FormControl>
                                 <Input
                                   type="password"
@@ -339,19 +342,19 @@ export function LoginForm({ onLoginComplete }: LoginFormProps) {
                                   {...field}
                                   disabled={authLoading || isFetchingProfile || isSubmitting}
                                   autoComplete="current-password"
-                                  className="bg-background/50 dark:bg-background/30 border-input focus:ring-accent w-full"
+                                  className="bg-background/50 dark:bg-background/30 border-input focus:ring-accent w-full text-foreground placeholder:text-muted-foreground" // Ensure text/placeholder colors
                                 />
                               </FormControl>
-                              <FormMessage />
+                              <FormMessage className="text-destructive-foreground dark:text-destructive" /> {/* Adjust message color */}
                             </FormItem>
                           )}
                         />
-                         {/* Forgot Password Link */}
+                         {/* Forgot Password Link - Ensure link text is appropriate */}
                          <div className="text-right w-full">
                               <Button
                                 type="button"
                                 variant="link"
-                                className="text-sm font-medium text-primary hover:underline p-0 h-auto"
+                                className="text-sm font-medium text-primary hover:underline p-0 h-auto" // Use primary color for link
                                 onClick={() => setIsForgotPasswordModalOpen(true)}
                                 disabled={authLoading || isFetchingProfile || isSubmitting}
                               >
@@ -370,7 +373,7 @@ export function LoginForm({ onLoginComplete }: LoginFormProps) {
                         variant="outline"
                         onClick={handlePrevious}
                         disabled={currentStep === 1 || authLoading || isFetchingProfile || isSubmitting}
-                        className={cn(currentStep === 1 && "invisible")} // Hide if on first step
+                        className={cn(currentStep === 1 && "invisible", "text-foreground border-border hover:bg-muted/50")} // Style buttons for dark bg
                     >
                         <ArrowLeft className="mr-2 h-4 w-4" /> Previous
                     </Button>
@@ -380,15 +383,15 @@ export function LoginForm({ onLoginComplete }: LoginFormProps) {
                         disabled={authLoading || isFetchingProfile || isSubmitting || (currentStep === 1 && !form.watch('artistId')) || (currentStep === 2 && !form.watch('password'))}
                         className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-md disabled:shadow-none disabled:bg-muted disabled:text-muted-foreground"
                     >
-                        {(authLoading || isFetchingProfile) && currentStep === 1 ? ( // Removed isSubmitting check here
+                        {(authLoading || isFetchingProfile) && currentStep === 1 ? (
                         <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Processing...</>
-                        ) : (authLoading || isSubmitting) && currentStep === 2 ? ( // Keep isSubmitting check for final step
+                        ) : (authLoading || isSubmitting) && currentStep === 2 ? (
                             <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Processing...</>
                         ) : currentStep === STEPS.length ? (
                             'Login'
                         ) : (
                             // Corrected JSX wrapping
-                            <span>Next <ArrowRight className="ml-2 h-4 w-4" /></span>
+                            <span className="flex items-center">Next <ArrowRight className="ml-2 h-4 w-4" /></span>
                         )}
                     </Button>
                 </div>
@@ -405,4 +408,3 @@ export function LoginForm({ onLoginComplete }: LoginFormProps) {
     </>
   );
 }
-
