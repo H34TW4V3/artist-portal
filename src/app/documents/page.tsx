@@ -22,8 +22,8 @@ const tabHeaders = {
     icon: <FileText className="h-8 w-8 text-primary hidden sm:block" />,
   },
   handbooks: {
-    title: "Guidebooks", // Updated title
-    description: "Find helpful guides and official handbooks.",
+    title: "Handbooks & Cheat Sheets", // Updated title
+    description: "Find helpful guides, official handbooks, and cheat sheets.", // Updated description
     icon: <BookOpenText className="h-8 w-8 text-primary hidden sm:block" />,
   },
 };
@@ -45,7 +45,7 @@ export default function DocumentsPage() {
   // Get the current header content based on activeTab
   const currentHeader = tabHeaders[activeTab] || tabHeaders.agreements; // Default to agreements
 
-  // Separate agreements and handbooks
+  // Separate agreements and handbooks/cheatsheets
   const agreements = [
     { title: "Artist Agreement", icon: <FileText className="h-5 w-5 text-primary" /> },
     { title: "Social Media Management Agreement", icon: <FileText className="h-5 w-5 text-primary" /> },
@@ -53,8 +53,11 @@ export default function DocumentsPage() {
     { title: "Merchandising Agreement", icon: <FileText className="h-5 w-5 text-primary" /> },
   ];
 
-  const handbooks = [
+  // Renamed to reflect cheat sheets
+  const guides = [
     { title: "Artist Handbook", icon: <BookOpenText className="h-5 w-5 text-primary" /> },
+    { title: "Release Submission Cheat Sheet", icon: <BookOpenText className="h-5 w-5 text-primary" /> },
+     { title: "Social Media Best Practices", icon: <BookOpenText className="h-5 w-5 text-primary" /> },
   ];
 
    // Show loading indicator while checking auth state or if user is not yet available
@@ -132,7 +135,7 @@ export default function DocumentsPage() {
               <FileText className="h-4 w-4" /> My Agreements
             </TabsTrigger>
             <TabsTrigger value="handbooks" className="py-2 data-[state=active]:shadow-md transition-subtle rounded-md flex items-center justify-center gap-2 data-[state=active]:hover-glow data-[state=active]:focus-glow">
-              <BookOpenText className="h-4 w-4" /> Guidebooks {/* Updated trigger text */}
+              <BookOpenText className="h-4 w-4" /> Handbooks & Sheets {/* Updated trigger text */}
             </TabsTrigger>
           </TabsList>
 
@@ -157,15 +160,15 @@ export default function DocumentsPage() {
           <TabsContent value="handbooks">
             <Card className="bg-card/60 dark:bg-card/50 border-border/30 shadow-md rounded-lg"> {/* Adjusted opacity */}
               <CardHeader>
-                <CardTitle className="text-lg font-semibold text-foreground">Guidebooks</CardTitle> {/* Updated card title */}
-                <CardDescription className="text-muted-foreground">Access helpful guides and handbooks.</CardDescription>
+                <CardTitle className="text-lg font-semibold text-foreground">Handbooks & Cheat Sheets</CardTitle> {/* Updated card title */}
+                <CardDescription className="text-muted-foreground">Access helpful guides, handbooks, and cheat sheets.</CardDescription> {/* Updated description */}
               </CardHeader>
               <CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {handbooks.map((handbook, index) => (
+                {guides.map((guide, index) => (
                   <AgreementCard
-                    key={`handbook-${index}`}
-                    title={handbook.title}
-                    icon={handbook.icon}
+                    key={`guide-${index}`}
+                    title={guide.title}
+                    icon={guide.icon}
                   />
                 ))}
               </CardContent>
