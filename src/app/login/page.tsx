@@ -14,8 +14,8 @@ import { useToast } from '@/hooks/use-toast';
 import { SubmitDemoForm } from '@/components/demo/submit-demo-form';
 import { Separator } from '@/components/ui/separator';
 
-// Placeholder URL for the GIF
-const LOGIN_BACKGROUND_GIF_URL = "https://25.media.tumblr.com/0a0ba077c5c32fc4eaa6778519e56781/tumblr_n1an6osbsL1tpegqko1_r1_500.gif";
+// Placeholder URL for the GIF - Updated URL
+const LOGIN_BACKGROUND_GIF_URL = "https://media3.giphy.com/media/v1.Y2lkPTc5MGI3NjExajlyMDFwYm53NWFpaGRybnljbDR6cXcyZ2xxaXFncmZobTF3MzNoaSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/l3CgcUcBFDmMJBtkZU/giphy.gif";
 
 
 export default function LoginPage() {
@@ -197,3 +197,4 @@ export default function LoginPage() {
         </div>
     );
 }
+
