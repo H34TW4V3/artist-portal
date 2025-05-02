@@ -1,4 +1,3 @@
-
 "use client";
 
 import { LoginForm } from '@/components/auth/login-form';
@@ -73,9 +72,11 @@ export default function LoginPage() {
          setSplashUserImageUrl(imageUrl);
 
          // Trigger animation: hide cards, show splash
+         // Apply fade-out immediately for the cards container
+         // We will rely on the parent div's animation triggered by !isLoginFormVisible && !isDemoCardVisible
          setIsLoginFormVisible(false);
          setIsDemoCardVisible(false); // Hide demo card as well
-         setShowSplash(true);
+         setShowSplash(true); // Show splash screen
 
          // Play the login sound as the splash appears
          playLoginSound();
@@ -89,7 +90,7 @@ export default function LoginPage() {
     // Update handler to start the demo flow
     const handleDemoSubmitClick = () => {
         console.log("Submit Demo button clicked, starting demo flow.");
-        setIsLoginFormVisible(false); // Hide the login card
+        setIsLoginFormVisible(false); // Animate out the login card
         setIsDemoFlowActive(true); // Activate the multi-step form within the demo card
         // Demo card visibility is controlled by isDemoCardVisible (remains true)
     };
@@ -125,7 +126,7 @@ export default function LoginPage() {
 
     // If not loading and no user, show the login form or splash screen
     return (
-        <div className="flex min-h-screen w-full items-center justify-center p-4 relative"> {/* Removed bg-transparent, z-10 */}
+        <div className="flex min-h-screen w-full items-center justify-center p-4 relative overflow-hidden"> {/* Added overflow-hidden */}
              {/* Specific Background for Login Page */}
              <div
                  className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat"
@@ -140,8 +141,8 @@ export default function LoginPage() {
                     userImageUrl={splashUserImageUrl} // Pass stored image URL
                     userName={splashUserName} // Pass stored user name
                     style={{ animationDelay: '0s' }} // Remove delay for instant show
-                    // Override default fade-out animation for this specific instance if needed
-                    className="animate-none opacity-100"
+                    // Use animate-fade-in for splash entry, it will be removed by parent fade-out later
+                    className="animate-fade-in"
                     // Specify duration for how long this component itself stays visible (redundant if controlled by parent state, but can be useful)
                     duration={5000} // Pass duration to splash screen if it uses it internally
                  />
@@ -152,87 +153,79 @@ export default function LoginPage() {
             <div className={cn(
                 "relative z-10 flex flex-col sm:flex-row gap-6 w-full max-w-4xl justify-center items-stretch", // Added justify-center, items-stretch
                 // Apply fade-out animation to the whole container when splash shows
-                 !isLoginFormVisible && !isDemoCardVisible && "animate-fade-out" // Fade out container when splash appears
+                 showSplash && "animate-fade-out" // Fade out container when splash appears
                 )}>
 
-                {/* Login Card container - Conditionally render based on visibility */}
-                {isLoginFormVisible && (
-                     <div className={cn(
-                        "flex-1 rounded-xl border border-border/30 shadow-xl overflow-hidden animate-fade-in-up bg-card/20 dark:bg-card/10 flex flex-col", // flex-1, added flex flex-col
-                        !isLoginFormVisible && "animate-fade-out" // Apply fade-out when card should hide
-                     )}>
-                        {/* Card Content - LoginForm */}
-                         {/* Pass handleLoginSuccess to LoginForm */}
-                         <LoginForm onLoginSuccess={handleLoginSuccess} />
+                {/* Login Card container - Apply slide-out animation when demo starts or fade-out for splash */}
+                {/* Conditional rendering needed for animation exit */}
+                <div className={cn(
+                    "flex-1 rounded-xl border border-border/30 shadow-xl overflow-hidden bg-card/20 dark:bg-card/10 flex flex-col",
+                    isLoginFormVisible ? "animate-fade-in-up" : "animate-fade-out", // Use fade-in/fade-out for simplicity or change to slide
+                    !showSplash && !isLoginFormVisible && "animate-slide-out-to-left", // Slide left when demo starts (and not splash)
+                    !isLoginFormVisible && "pointer-events-none" // Disable interaction when hidden/animating out
+                 )}>
+                    {/* Card Content - LoginForm */}
+                    {/* Pass handleLoginSuccess to LoginForm */}
+                    <LoginForm onLoginSuccess={handleLoginSuccess} />
 
-                        {/* Footer - Optional */}
-                        <div className="p-4 text-center text-xs text-muted-foreground border-t border-border/30 bg-muted/10 dark:bg-muted/5 mt-auto"> {/* Added mt-auto */}
-                            © {new Date().getFullYear()} Oxygen Group PLC. All rights reserved.
+                    {/* Footer - Optional */}
+                    <div className="p-4 text-center text-xs text-muted-foreground border-t border-border/30 bg-muted/10 dark:bg-muted/5 mt-auto"> {/* Added mt-auto */}
+                        © {new Date().getFullYear()} Oxygen Group PLC. All rights reserved.
+                    </div>
+                </div>
+
+
+                {/* Demo Submission Card - Always present for layout, content changes */}
+                {/* Apply slide-in animation only when login form slides out */}
+                <Card className={cn(
+                    "flex-1 rounded-xl border border-border/30 shadow-xl overflow-hidden bg-card/20 dark:bg-card/10 flex flex-col relative", // flex-1, added flex layout, added relative for form positioning
+                    isDemoCardVisible ? "animate-fade-in-up" : "animate-fade-out", // Fade-in initially, fade-out for splash
+                    "animation-delay-100" // Slight delay for demo card animation
+                    )}
+                    style={{ animationDelay: '100ms' }} // Inline style for delay compatibility
+                    >
+                    {/* Initial Content OR SubmitDemoForm */}
+                    {/* Container for initial content with fade-out transition */}
+                    <div className={cn(
+                        "flex flex-col flex-grow transition-opacity duration-300 ease-in-out",
+                        isDemoFlowActive && "opacity-0 pointer-events-none" // Fade out initial content when form is active
+                    )}>
+                        <CardHeader className="items-center text-center p-6 border-b border-border/30">
+                            <Upload className="h-12 w-12 mb-3 text-primary" /> {/* Icon */}
+                            <CardTitle className="text-2xl font-semibold tracking-tight text-primary">Submit Your Demo</CardTitle>
+                            <CardDescription className="text-muted-foreground text-sm mt-1">
+                                Got music you think we should hear? Submit your demo here.
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent className="flex-grow flex items-center justify-center p-6">
+                            <Button
+                                size="lg"
+                                onClick={handleDemoSubmitClick} // Trigger the flow start
+                                className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-primary-foreground shadow-md"
+                            >
+                                Submit Demo
+                            </Button>
+                        </CardContent>
+                        <div className="p-4 text-center text-xs text-muted-foreground border-t border-border/30 bg-muted/10 dark:bg-muted/5 mt-auto">
+                            Unsolicited submissions policy applies.
                         </div>
-                     </div>
-                 )}
+                    </div>
 
-                {/* Demo Submission Card */}
-                {isDemoCardVisible && ( // Always show the card container, content changes based on isDemoFlowActive
-                     <Card className={cn(
-                         "flex-1 rounded-xl border border-border/30 shadow-xl overflow-hidden animate-fade-in-up bg-card/20 dark:bg-card/10 flex flex-col relative", // flex-1, added flex layout, added relative for form positioning
-                         !isDemoCardVisible && "animate-fade-out", // Apply fade-out if needed (e.g., during login success)
-                         "animation-delay-100" // Slight delay for demo card animation
-                         )}
-                         style={{ animationDelay: '100ms' }} // Inline style for delay compatibility
-                         >
-                        {/* Conditionally render Initial Content OR SubmitDemoForm based on isDemoFlowActive */}
-                        {!isDemoFlowActive ? (
-                             <>
-                                <CardHeader className={cn(
-                                    "items-center text-center p-6 border-b border-border/30 transition-opacity duration-300",
-                                    isDemoFlowActive && "opacity-0 pointer-events-none" // Fade out initial header when form is active
-                                )}>
-                                    <Upload className="h-12 w-12 mb-3 text-primary" /> {/* Icon */}
-                                    <CardTitle className="text-2xl font-semibold tracking-tight text-primary">Submit Your Demo</CardTitle>
-                                    <CardDescription className="text-muted-foreground text-sm mt-1">
-                                        Got music you think we should hear? Submit your demo here.
-                                    </CardDescription>
-                                </CardHeader>
-                                <CardContent className={cn(
-                                    "flex-grow flex items-center justify-center p-6 transition-opacity duration-300",
-                                    isDemoFlowActive && "opacity-0 pointer-events-none" // Fade out initial content when form is active
-                                )}>
-                                     <Button
-                                         size="lg"
-                                         onClick={handleDemoSubmitClick} // Trigger the flow start
-                                         className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-primary-foreground shadow-md"
-                                     >
-                                         Submit Demo
-                                     </Button>
-                                </CardContent>
-                                {/* Footer - Only visible when form is NOT active */}
-                                <div className={cn(
-                                    "p-4 text-center text-xs text-muted-foreground border-t border-border/30 bg-muted/10 dark:bg-muted/5 mt-auto transition-opacity duration-300", // Added mt-auto
-                                    isDemoFlowActive && "opacity-0 pointer-events-none" // Fade out initial footer when form is active
-                                    )}>
-                                    {/* Unsolicited submissions policy applies. */} {/* Converted HTML comment */}
-                                    Unsolicited submissions policy applies.
-                                    {/* Consider adding a link to the full policy later */}
-                                </div>
-                             </>
-                         ) : (
-                              <div className={cn(
-                                  "absolute inset-0 flex flex-col transition-opacity duration-500", // Use absolute positioning for form overlay
-                                  !isDemoFlowActive && "opacity-0 pointer-events-none", // Hide initially
-                                  isDemoFlowActive && "opacity-100 animate-fade-in" // Fade in form when active
-                                  )}>
-                                    {/* Embed the SubmitDemoForm directly */}
-                                    {/* Pass handlers for success and cancel */}
-                                    <SubmitDemoForm
-                                        onSuccess={handleSubmitDemoSuccess}
-                                        onCancel={handleDemoFormCancel}
-                                        className="flex-grow flex flex-col p-0 overflow-y-auto" // Remove padding here, form adds it internally
-                                    />
-                              </div>
-                         )}
-                     </Card>
-                 )}
+                    {/* Container for the SubmitDemoForm with fade-in transition */}
+                    {isDemoFlowActive && (
+                        <div className={cn(
+                            "absolute inset-0 flex flex-col transition-opacity duration-500 ease-in-out",
+                            isDemoFlowActive ? "opacity-100 animate-fade-in" : "opacity-0 pointer-events-none" // Fade in form when active
+                        )}>
+                            <SubmitDemoForm
+                                onSuccess={handleSubmitDemoSuccess}
+                                onCancel={handleDemoFormCancel}
+                                className="flex-grow flex flex-col p-0 overflow-y-auto" // Remove padding here, form adds it internally
+                            />
+                        </div>
+                    )}
+                </Card>
+
             </div>
         </div>
     );

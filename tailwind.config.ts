@@ -1,4 +1,3 @@
-
 import type { Config } from "tailwindcss";
 
 export default {
@@ -88,6 +87,10 @@ export default {
                 '0%': { opacity: '0', transform: 'translateY(20px) scale(0.98)' },
                 '100%': { opacity: '1', transform: 'translateY(0) scale(1)' },
             },
+             'fade-in': { // Simple fade-in
+                 '0%': { opacity: '0' },
+                 '100%': { opacity: '1' },
+             },
             'fade-out': { // Added fade-out keyframes
                  '0%': { opacity: '1' },
                  '100%': { opacity: '0', visibility: 'hidden' }, // Hide element after fade
@@ -115,26 +118,27 @@ export default {
                 '100%': { transform: 'translateX(100%) scaleX(0.5)' },
              },
             'slide-in-from-right': { // Step slide animation
-              '0%': { transform: 'translateX(100%)' },
-              '100%': { transform: 'translateX(0)' },
+              '0%': { transform: 'translateX(100%)', opacity: '0' },
+              '100%': { transform: 'translateX(0)', opacity: '1' },
             },
             'slide-out-to-left': { // Step slide animation
-              '0%': { transform: 'translateX(0)' },
-              '100%': { transform: 'translateX(-100%)' },
+              '0%': { transform: 'translateX(0)', opacity: '1' },
+              '100%': { transform: 'translateX(-100%)', opacity: '0' },
             },
             'slide-in-from-left': { // Step slide animation
-              '0%': { transform: 'translateX(-100%)' },
-              '100%': { transform: 'translateX(0)' },
+              '0%': { transform: 'translateX(-100%)', opacity: '0' },
+              '100%': { transform: 'translateX(0)', opacity: '1' },
             },
             'slide-out-to-right': { // Step slide animation
-              '0%': { transform: 'translateX(0)' },
-              '100%': { transform: 'translateX(100%)' },
+              '0%': { transform: 'translateX(0)', opacity: '1' },
+              '100%': { transform: 'translateX(100%)', opacity: '0' },
             },
   		},
   		animation: {
   			'accordion-down': 'accordion-down 0.2s ease-out',
   			'accordion-up': 'accordion-up 0.2s ease-out',
             'fade-in-up': 'fade-in-up 0.5s ease-out forwards',
+             'fade-in': 'fade-in 0.5s ease-out forwards', // Simple fade-in
             'fade-out': 'fade-out 0.5s ease-in-out forwards', // Added fade-out animation
             'subtle-pulse': 'subtle-pulse 2.5s ease-in-out infinite',
             'float': 'float 6s ease-in-out infinite', // Added float animation
@@ -142,13 +146,30 @@ export default {
             'sway-fall': 'sway-fall 3s ease-in-out infinite', // Added sway-fall animation
             'progress-indeterminate': 'progress-indeterminate 1.5s ease-in-out infinite', // Added indeterminate progress animation
              // Added step slide animations
-             'slide-in-from-right': 'slide-in-from-right 0.3s ease-out',
-             'slide-out-to-left': 'slide-out-to-left 0.3s ease-out forwards', // Use forwards to keep final state
-             'slide-in-from-left': 'slide-in-from-left 0.3s ease-out',
-             'slide-out-to-right': 'slide-out-to-right 0.3s ease-out forwards',
-  		}
+             'slide-in-from-right': 'slide-in-from-right 0.4s ease-out', // Slower slide
+             'slide-out-to-left': 'slide-out-to-left 0.4s ease-out forwards',
+             'slide-in-from-left': 'slide-in-from-left 0.4s ease-out',
+             'slide-out-to-right': 'slide-out-to-right 0.4s ease-out forwards',
+  		},
+         // Add animation delay utility
+         animationDelay: {
+             '100': '100ms',
+             '200': '200ms',
+             '300': '300ms',
+             '500': '500ms',
+         },
   	}
   },
-  plugins: [require("tailwindcss-animate")],
+  plugins: [
+      require("tailwindcss-animate"),
+      function ({ addUtilities }: { addUtilities: Function }) {
+          const newUtilities = {
+              '.animation-delay-100': { 'animation-delay': '100ms' },
+              '.animation-delay-200': { 'animation-delay': '200ms' },
+              '.animation-delay-300': { 'animation-delay': '300ms' },
+              '.animation-delay-500': { 'animation-delay': '500ms' },
+          }
+          addUtilities(newUtilities)
+      }
+  ],
 } satisfies Config;
-
