@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect } from "react"; // Import React and useEffect
@@ -237,7 +238,6 @@ export function LoginForm({ onLoginComplete }: LoginFormProps) {
                loadingText={`Welcome ${artistNameStep2}`} // Use profile name in welcome message
                duration={5000} // Duration in ms
                className="p-6" // Add padding for card context
-               // Ensure audio plays on mount if desired, managed internally by SplashScreen now
            />
        );
     }
@@ -246,60 +246,60 @@ export function LoginForm({ onLoginComplete }: LoginFormProps) {
   return (
     <>
       <Form {...form}>
-
-        {/* Use relative container for step animations - Adjusted min-height */}
-        {/* Added key to force re-render on step change for reliable animations */}
-        <div className="relative overflow-hidden min-h-[260px]" key={currentStep}> {/* Increased min-height slightly */}
+          {/* Use relative container for step animations - Adjusted min-height */}
+          {/* Added key to force re-render on step change for reliable animations */}
+          <div className="relative overflow-hidden min-h-[300px]" key={currentStep}> {/* Increased min-height */}
 
              {/* Step 1 Header (Only shown on step 1) */}
-             <div className={cn(currentStep !== 1 && "hidden")}>
-                <CardHeader className="items-center text-center p-6 border-b border-border/30">
-                    <LoginIconStep1 />
-                    <CardTitle className="text-2xl font-semibold tracking-tight text-primary">Artist Hub Login</CardTitle>
-                    <CardDescription className="text-muted-foreground text-sm">
-                        Enter your credentials to access your dashboard.
-                    </CardDescription>
-                </CardHeader>
-             </div>
+              <div className={cn(currentStep !== 1 && "hidden")}>
+                 <CardHeader className="items-center text-center p-6 border-b border-border/30">
+                     <LoginIconStep1 />
+                     <CardTitle className="text-2xl font-semibold tracking-tight text-primary">Artist Hub Login</CardTitle>
+                     <CardDescription className="text-muted-foreground text-sm">
+                         Enter your credentials to access your dashboard.
+                     </CardDescription>
+                 </CardHeader>
+              </div>
 
+            <form
+                onSubmit={(e) => {
+                    e.preventDefault();
+                    handleNext(); // Trigger next/submit logic
+                }}
+                className={cn(
+                    "space-y-4 px-6 pb-6",
+                    currentStep === 1 ? "pt-6" : "pt-0" // Adjust top padding based on step
+                )}
+                aria-live="polite"
+            >
+              {/* Step 1: Email (Moved below header) */}
+              {currentStep === 1 && (
+                <div className="space-y-4 min-h-[80px]">
+                    <FormField
+                    control={form.control}
+                    name="artistId"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>Artist ID (Email)</FormLabel>
+                        <FormControl>
+                            <Input
+                            type="email"
+                            placeholder="your.email@example.com"
+                            {...field}
+                            disabled={authLoading || isFetchingProfile || isSubmitting}
+                            autoComplete="email"
+                            className="bg-background/50 dark:bg-background/30 border-input focus:ring-accent"
+                            />
+                        </FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                    />
+                </div>
+              )}
 
-             {/* Form Container with Animation */}
-             <div className={cn("absolute inset-0 px-6 pb-6 pt-6", getAnimationClasses(currentStep))}>
-                 <form
-                   onSubmit={(e) => {
-                     e.preventDefault();
-                     handleNext(); // Trigger next/submit logic
-                    }}
-                    className="space-y-4"
-                    aria-live="polite"
-                 >
-                  {/* Step 1: Email */}
-                  {currentStep === 1 && (
-                    <div className="space-y-4 min-h-[80px]">
-                      <FormField
-                        control={form.control}
-                        name="artistId"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Artist ID (Email)</FormLabel>
-                            <FormControl>
-                              <Input
-                                type="email"
-                                placeholder="your.email@example.com"
-                                {...field}
-                                disabled={authLoading || isFetchingProfile || isSubmitting}
-                                autoComplete="email"
-                                className="bg-background/50 dark:bg-background/30 border-input focus:ring-accent"
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-                  )}
-
-                  {/* Step 2: Password */}
+              {/* Step 2: Password (Inside animated container) */}
+              <div className={cn("absolute inset-0 px-6 pb-6 pt-6", getAnimationClasses(2))}>
                   {currentStep === 2 && (
                     <div className="space-y-4 flex flex-col items-center min-h-[200px]"> {/* Increased min-height */}
                       <>
@@ -359,40 +359,40 @@ export function LoginForm({ onLoginComplete }: LoginFormProps) {
                       </>
                     </div>
                   )}
+              </div>
 
-                  {/* Navigation Buttons - Placed outside step divs */}
-                  <div className="flex justify-between pt-4">
-                      <Button
-                          type="button"
-                          variant="outline"
-                          onClick={handlePrevious}
-                          disabled={currentStep === 1 || authLoading || isFetchingProfile || isSubmitting}
-                          className={cn(currentStep === 1 && "invisible")} // Hide if on first step
-                      >
-                         <ArrowLeft className="mr-2 h-4 w-4" /> Previous
-                      </Button>
-                      <Button
-                          type="button" // Changed to button, handle logic in onClick
-                          onClick={handleNext} // Use handleNext for validation + step change/submit
-                          disabled={authLoading || isFetchingProfile || isSubmitting || (currentStep === 1 && !form.watch('artistId')) || (currentStep === 2 && !form.watch('password'))}
-                          className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-md disabled:shadow-none disabled:bg-muted disabled:text-muted-foreground"
-                      >
-                          {(authLoading || isFetchingProfile || isSubmitting) && currentStep === 1 ? ( // Check isSubmitting
+                {/* Navigation Buttons - Placed outside step divs */}
+                <div className="flex justify-between pt-4">
+                    <Button
+                        type="button"
+                        variant="outline"
+                        onClick={handlePrevious}
+                        disabled={currentStep === 1 || authLoading || isFetchingProfile || isSubmitting}
+                        className={cn(currentStep === 1 && "invisible")} // Hide if on first step
+                    >
+                        <ArrowLeft className="mr-2 h-4 w-4" /> Previous
+                    </Button>
+                    <Button
+                        type="button" // Changed to button, handle logic in onClick
+                        onClick={handleNext} // Use handleNext for validation + step change/submit
+                        disabled={authLoading || isFetchingProfile || isSubmitting || (currentStep === 1 && !form.watch('artistId')) || (currentStep === 2 && !form.watch('password'))}
+                        className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-md disabled:shadow-none disabled:bg-muted disabled:text-muted-foreground"
+                    >
+                        {(authLoading || isFetchingProfile || isSubmitting) && currentStep === 1 ? ( // Check isSubmitting
+                        <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Processing...</>
+                        ) : (authLoading || isSubmitting) && currentStep === 2 ? ( // Check isSubmitting
                             <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Processing...</>
-                          ) : (authLoading || isSubmitting) && currentStep === 2 ? ( // Check isSubmitting
-                             <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Processing...</>
-                          ) : currentStep === STEPS.length ? (
-                             'Login'
-                          ) : (
-                             <>Next <ArrowRight className="ml-2 h-4 w-4" /></>
-                          )}
-                      </Button>
-                  </div>
-                   {/* Hidden submit for Enter key */}
-                   <button type="submit" disabled={isSubmitting} style={{ display: 'none' }} aria-hidden="true"></button>
-                </form>
-             </div>
-        </div>
+                        ) : currentStep === STEPS.length ? (
+                            'Login'
+                        ) : (
+                            <>Next <ArrowRight className="ml-2 h-4 w-4" /></>
+                        )}
+                    </Button>
+                </div>
+                {/* Hidden submit for Enter key */}
+                <button type="submit" disabled={isSubmitting} style={{ display: 'none' }} aria-hidden="true"></button>
+            </form>
+          </div>
       </Form>
 
       <ForgotPasswordModal
@@ -402,3 +402,4 @@ export function LoginForm({ onLoginComplete }: LoginFormProps) {
     </>
   );
 }
+
