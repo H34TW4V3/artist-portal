@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useRef, useEffect } from "react";
@@ -22,11 +23,12 @@ import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { Progress } from "@/components/ui/progress"; // Import Progress
 
-// Define steps for the demo submission flow
+// Define steps for the demo submission flow - Now 4 steps
 const DEMO_SUBMISSION_STEPS = [
-  { id: 1, name: "Artist & Contact Info", icon: User },
-  { id: 2, name: "Socials & Bio (Optional)", icon: LinkIcon },
-  { id: 3, name: "Track Info & Upload", icon: Music },
+  { id: 1, name: "Artist Name", icon: User },
+  { id: 2, name: "Contact Email", icon: Mail },
+  { id: 3, name: "Socials & Bio (Optional)", icon: LinkIcon },
+  { id: 4, name: "Track Info & Upload", icon: Music },
 ];
 
 // Schema remains the same, validation happens per step
@@ -158,9 +160,10 @@ export function SubmitDemoForm({ onSuccess, onCancel, className }: SubmitDemoFor
   // Validate fields relevant to the current step
   const validateStep = async (step: number): Promise<boolean> => {
     let fieldsToValidate: (keyof DemoFormValues)[] = [];
-    if (step === 1) fieldsToValidate = ["artistName", "email"];
-    else if (step === 2) fieldsToValidate = ["socialLinks", "bio"]; // Optional fields, but maybe check length limits if filled
-    else if (step === 3) fieldsToValidate = ["trackName", "demoFile"];
+    if (step === 1) fieldsToValidate = ["artistName"]; // Step 1: Artist Name
+    else if (step === 2) fieldsToValidate = ["email"]; // Step 2: Email
+    else if (step === 3) fieldsToValidate = ["socialLinks", "bio"]; // Step 3: Optional fields, but maybe check length limits if filled
+    else if (step === 4) fieldsToValidate = ["trackName", "demoFile"]; // Step 4: Track info
 
     // Only trigger validation for required fields or fields with content
     const fieldsWithValues = fieldsToValidate.filter(field => {
@@ -169,7 +172,8 @@ export function SubmitDemoForm({ onSuccess, onCancel, className }: SubmitDemoFor
         return true; // Always validate required fields like name, email, track, file
     });
 
-    if (fieldsWithValues.length === 0 && step === 2) return true; // Step 2 is optional, allow skipping if empty
+    // Step 3 is optional, allow skipping if empty
+    if (fieldsWithValues.length === 0 && step === 3) return true;
 
     const result = await form.trigger(fieldsWithValues);
 
@@ -254,21 +258,26 @@ export function SubmitDemoForm({ onSuccess, onCancel, className }: SubmitDemoFor
                 {/* Forms are nested inside for step transition */}
                 <form onSubmit={(e) => {e.preventDefault(); handleNext();}} className="space-y-4" aria-live="polite">
 
-                    {/* Step 1: Artist & Contact */}
+                    {/* Step 1: Artist Name */}
                     <div className={cn("space-y-4", getAnimationClasses(1))} aria-hidden={currentStep !== 1}>
                         <FormField control={form.control} name="artistName" render={({ field }) => ( <FormItem><FormLabel>Artist Name</FormLabel><FormControl><div className="relative"><User className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input placeholder="Your stage name" {...field} disabled={isSubmitting || currentStep !== 1} className="pl-8" /></div></FormControl><FormMessage /></FormItem> )} />
-                        <FormField control={form.control} name="email" render={({ field }) => ( <FormItem><FormLabel>Contact Email</FormLabel><FormControl><div className="relative"><Mail className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input type="email" placeholder="your.email@example.com" {...field} disabled={isSubmitting || currentStep !== 1} className="pl-8" /></div></FormControl><FormMessage /></FormItem> )} />
                     </div>
 
-                    {/* Step 2: Socials & Bio */}
-                    <div className={cn("space-y-4", getAnimationClasses(2))} aria-hidden={currentStep !== 2}>
-                        <FormField control={form.control} name="socialLinks" render={({ field }) => ( <FormItem><FormLabel>Social Links (Optional)</FormLabel><FormControl><div className="relative"><LinkIcon className="absolute left-2.5 top-3 h-4 w-4 text-muted-foreground" /><Textarea placeholder="Spotify, SoundCloud, Instagram..." className="resize-none pl-8" {...field} value={field.value ?? ""} disabled={isSubmitting || currentStep !== 2} rows={3}/></div></FormControl><FormDescription className="text-xs">Links to your music profiles or social media.</FormDescription><FormMessage /></FormItem> )} />
-                        <FormField control={form.control} name="bio" render={({ field }) => ( <FormItem><FormLabel>Short Bio (Optional)</FormLabel><FormControl><div className="relative"><FileText className="absolute left-2.5 top-3 h-4 w-4 text-muted-foreground" /><Textarea placeholder="Describe your music or yourself as an artist..." className="resize-none pl-8" {...field} value={field.value ?? ""} disabled={isSubmitting || currentStep !== 2} rows={4}/></div></FormControl><FormDescription className="text-xs">Max 1000 characters.</FormDescription><FormMessage /></FormItem> )} />
+                    {/* Step 2: Contact Email */}
+                     <div className={cn("space-y-4", getAnimationClasses(2))} aria-hidden={currentStep !== 2}>
+                        <FormField control={form.control} name="email" render={({ field }) => ( <FormItem><FormLabel>Contact Email</FormLabel><FormControl><div className="relative"><Mail className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input type="email" placeholder="your.email@example.com" {...field} disabled={isSubmitting || currentStep !== 2} className="pl-8" /></div></FormControl><FormMessage /></FormItem> )} />
                     </div>
 
-                    {/* Step 3: Track Info & Upload */}
+
+                    {/* Step 3: Socials & Bio */}
                     <div className={cn("space-y-4", getAnimationClasses(3))} aria-hidden={currentStep !== 3}>
-                        <FormField control={form.control} name="trackName" render={({ field }) => ( <FormItem><FormLabel>Demo Track Name</FormLabel><FormControl><div className="relative"><Music className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input placeholder="Title of your demo track" {...field} disabled={isSubmitting || currentStep !== 3} className="pl-8" /></div></FormControl><FormMessage /></FormItem> )} />
+                        <FormField control={form.control} name="socialLinks" render={({ field }) => ( <FormItem><FormLabel>Social Links (Optional)</FormLabel><FormControl><div className="relative"><LinkIcon className="absolute left-2.5 top-3 h-4 w-4 text-muted-foreground" /><Textarea placeholder="Spotify, SoundCloud, Instagram..." className="resize-none pl-8" {...field} value={field.value ?? ""} disabled={isSubmitting || currentStep !== 3} rows={3}/></div></FormControl><FormDescription className="text-xs">Links to your music profiles or social media.</FormDescription><FormMessage /></FormItem> )} />
+                        <FormField control={form.control} name="bio" render={({ field }) => ( <FormItem><FormLabel>Short Bio (Optional)</FormLabel><FormControl><div className="relative"><FileText className="absolute left-2.5 top-3 h-4 w-4 text-muted-foreground" /><Textarea placeholder="Describe your music or yourself as an artist..." className="resize-none pl-8" {...field} value={field.value ?? ""} disabled={isSubmitting || currentStep !== 3} rows={4}/></div></FormControl><FormDescription className="text-xs">Max 1000 characters.</FormDescription><FormMessage /></FormItem> )} />
+                    </div>
+
+                    {/* Step 4: Track Info & Upload */}
+                    <div className={cn("space-y-4", getAnimationClasses(4))} aria-hidden={currentStep !== 4}>
+                        <FormField control={form.control} name="trackName" render={({ field }) => ( <FormItem><FormLabel>Demo Track Name</FormLabel><FormControl><div className="relative"><Music className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input placeholder="Title of your demo track" {...field} disabled={isSubmitting || currentStep !== 4} className="pl-8" /></div></FormControl><FormMessage /></FormItem> )} />
                         <FormField control={form.control} name="demoFile" render={({ fieldState }) => (
                             <FormItem>
                                 <FormLabel>Demo Track (MP3, max 50MB)</FormLabel>
@@ -277,7 +286,7 @@ export function SubmitDemoForm({ onSuccess, onCancel, className }: SubmitDemoFor
                                         {fileName ? (
                                             <div className="flex items-center justify-between w-full">
                                                 <div className="flex items-center gap-2 text-sm font-medium text-foreground truncate mr-2"><Music className="h-5 w-5 text-muted-foreground" /><span>{fileName}</span></div>
-                                                <Button type="button" variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-destructive rounded-full" onClick={clearFile} disabled={isSubmitting || currentStep !== 3}><X className="h-4 w-4" /></Button>
+                                                <Button type="button" variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-destructive rounded-full" onClick={clearFile} disabled={isSubmitting || currentStep !== 4}><X className="h-4 w-4" /></Button>
                                             </div>
                                         ) : (
                                             <div className="text-center">
@@ -285,7 +294,7 @@ export function SubmitDemoForm({ onSuccess, onCancel, className }: SubmitDemoFor
                                                 <div className="mt-2 flex text-sm text-muted-foreground justify-center">
                                                     <label htmlFor="demoFile-input" className="relative cursor-pointer rounded-md bg-background px-1 font-medium text-primary hover:text-primary/90 focus-within:outline-none">
                                                         <span>Select MP3</span>
-                                                        <input id="demoFile-input" name="demoFile" type="file" className="sr-only" accept="audio/mpeg" onChange={handleFileChange} ref={fileInputRef} disabled={isSubmitting || currentStep !== 3} />
+                                                        <input id="demoFile-input" name="demoFile" type="file" className="sr-only" accept="audio/mpeg" onChange={handleFileChange} ref={fileInputRef} disabled={isSubmitting || currentStep !== 4} />
                                                     </label>
                                                     {/* <p className="pl-1">or drag & drop</p> */}
                                                 </div>
@@ -342,3 +351,4 @@ export function SubmitDemoForm({ onSuccess, onCancel, className }: SubmitDemoFor
      </div>
   );
 }
+
