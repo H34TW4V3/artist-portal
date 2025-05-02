@@ -1,11 +1,11 @@
 
 "use client";
 
-import React, { useState, useEffect } from "react"; // Import React and useEffect
+import React, { useState, useEffect, useRef } from "react"; // Import React and useEffect
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
-import { Loader2, ArrowLeft, ArrowRight } from "lucide-react"; // Add Arrow icons
+import { Loader2, ArrowLeft, ArrowRight, User } from "lucide-react"; // Add Arrow icons, User icon
 import { useRouter } from "next/navigation"; // Keep useRouter if needed for redirect parameter handling
 
 import { Button } from "@/components/ui/button";
@@ -27,6 +27,7 @@ import { cn } from "@/lib/utils"; // Import cn
 import { getUserProfileByEmail } from "@/services/user"; // Import service function
 import type { ProfileFormValues } from "@/components/profile/profile-form"; // Import profile type
 import { Skeleton } from "@/components/ui/skeleton"; // Import Skeleton
+import { SplashScreen } from '@/components/common/splash-screen'; // Import SplashScreen
 
 // Define steps
 const STEPS = [
@@ -48,7 +49,6 @@ const loginSchema = emailSchema.merge(passwordSchema);
 
 type LoginFormValues = z.infer<typeof loginSchema>;
 
-// REMOVED: onLoginSuccess prop definition
 interface LoginFormProps {
      onLoginSuccess: (name: string, imageUrl: string | null) => void; // Keep for splash screen info
 }
@@ -62,7 +62,7 @@ const getInitials = (name: string | undefined | null) => {
 // Custom Login Icon based on the provided image - Moved here
 const LoginIconStep1 = () => (
     // Add subtle pulse animation to the icon
-    <svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 100 100" className="h-32 w-32 mb-4 text-primary animate-subtle-pulse"> {/* Adjusted margin */}
+    <svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 100 100" className="h-20 w-20 sm:h-24 sm:w-24 mb-4 text-primary animate-subtle-pulse"> {/* Adjusted size */}
       <defs>
         <linearGradient id="oxygenGradient" x1="0%" y1="0%" x2="100%" y2="100%">
           <stop offset="0%" style={{stopColor: 'hsl(180, 100%, 70%)', stopOpacity: 1}} /> {/* Cyan-ish */}
@@ -94,7 +94,7 @@ export function LoginForm({ onLoginSuccess }: LoginFormProps) {
   const [enteredEmail, setEnteredEmail] = useState(""); // Store email from step 1
   const [profileData, setProfileData] = useState<ProfileFormValues | null>(null); // Store fetched profile data
   const [isFetchingProfile, setIsFetchingProfile] = useState(false); // Loading state for profile fetch
-  // Removed audio state and useEffect for audio preloading
+  const [showSplash, setShowSplash] = useState(false); // State for splash display *within* the card
 
 
   const form = useForm<LoginFormValues>({
@@ -126,7 +126,8 @@ export function LoginForm({ onLoginSuccess }: LoginFormProps) {
        if (stepId === previousStep && currentStep < previousStep) {
            return "animate-slide-out-to-right"; // Exiting to right
        }
-       return stepId === currentStep ? "" : "hidden"; // Only current step is visible (unless animating out)
+       // Use absolute positioning to keep elements in the flow during transition
+       return stepId === currentStep ? "opacity-100 relative" : "opacity-0 pointer-events-none absolute inset-0";
    };
 
    // Validate current step before proceeding
@@ -189,12 +190,19 @@ export function LoginForm({ onLoginSuccess }: LoginFormProps) {
   async function onSubmit(values: LoginFormValues) {
     // Determine name and image URL *before* calling login/onLoginSuccess
     const nameForSplash = profileData?.name || enteredEmail?.split('@')[0] || "User";
+    // Use profileData.imageUrl for the splash screen image
     const imageUrlForSplash = profileData?.imageUrl || null;
+
+     // Show splash inside the card
+     setShowSplash(true);
 
     try {
       await login(values.artistId, values.password); // Use the validated values
-      onLoginSuccess(nameForSplash, imageUrlForSplash); // Call success handler for splash info
+      // onLoginSuccess is called by AuthProvider's listener now, but we pass info here for the parent component's splash logic
+      onLoginSuccess(nameForSplash, imageUrlForSplash);
+      // AuthProvider handles redirect after its state updates
     } catch (error) {
+       setShowSplash(false); // Hide splash on login error
       console.error("Login failed:", error);
       // If login fails due to wrong password, stay on password step
       if (error instanceof Error && error.message.includes("password")) {
@@ -218,7 +226,9 @@ export function LoginForm({ onLoginSuccess }: LoginFormProps) {
   }
 
   // Determine display name and image URL for step 2 - Use Artist Name from profile
-  const artistNameStep2 = profileData?.name || enteredEmail?.split('@')[0] || "User"; // Use profile name first
+  // Prioritize profileData.name
+  const artistNameStep2 = profileData?.name || enteredEmail?.split('@')[0] || "User";
+  // Use profileData.imageUrl
   const displayImageUrlStep2 = profileData?.imageUrl || null;
 
 
@@ -226,146 +236,155 @@ export function LoginForm({ onLoginSuccess }: LoginFormProps) {
     <>
       <Form {...form}>
 
-        {/* Use relative container for step animations - Adjusted min-height */}
-        <div className="relative overflow-hidden">
+        {/* Use relative container for step animations - Increased min-height */}
+        {/* Flex container to center content vertically */}
+        <div className="relative overflow-hidden flex flex-col justify-center min-h-[300px]"> {/* Adjusted min-height */}
 
-             {/* Step 1 Header (Only shown on step 1) */}
-             {currentStep === 1 && (
-                <CardHeader className="items-center text-center p-6 border-b border-border/30">
-                    <LoginIconStep1 /> {/* Always show the main logo */}
-                    <CardTitle className="text-2xl font-semibold tracking-tight text-primary">Artist Hub Login</CardTitle>
-                    <CardDescription className="text-muted-foreground text-sm">
-                        Enter your credentials to access your dashboard.
-                    </CardDescription>
-                </CardHeader>
-             )}
-
-             <form
-               onSubmit={(e) => {
-                 e.preventDefault();
-                 handleNext(); // Trigger next/submit logic
-                }}
-                className="space-y-4 px-6 pb-6 pt-6" // Add padding (removed pb-6 initially, added back with pt-6)
-                aria-live="polite"
-             >
-              {/* Step 1: Email */}
-              <div className={cn("space-y-4 min-h-[80px]", getAnimationClasses(1))}> {/* Reduced min-height */}
-                {currentStep === 1 && (
-                  <FormField
-                    control={form.control}
-                    name="artistId"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Artist ID (Email)</FormLabel>
-                        <FormControl>
-                          <Input
-                            type="email"
-                            placeholder="your.email@example.com"
-                            {...field}
-                            disabled={authLoading}
-                            autoComplete="email"
-                            className="bg-background/50 dark:bg-background/30 border-input focus:ring-accent"
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                )}
-              </div>
-
-              {/* Step 2: Password */}
-              <div className={cn("space-y-4 flex flex-col items-center min-h-[180px]", getAnimationClasses(2))}> {/* Reduced min-height */}
-                {currentStep === 2 && (
-                  <>
-                    {/* Show Avatar and Name */}
-                     {isFetchingProfile ? (
-                        <div className="flex flex-col items-center mb-4">
-                            <Skeleton className="h-20 w-20 rounded-full mb-2 bg-muted/50" />
-                            <Skeleton className="h-4 w-24 bg-muted/50" />
-                        </div>
-                     ) : (
-                         <div className="flex flex-col items-center mb-4 text-center">
-                             <Avatar className="h-20 w-20 mb-2 border-2 border-primary/40">
-                                 <AvatarImage src={displayImageUrlStep2 || undefined} alt={artistNameStep2} />
-                                 <AvatarFallback className="text-2xl bg-muted text-muted-foreground">
-                                    {getInitials(artistNameStep2)}
-                                 </AvatarFallback>
-                             </Avatar>
-                             <p className="text-lg font-medium text-foreground">
-                                {artistNameStep2} {/* Display artist name */}
-                             </p>
-                         </div>
-                     )}
-
-                    {/* Password Field */}
-                    <FormField
-                      control={form.control}
-                      name="password"
-                      render={({ field }) => (
-                        <FormItem className="w-full">
-                          <FormLabel className="sr-only">Password</FormLabel>
-                          <FormControl>
-                            <Input
-                              type="password"
-                              placeholder="Password"
-                              {...field}
-                              disabled={authLoading || isFetchingProfile}
-                              autoComplete="current-password"
-                              className="bg-background/50 dark:bg-background/30 border-input focus:ring-accent w-full"
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
+            {/* Conditional Rendering based on showSplash state */}
+            {showSplash ? (
+                 <SplashScreen
+                      // Use the splash component directly inside the form area
+                      loadingText={`Welcome, ${artistNameStep2}!`} // Use the determined name
+                      userImageUrl={displayImageUrlStep2} // Pass the determined image URL
+                      userName={artistNameStep2}
+                      // Ensure splash fills the card space if desired, or centers
+                      className="absolute inset-0 flex items-center justify-center bg-card/20 dark:bg-card/10" // Fill parent
+                      style={{ animationDelay: '0s' }}
                     />
-                     {/* Forgot Password Link */}
-                     <div className="text-right w-full">
-                          <Button
-                            type="button"
-                            variant="link"
-                            className="text-sm font-medium text-primary hover:underline p-0 h-auto"
-                            onClick={() => setIsForgotPasswordModalOpen(true)}
-                            disabled={authLoading || isFetchingProfile}
-                          >
-                            Forgot Password?
-                          </Button>
-                      </div>
-                  </>
-                )}
-              </div>
+            ) : (
+              <>
+                  {/* Step 1 Content */}
+                 <div className={cn("space-y-4 px-6 pb-6 pt-6", getAnimationClasses(1))}>
+                   {currentStep === 1 && (
+                     <>
+                       <CardHeader className="items-center text-center p-0 mb-4"> {/* Reduced padding, margin */}
+                           <LoginIconStep1 />
+                           <CardTitle className="text-xl sm:text-2xl font-semibold tracking-tight text-primary">Artist Hub Login</CardTitle>
+                           <CardDescription className="text-muted-foreground text-sm">
+                               Enter your credentials to access your dashboard.
+                           </CardDescription>
+                       </CardHeader>
+                       <FormField
+                         control={form.control}
+                         name="artistId"
+                         render={({ field }) => (
+                           <FormItem>
+                             <FormLabel>Artist ID (Email)</FormLabel>
+                             <FormControl>
+                               <Input
+                                 type="email"
+                                 placeholder="your.email@example.com"
+                                 {...field}
+                                 disabled={authLoading}
+                                 autoComplete="email"
+                                 className="bg-background/50 dark:bg-background/30 border-input focus:ring-accent"
+                               />
+                             </FormControl>
+                             <FormMessage />
+                           </FormItem>
+                         )}
+                       />
+                     </>
+                   )}
+                 </div>
 
-              {/* Navigation Buttons - Placed outside step divs */}
-              <div className="flex justify-between pt-4">
-                  <Button
-                      type="button"
-                      variant="outline"
-                      onClick={handlePrevious}
-                      disabled={currentStep === 1 || authLoading || isFetchingProfile}
-                      className={cn(currentStep === 1 && "invisible")} // Hide if on first step
-                  >
-                     <ArrowLeft className="mr-2 h-4 w-4" /> Previous
-                  </Button>
-                  <Button
-                      type="button"
-                      onClick={handleNext}
-                      disabled={authLoading || isFetchingProfile || (currentStep === 1 && !form.watch('artistId')) || (currentStep === 2 && !form.watch('password'))}
-                      className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-md disabled:shadow-none disabled:bg-muted disabled:text-muted-foreground"
-                  >
-                      {(authLoading || isFetchingProfile) && currentStep === 1 ? (
-                        <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Processing...</>
-                      ) : authLoading && currentStep === 2 ? (
-                         <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Processing...</>
-                      ) : currentStep === STEPS.length ? (
-                         'Login'
-                      ) : (
-                         <>Next <ArrowRight className="ml-2 h-4 w-4" /></>
-                      )}
-                  </Button>
-              </div>
-               {/* Hidden submit for Enter key */}
-               <button type="submit" style={{ display: 'none' }} aria-hidden="true"></button>
-            </form>
+                 {/* Step 2 Content */}
+                  <div className={cn("space-y-4 flex flex-col items-center px-6 pb-6 pt-6", getAnimationClasses(2))}>
+                   {currentStep === 2 && (
+                     <>
+                       {/* Show Avatar and Name */}
+                        {isFetchingProfile ? (
+                           <div className="flex flex-col items-center mb-4">
+                               <Skeleton className="h-16 w-16 rounded-full mb-2 bg-muted/50" /> {/* Slightly smaller */}
+                               <Skeleton className="h-4 w-24 bg-muted/50" />
+                           </div>
+                        ) : (
+                            <div className="flex flex-col items-center mb-4 text-center">
+                                <Avatar className="h-16 w-16 mb-2 border-2 border-primary/40"> {/* Slightly smaller */}
+                                    <AvatarImage src={displayImageUrlStep2 || undefined} alt={artistNameStep2} />
+                                    <AvatarFallback className="text-xl bg-muted text-muted-foreground"> {/* Adjusted size */}
+                                       {getInitials(artistNameStep2)}
+                                    </AvatarFallback>
+                                </Avatar>
+                                <p className="text-base font-medium text-foreground"> {/* Adjusted size */}
+                                   {artistNameStep2} {/* Display artist name */}
+                                </p>
+                            </div>
+                        )}
+
+                       {/* Password Field */}
+                       <FormField
+                         control={form.control}
+                         name="password"
+                         render={({ field }) => (
+                           <FormItem className="w-full">
+                             <FormLabel className="sr-only">Password</FormLabel>
+                             <FormControl>
+                               <Input
+                                 type="password"
+                                 placeholder="Password"
+                                 {...field}
+                                 disabled={authLoading || isFetchingProfile}
+                                 autoComplete="current-password"
+                                 className="bg-background/50 dark:bg-background/30 border-input focus:ring-accent w-full"
+                               />
+                             </FormControl>
+                             <FormMessage />
+                           </FormItem>
+                         )}
+                       />
+                        {/* Forgot Password Link */}
+                        <div className="text-right w-full">
+                             <Button
+                               type="button"
+                               variant="link"
+                               className="text-xs font-medium text-primary hover:underline p-0 h-auto" // Smaller text
+                               onClick={() => setIsForgotPasswordModalOpen(true)}
+                               disabled={authLoading || isFetchingProfile}
+                             >
+                               Forgot Password?
+                             </Button>
+                         </div>
+                     </>
+                   )}
+                 </div>
+
+                 {/* Navigation Buttons - Placed outside step divs but inside the non-splash container */}
+                 <div className={cn(
+                      "flex justify-between px-6 pb-6",
+                       // Hide navigation if splash is shown
+                      showSplash && "opacity-0 pointer-events-none"
+                  )}>
+                     <Button
+                         type="button"
+                         variant="outline"
+                         onClick={handlePrevious}
+                         disabled={currentStep === 1 || authLoading || isFetchingProfile}
+                         className={cn(currentStep === 1 && "invisible")} // Hide if on first step
+                     >
+                        <ArrowLeft className="mr-2 h-4 w-4" /> Previous
+                     </Button>
+                     <Button
+                         type="button"
+                         onClick={handleNext}
+                         disabled={authLoading || isFetchingProfile || (currentStep === 1 && !form.watch('artistId')) || (currentStep === 2 && !form.watch('password'))}
+                         className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-md disabled:shadow-none disabled:bg-muted disabled:text-muted-foreground"
+                     >
+                         {(authLoading || isFetchingProfile) && currentStep === 1 ? (
+                           <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Processing...</>
+                         ) : authLoading && currentStep === 2 ? (
+                            <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Processing...</>
+                         ) : currentStep === STEPS.length ? (
+                            'Login'
+                         ) : (
+                            <>Next <ArrowRight className="ml-2 h-4 w-4" /></>
+                         )}
+                     </Button>
+                 </div>
+                  {/* Hidden submit for Enter key */}
+                  <button type="submit" disabled={isFetchingProfile || authLoading} style={{ display: 'none' }} aria-hidden="true"></button>
+              </>
+            )}
         </div>
       </Form>
 
