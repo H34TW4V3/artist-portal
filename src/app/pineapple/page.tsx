@@ -131,12 +131,13 @@ export default function PineapplePage() {
                      </TabsContent>
                 </Tabs>
 
-                 {/* Floating Create Post Button - Increased size */}
+                 {/* Floating Create Post Button - Increased size and animation */}
                  <Button
                     size="lg" // Use size="lg" for overall button size
                     className={cn(
                         "fixed bottom-20 right-4 z-40 h-16 w-16 rounded-full shadow-lg bg-primary hover:bg-primary/90 text-primary-foreground p-0", // Increased h/w
-                        "hover-glow focus-glow" // Glow effects
+                        "hover-glow focus-glow", // Glow effects
+                        "transition-transform duration-200 ease-out hover:scale-110 hover:rotate-6 focus-visible:scale-110 focus-visible:rotate-6" // Add hover/focus animation
                     )}
                     onClick={() => setIsCreateModalOpen(true)}
                     aria-label="Create New Post"
@@ -156,3 +157,4 @@ export default function PineapplePage() {
         </div>
     );
 }
+

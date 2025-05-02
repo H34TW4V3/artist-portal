@@ -6,6 +6,8 @@ import {
     where,
     getDocs,
     limit,
+    doc,     // Import doc
+    getDoc,  // Import getDoc
 } from "firebase/firestore";
 import { db } from './firebase-config'; // Import initialized db
 import type { ProfileFormValues } from '@/components/profile/profile-form'; // Import profile type
@@ -50,3 +52,37 @@ export async function getUserProfileByEmail(email: string): Promise<ProfileFormV
     }
 }
 
+/**
+ * Fetches a user's profile document from the 'users' collection based on their UID.
+ * @param uid - The UID of the user to fetch.
+ * @returns A promise resolving to the ProfileFormValues object if found, otherwise null.
+ * @throws An error if there's an issue fetching the document.
+ */
+export async function getUserProfileByUid(uid: string): Promise<ProfileFormValues | null> {
+    if (!uid) {
+        console.warn("getUserProfileByUid: UID is required.");
+        return null;
+    }
+
+    const userDocRef = doc(db, "users", uid); // Create a DocumentReference
+
+    try {
+        const docSnap = await getDoc(userDocRef); // Fetch the document
+
+        if (!docSnap.exists()) {
+            console.log(`No user profile found for UID: ${uid}`);
+            return null; // Document doesn't exist
+        }
+
+        const userData = docSnap.data() as ProfileFormValues; // Cast data
+
+        // Optionally, add Zod validation here
+
+        console.log(`Fetched user profile for UID: ${uid}`);
+        return userData;
+
+    } catch (error) {
+        console.error("Error fetching user profile by UID:", error);
+        throw new Error("Failed to fetch user profile by UID.");
+    }
+}

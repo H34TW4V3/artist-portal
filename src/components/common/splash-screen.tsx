@@ -1,127 +1,85 @@
 
-import React, { useEffect, useRef } from 'react'; // Import React and hooks
-import { Loader2 } from 'lucide-react';
+import React, { useEffect, useRef } from 'react'; // Ensure React is imported
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'; // Import Avatar components
+// REMOVED: Howler import
 
 interface SplashScreenProps {
     className?: string;
-    style?: React.CSSProperties; // Allow passing style, e.g., for animation delay
-    loadingText?: string; // Optional prop for custom loading text
-    userImageUrl?: string | null; // Optional user image URL
-    userName?: string | null; // Optional user name for fallback/initials
-    appletIcon?: React.ReactNode; // Optional specific icon for the applet being loaded
-    duration?: number; // Optional duration in milliseconds
+    style?: React.CSSProperties;
+    loadingText?: string;
+    userImageUrl?: string | null;
+    userName?: string | null;
+    appletIcon?: React.ReactNode;
+    duration?: number; // Still potentially useful for internal state management if needed
+    // REMOVED: playAudioUrl, audioPlayedRef
 }
-
-// Placeholder URL for the GIF - consistent with login page
-const LOGIN_BACKGROUND_GIF_URL = "https://giffiles.alphacoders.com/173/173157.gif";
 
 // Helper to get initials
 const getInitials = (name: string | undefined | null) => {
-    return name?.split(' ').map(n => n[0]).join('').toUpperCase() || 'U'; // Default to 'U'
+    return name?.split(' ').map(n => n[0]).join('').toUpperCase() || 'U';
 };
 
-
-export const SplashScreen: React.FC<SplashScreenProps> = ({
+// Use standard function component definition
+export function SplashScreen({
     className,
     style,
     loadingText,
     userImageUrl,
     userName,
-    appletIcon, // Destructure the new prop
-    duration = 3000, // Default duration if not provided
-}) => {
-    const [isVisible, setIsVisible] = React.useState(true);
-    const timerRef = useRef<NodeJS.Timeout | null>(null);
+    appletIcon,
+    duration = 5000, // Default duration set here
+    // REMOVED: playAudioUrl, audioPlayedRef
+}: SplashScreenProps) {
+    // REMOVED: audioRef, internalAudioPlayedRef, currentAudioPlayedRef
 
-    // Effect to handle automatic fade-out based on duration
-    // This only applies if the parent doesn't control visibility externally via className/unmounting
-    useEffect(() => {
-        // Clear any existing timer when component updates
-        if (timerRef.current) {
-            clearTimeout(timerRef.current);
-        }
+    // REMOVED: useEffect for audio initialization
 
-        // Set a new timer to hide the splash screen after the specified duration
-        timerRef.current = setTimeout(() => {
-            setIsVisible(false);
-        }, duration);
+    const animationClass = 'animate-fade-in opacity-100';
 
-        // Cleanup timer on unmount
-        return () => {
-            if (timerRef.current) {
-                clearTimeout(timerRef.current);
-            }
-        };
-    }, [duration]); // Rerun if duration changes
-
-    // Determine animation based on visibility state
-    // Apply fade-out only when isVisible becomes false
-    const animationClass = isVisible ? 'animate-fade-in-up opacity-100' : 'animate-fade-out';
-
-
-    return (
+   // Ensure clean syntax before return
+   return (
         <div
             className={cn(
-                "fixed inset-0 z-[9999] flex flex-col items-center justify-center",
-                "transition-opacity duration-500 ease-in-out", // Smooth opacity transition
-                 animationClass, // Apply fade-in or fade-out animation
+                "flex flex-col items-center justify-center text-center p-6 rounded-lg",
+                "transition-opacity duration-500 ease-in-out",
+                 animationClass, // Apply fade-in animation
                 className // Allow overriding classes
             )}
-            // Style might be used for initial animation delay if needed
             style={style}
         >
-            {/* Background GIF - Same as login page */}
-            <div
-                className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat"
-                style={{ backgroundImage: `url('${LOGIN_BACKGROUND_GIF_URL}')` }}
-            />
 
-             {/* Content Overlay - Ensures content is above the background */}
-             <div className="relative z-10 flex flex-col items-center justify-center text-center p-4 rounded-lg bg-background/30 dark:bg-background/20 backdrop-blur-sm">
-                 {/* Conditional Logo/Avatar - Prioritize appletIcon, then user info, then default logo */}
-                 {appletIcon ? (
-                     <div className="h-32 w-32 mb-8 text-primary animate-subtle-pulse flex items-center justify-center">
-                          {/* Render the passed icon, ensuring size and color consistency */}
-                          {/* Cloning to apply consistent styles */}
-                          {React.isValidElement(appletIcon) ? React.cloneElement(appletIcon as React.ReactElement, { className: 'h-20 w-20 text-primary' }) : appletIcon}
-                     </div>
-                 ) : userImageUrl || userName ? ( // Check for user info if no appletIcon
-                     <Avatar className="h-32 w-32 mb-8 border-4 border-primary/50 animate-subtle-pulse">
-                         <AvatarImage src={userImageUrl || undefined} alt={userName || 'User'} />
-                         <AvatarFallback className="text-4xl bg-muted text-muted-foreground">
-                            {getInitials(userName)}
-                         </AvatarFallback>
-                     </Avatar>
-                 ) : (
-                     // Default SVG Logo
-                     <svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 100 100" className="h-32 w-32 mb-8 text-primary animate-subtle-pulse">
-                         <defs>
-                             <linearGradient id="splashGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                                 <stop offset="0%" style={{stopColor: 'hsl(180, 100%, 70%)', stopOpacity: 1}} />
-                                 <stop offset="50%" style={{stopColor: 'hsl(300, 100%, 80%)', stopOpacity: 1}} />
-                                 <stop offset="100%" style={{stopColor: 'hsl(35, 100%, 75%)', stopOpacity: 1}} />
-                             </linearGradient>
-                         </defs>
-                         <circle cx="50" cy="50" r="45" fill="none" stroke="url(#splashGradient)" strokeWidth="3" />
-                         <path d="M30 30 L70 70 M70 30 L30 70" stroke="url(#splashGradient)" strokeWidth="10" strokeLinecap="round" fill="none" />
-                     </svg>
-                 )}
+             {appletIcon ? (
+                 <div className="h-20 w-20 mb-4 text-primary animate-subtle-pulse flex items-center justify-center">
+                      {React.isValidElement(appletIcon) ? React.cloneElement(appletIcon as React.ReactElement, { className: 'h-16 w-16 text-primary' }) : appletIcon}
+                 </div>
+             ) : userImageUrl || userName ? (
+                 <Avatar className="h-20 w-20 mb-4 border-4 border-primary/50 animate-subtle-pulse">
+                     <AvatarImage src={userImageUrl || undefined} alt={userName || 'User'} />
+                     <AvatarFallback className="text-3xl bg-muted text-muted-foreground">
+                        {getInitials(userName)}
+                     </AvatarFallback>
+                 </Avatar>
+             ) : (
+                 <svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 100 100" className="h-20 w-20 mb-4 text-primary animate-subtle-pulse">
+                     <defs>
+                         <linearGradient id="splashGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                             <stop offset="0%" style={{stopColor: 'hsl(180, 100%, 70%)', stopOpacity: 1}} />
+                             <stop offset="50%" style={{stopColor: 'hsl(300, 100%, 80%)', stopOpacity: 1}} />
+                             <stop offset="100%" style={{stopColor: 'hsl(35, 100%, 75%)', stopOpacity: 1}} />
+                         </linearGradient>
+                     </defs>
+                     <circle cx="50" cy="50" r="45" fill="none" stroke="url(#splashGradient)" strokeWidth="3" />
+                     <path d="M30 30 L70 70 M70 30 L30 70" stroke="url(#splashGradient)" strokeWidth="10" strokeLinecap="round" fill="none" />
+                 </svg>
+             )}
 
-                 {/* Loading Indicator */}
-                 <Loader2 className="h-8 w-8 animate-spin text-primary mt-4" />
-                 {/* Use loadingText prop or default */}
-                <p className="mt-4 text-lg text-foreground font-semibold">
-                    {/* Ensure loadingText updates are reflected */}
-                    {loadingText || 'Loading Artist Hub...'}
-                </p>
-                {/* Display User Name if available AND not already in loadingText */}
-                {userName && !loadingText?.includes(userName) && (
-                    <p className="mt-1 text-sm text-muted-foreground">{userName}</p>
-                 )}
-            </div>
+            <p className="mt-3 text-base text-foreground font-semibold">
+                {loadingText || 'Loading...'}
+            </p>
+            {userName && !loadingText?.includes(userName) && (
+                <p className="mt-1 text-xs text-muted-foreground">{userName}</p>
+             )}
         </div>
     );
-};
-
+}

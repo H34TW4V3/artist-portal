@@ -44,6 +44,7 @@ export function SettingsMenuButton({
           size="icon"
           className={cn(
             "fixed bottom-4 right-4 z-50 h-12 w-12 rounded-full shadow-lg bg-card/60 dark:bg-card/50 border border-border/30 text-primary hover:bg-primary/10 hover:text-primary active:bg-primary/20 hover-glow focus-glow", // Adjusted opacity
+            "transition-transform duration-200 ease-out hover:scale-110 hover:rotate-6 focus-visible:scale-110 focus-visible:rotate-6", // Added hover/focus animation
             className
           )}
           aria-label="Open Settings Menu"
@@ -93,3 +94,4 @@ export function SettingsMenuButton({
     </DropdownMenu>
   );
 }
+

@@ -1,3 +1,4 @@
+
 import * as React from "react"
 import { Slot } from "@radix-ui/react-slot"
 import { cva, type VariantProps } from "class-variance-authority"
@@ -9,15 +10,15 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground hover:bg-primary/90 active:bg-primary/80 hover-glow focus-glow", // Added hover/focus glow
+        default: "bg-primary text-primary-foreground hover:bg-primary/90 active:bg-primary/80", // Removed glow
         destructive:
-          "bg-destructive text-destructive-foreground hover:bg-destructive/90 active:bg-destructive/80 hover:shadow-[0_0_15px_2px_theme(colors.destructive/0.6)] focus-visible:shadow-[0_0_15px_2px_theme(colors.destructive/0.6)]", // Added hover/focus glow for destructive
+          "bg-destructive text-destructive-foreground hover:bg-destructive/90 active:bg-destructive/80 hover:shadow-[0_0_15px_2px_theme(colors.destructive/0.6)] focus-visible:shadow-[0_0_15px_2px_theme(colors.destructive/0.6)]", // Kept destructive glow
         outline:
-          "border border-input bg-background hover:bg-accent hover:text-accent-foreground active:bg-accent/90 hover-glow focus-glow", // Added hover/focus glow
+          "border border-input bg-background hover:bg-accent hover:text-accent-foreground active:bg-accent/90", // Removed glow
         secondary:
-          "bg-secondary text-secondary-foreground hover:bg-secondary/80 active:bg-secondary/70 hover-glow focus-glow", // Added hover/focus glow
-        ghost: "hover:bg-accent hover:text-accent-foreground active:bg-accent/90 hover-glow focus-glow", // Added hover/focus glow
-        link: "text-primary underline-offset-4 hover:underline active:opacity-80", // Links typically don't have glow
+          "bg-secondary text-secondary-foreground hover:bg-secondary/80 active:bg-secondary/70", // Removed glow
+        ghost: "hover:bg-accent hover:text-accent-foreground active:bg-accent/90", // Removed glow
+        link: "text-primary underline-offset-4 hover:underline active:opacity-80",
       },
       size: {
         default: "h-10 px-4 py-2",
@@ -44,7 +45,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     const Comp = asChild ? Slot : "button"
     return (
       <Comp
-        className={cn(buttonVariants({ variant, size, className }))} // removed transition-subtle as it's now part of base cva
+        className={cn(buttonVariants({ variant, size, className }))}
         ref={ref}
         {...props}
       />
@@ -54,3 +55,4 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
 Button.displayName = "Button"
 
 export { Button, buttonVariants }
+

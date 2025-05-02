@@ -1,102 +1,395 @@
-import React, { useState } from 'react';
-import { useForm, FieldError } from 'react-hook-form';
-import { getUserProfileByEmail } from "@/services/user"; // Ensure this is correct
 
-// Define the type of the user profile you're fetching
-interface UserProfile {
-  name: string;
-  email: string;
-  bio?: string | null;
-  phoneNumber?: string | null;
-  imageUrl?: string | null;
+"use client";
+
+import React, { useState, useEffect } from "react"; // Import React and useEffect
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
+import * as z from "zod";
+import { Loader2, ArrowLeft, ArrowRight } from "lucide-react"; // Add Arrow icons
+import { useRouter } from "next/navigation"; // Keep useRouter if needed for redirect parameter handling
+
+import { Button } from "@/components/ui/button";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"; // Import Avatar components
+import { CardDescription, CardHeader, CardTitle } from "@/components/ui/card"; // Import Card components for header
+import { useToast } from "@/hooks/use-toast";
+import { ForgotPasswordModal } from "./forgot-password-modal"; // Import the modal
+import { useAuth } from "@/context/auth-context"; // Import useAuth hook
+import { cn } from "@/lib/utils"; // Import cn
+import { getUserProfileByEmail } from "@/services/user"; // Import service function
+import type { ProfileFormValues } from "@/components/profile/profile-form"; // Import profile type
+import { Skeleton } from "@/components/ui/skeleton"; // Import Skeleton
+import { SplashScreen } from "@/components/common/splash-screen"; // Import SplashScreen
+
+// Define steps
+const STEPS = [
+  { id: 1, name: "Enter Email" },
+  { id: 2, name: "Enter Password" },
+];
+
+// Define separate schemas for each step
+const emailSchema = z.object({
+  artistId: z.string().email({ message: "Please enter a valid email address." }),
+});
+
+const passwordSchema = z.object({
+  password: z.string().min(6, { message: "Password must be at least 6 characters." }),
+});
+
+// Combined schema for final submission (though validation happens per step)
+const loginSchema = emailSchema.merge(passwordSchema);
+
+type LoginFormValues = z.infer<typeof loginSchema>;
+
+interface LoginFormProps {
+    onLoginComplete: () => void; // Updated callback name
 }
 
-const LoginForm = () => {
-  const [isFetchingProfile, setIsFetchingProfile] = useState(false);
-  const [profileData, setProfileData] = useState<UserProfile | null>(null);
-  const [enteredEmail, setEnteredEmail] = useState<string>('');
-  const { register, handleSubmit, formState: { errors }, getValues } = useForm();
 
-  const STEPS = ["Step 1", "Step 2", "Step 3"];
-  const [currentStep, setCurrentStep] = useState<number>(0);
+// Helper to get initials
+const getInitials = (name: string | undefined | null) => {
+    return name?.split(' ').map(n => n[0]).join('').toUpperCase() || '?'; // Default to '?'
+};
 
-  const validateStep = async (step: number) => {
-    return true;
-  };
+// Custom Login Icon based on the provided image - Moved here
+const LoginIconStep1 = () => (
+    // Add subtle pulse animation to the icon
+    <svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 100 100" className="h-32 w-32 mb-4 text-primary animate-subtle-pulse"> {/* Adjusted margin */}
+      <defs>
+        <linearGradient id="oxygenGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" style={{stopColor: 'hsl(180, 100%, 70%)', stopOpacity: 1}} /> {/* Cyan-ish */}
+          <stop offset="50%" style={{stopColor: 'hsl(300, 100%, 80%)', stopOpacity: 1}} /> {/* Magenta-ish */}
+          <stop offset="100%" style={{stopColor: 'hsl(35, 100%, 75%)', stopOpacity: 1}} /> {/* Orange-ish */}
+        </linearGradient>
+      </defs>
+      {/* Outer circle with gradient stroke */}
+      <circle cx="50" cy="50" r="45" fill="none" stroke="url(#oxygenGradient)" strokeWidth="3" />
+      {/* Stylized 'X' with gradient stroke */}
+      <path
+        d="M30 30 L70 70 M70 30 L30 70"
+        stroke="url(#oxygenGradient)"
+        strokeWidth="10" // Adjust thickness as needed
+        strokeLinecap="round"
+        fill="none" // Use stroke instead of fill for the X lines if preferred
+      />
+    </svg>
+);
 
+
+export function LoginForm({ onLoginComplete }: LoginFormProps) {
+  const { login, loading: authLoading } = useAuth(); // Get login function and loading state from context
+  const { toast } = useToast();
+  const router = useRouter(); // Keep for potential future use (e.g., reading redirect param)
+  const [isForgotPasswordModalOpen, setIsForgotPasswordModalOpen] = useState(false);
+  const [currentStep, setCurrentStep] = useState(1);
+  const [previousStep, setPreviousStep] = useState(1); // For animation direction
+  const [enteredEmail, setEnteredEmail] = useState(""); // Store email from step 1
+  const [profileData, setProfileData] = useState<ProfileFormValues | null>(null); // Store fetched profile data
+  const [isFetchingProfile, setIsFetchingProfile] = useState(false); // Loading state for profile fetch
+  const [showSplash, setShowSplash] = useState(false); // State to control splash screen visibility
+
+  const form = useForm<LoginFormValues>({
+    resolver: zodResolver(loginSchema), // Use combined schema for full validation context if needed
+    defaultValues: {
+      artistId: "",
+      password: "",
+    },
+    mode: "onChange", // Validate on change
+  });
+
+  // Function to handle step change and animation state
   const goToStep = (step: number) => {
+    setPreviousStep(currentStep);
     setCurrentStep(step);
   };
 
-  const onSubmit = (data: any) => {
-    console.log("Form submitted with data:", data);
-  };
+  // Determine animation classes based on step change direction
+   const getAnimationClasses = (stepId: number): string => {
+       const isCurrent = stepId === currentStep;
+       const isPrevious = stepId === previousStep;
 
+       if (isCurrent && currentStep > previousStep) return "animate-slide-in-from-right";
+       if (isCurrent && currentStep < previousStep) return "animate-slide-in-from-left";
+       if (isPrevious && currentStep > previousStep) return "animate-slide-out-to-left absolute inset-0 px-6 pb-6 pt-6"; // Add positioning for exit animation
+       if (isPrevious && currentStep < previousStep) return "animate-slide-out-to-right absolute inset-0 px-6 pb-6 pt-6"; // Add positioning for exit animation
+       return isCurrent ? "opacity-100" : "opacity-0 pointer-events-none absolute inset-0 px-6 pb-6 pt-6"; // Hide non-active, non-animating steps
+   };
+
+   // Validate current step before proceeding
+   const validateStep = async (step: number): Promise<boolean> => {
+     let fieldsToValidate: (keyof LoginFormValues)[] = [];
+     if (step === 1) {
+       fieldsToValidate = ["artistId"];
+     } else if (step === 2) {
+        fieldsToValidate = ["password"]; // Validate password before final submit
+     }
+
+     const isValid = await form.trigger(fieldsToValidate);
+     if (!isValid) {
+          toast({ title: "Validation Error", description: "Please fix the errors before proceeding.", variant: "destructive", duration: 2000 });
+     }
+     return isValid;
+   };
+
+  // Handle "Next" button click
   const handleNext = async () => {
     if (await validateStep(currentStep)) {
       if (currentStep === 1) {
-        const email = getValues("artistId");
-        setEnteredEmail(email); 
+            const email = form.getValues("artistId");
+            setEnteredEmail(email); // Store email
 
-        setIsFetchingProfile(true);
-        setProfileData(null);
-        try {
-          const result = await getUserProfileByEmail(email);
-
-          if (result && result.name) {
-            setProfileData(result);
-            console.log("Fetched profile:", result);
-          } else {
-            console.warn("User not found for email:", email);
-            setProfileData(null);
-          }
-        } catch (error) {
-          console.error("Error fetching profile:", error);
-          setProfileData(null);
-        } finally {
-          setIsFetchingProfile(false);
-          goToStep(currentStep + 1);
-        }
+            // Fetch profile data
+            setIsFetchingProfile(true);
+            setProfileData(null); // Reset profile data
+            try {
+                const fetchedProfile = await getUserProfileByEmail(email);
+                setProfileData(fetchedProfile);
+                console.log("Fetched profile for password screen:", fetchedProfile);
+            } catch (error) {
+                console.warn("Could not fetch profile by email:", error);
+                setProfileData(null); // Ensure profile data is null on error
+            } finally {
+                 setIsFetchingProfile(false);
+                 goToStep(currentStep + 1); // Move to next step regardless of profile fetch result
+            }
       } else if (currentStep < STEPS.length) {
-        goToStep(currentStep + 1);
+          // For future steps if any
+          goToStep(currentStep + 1);
       } else {
-        await handleSubmit(onSubmit)();
+        // If on last step, trigger submission
+        await form.handleSubmit(onSubmit)();
       }
     }
   };
 
+  // Handle "Previous" button click
+  const handlePrevious = () => {
+    if (currentStep > 1) {
+       setProfileData(null); // Clear profile data when going back
+       setIsFetchingProfile(false);
+      goToStep(currentStep - 1);
+    }
+  };
+
+
+  async function onSubmit(values: LoginFormValues) {
+    setShowSplash(true); // Show splash screen immediately on final submit click
+    try {
+      await login(values.artistId, values.password); // Use the validated values
+       // Login success is handled by AuthProvider and onAuthStateChanged listener
+       // The listener will eventually set loading to false in AuthContext
+       // No need to call onLoginComplete immediately, wait for AuthContext update
+       console.log("LoginForm: Login initiated, waiting for auth state change...");
+        // Set a timer to call onLoginComplete after splash duration
+       setTimeout(() => {
+           onLoginComplete(); // Call completion handler after splash duration
+       }, 5000); // Match splash screen duration (5 seconds)
+
+    } catch (error) {
+      setShowSplash(false); // Hide splash on error
+      console.error("Login failed:", error);
+      // If login fails due to wrong password, stay on password step
+      if (error instanceof Error && error.message.includes("password")) {
+        goToStep(2); // Ensure user stays on password step
+        form.setError("password", { type: "manual", message: "Incorrect password." });
+      } else if (error instanceof Error && (error.message.includes("Artist ID") || error.message.includes("email") || error.message.includes("Invalid"))) { // Catch invalid credentials error
+          // If error related to email/user not found, go back to step 1
+          goToStep(1);
+          form.setError("artistId", { type: "manual", message: "Artist ID not found or invalid." });
+          setProfileData(null); // Clear profile data if user not found
+      } else {
+         // Generic error display
+          toast({
+            title: "Login Failed",
+            description: error instanceof Error ? error.message : "An unexpected error occurred.",
+            variant: "destructive",
+            duration: 2000
+          });
+      }
+    }
+  }
+
+  // Determine display name and image URL for step 2 - Use Artist Name from profile
+  // PRIORITIZE profileData.name
+  const artistNameStep2 = profileData?.name || enteredEmail?.split('@')[0] || "User";
+  const displayImageUrlStep2 = profileData?.imageUrl || null;
+
+    // If showing splash screen, render it
+    if (showSplash) {
+       return (
+           <SplashScreen
+               // Pass profile data if available, otherwise fallback
+               userImageUrl={displayImageUrlStep2}
+               userName={artistNameStep2}
+               loadingText={`Welcome ${artistNameStep2}`} // Use profile name in welcome message
+               duration={5000} // Duration in ms
+               className="p-6" // Add padding for card context
+           />
+       );
+    }
+
+
   return (
-    <div>
-      <form onSubmit={handleSubmit(onSubmit)}>
-        {/* Email field */}
-        <input
-          {...register("artistId", { required: "Email is required" })}
-          placeholder="Enter your email"
-        />
-        {/* Error handling */}
-        {errors.artistId && (
-          <span>{(errors.artistId as FieldError).message}</span>
-        )}
+    <>
+      <Form {...form}>
 
-        <button type="button" onClick={handleNext}>
-          {currentStep === STEPS.length ? 'Submit' : 'Next'}
-        </button>
-      </form>
+        {/* Use relative container for step animations - Adjusted min-height */}
+        {/* Added key to force re-render on step change for reliable animations */}
+        <div className="relative overflow-hidden min-h-[240px]" key={currentStep}>
 
-      {isFetchingProfile && <p>Loading profile...</p>}
+             {/* Step 1 Header (Only shown on step 1) */}
+             {currentStep === 1 && (
+                <CardHeader className="items-center text-center p-6 border-b border-border/30">
+                    <LoginIconStep1 /> {/* Always show the main logo */}
+                    <CardTitle className="text-2xl font-semibold tracking-tight text-primary">Artist Hub Login</CardTitle>
+                    <CardDescription className="text-muted-foreground text-sm">
+                        Enter your credentials to access your dashboard.
+                    </CardDescription>
+                </CardHeader>
+             )}
 
-      {profileData && (
-        <div>
-          <h3>Profile Details:</h3>
-          <p>Name: {profileData.name}</p>
-          <p>Email: {profileData.email}</p>
-          {profileData.bio && <p>Bio: {profileData.bio}</p>}
-          {profileData.phoneNumber && <p>Phone: {profileData.phoneNumber}</p>}
-          {profileData.imageUrl && <img src={profileData.imageUrl} alt="Profile" />}
+
+             <form
+               onSubmit={(e) => {
+                 e.preventDefault();
+                 handleNext(); // Trigger next/submit logic
+                }}
+                className={cn("space-y-4 px-6 pb-6 pt-6", getAnimationClasses(currentStep))} // Apply animation to the form itself
+                aria-live="polite"
+             >
+              {/* Step 1: Email */}
+              {currentStep === 1 && (
+                <div className="space-y-4 min-h-[80px]">
+                  <FormField
+                    control={form.control}
+                    name="artistId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Artist ID (Email)</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="email"
+                            placeholder="your.email@example.com"
+                            {...field}
+                            disabled={authLoading || isFetchingProfile}
+                            autoComplete="email"
+                            className="bg-background/50 dark:bg-background/30 border-input focus:ring-accent"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              )}
+
+              {/* Step 2: Password */}
+              {currentStep === 2 && (
+                <div className="space-y-4 flex flex-col items-center min-h-[180px]">
+                  <>
+                    {/* Show Avatar and Name */}
+                     {isFetchingProfile ? (
+                        <div className="flex flex-col items-center mb-4">
+                            <Skeleton className="h-20 w-20 rounded-full mb-2 bg-muted/50" />
+                            <Skeleton className="h-4 w-24 bg-muted/50" />
+                        </div>
+                     ) : (
+                         <div className="flex flex-col items-center mb-4 text-center">
+                             <Avatar className="h-20 w-20 mb-2 border-2 border-primary/40">
+                                 <AvatarImage src={displayImageUrlStep2 || undefined} alt={artistNameStep2} />
+                                 <AvatarFallback className="text-2xl bg-muted text-muted-foreground">
+                                    {getInitials(artistNameStep2)}
+                                 </AvatarFallback>
+                             </Avatar>
+                             <p className="text-lg font-medium text-foreground">
+                                {artistNameStep2} {/* Display artist name */}
+                             </p>
+                         </div>
+                     )}
+
+                    {/* Password Field */}
+                    <FormField
+                      control={form.control}
+                      name="password"
+                      render={({ field }) => (
+                        <FormItem className="w-full">
+                          <FormLabel className="sr-only">Password</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="password"
+                              placeholder="Password"
+                              {...field}
+                              disabled={authLoading || isFetchingProfile}
+                              autoComplete="current-password"
+                              className="bg-background/50 dark:bg-background/30 border-input focus:ring-accent w-full"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                     {/* Forgot Password Link */}
+                     <div className="text-right w-full">
+                          <Button
+                            type="button"
+                            variant="link"
+                            className="text-sm font-medium text-primary hover:underline p-0 h-auto"
+                            onClick={() => setIsForgotPasswordModalOpen(true)}
+                            disabled={authLoading || isFetchingProfile}
+                          >
+                            Forgot Password?
+                          </Button>
+                      </div>
+                  </>
+                </div>
+              )}
+
+              {/* Navigation Buttons - Placed outside step divs */}
+              <div className="flex justify-between pt-4">
+                  <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handlePrevious}
+                      disabled={currentStep === 1 || authLoading || isFetchingProfile}
+                      className={cn(currentStep === 1 && "invisible")} // Hide if on first step
+                  >
+                     <ArrowLeft className="mr-2 h-4 w-4" /> Previous
+                  </Button>
+                  <Button
+                      type="button" // Change to button, handle logic in onClick
+                      onClick={handleNext} // Use handleNext for validation + step change/submit
+                      disabled={authLoading || isFetchingProfile || (currentStep === 1 && !form.watch('artistId')) || (currentStep === 2 && !form.watch('password'))}
+                      className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-md disabled:shadow-none disabled:bg-muted disabled:text-muted-foreground"
+                  >
+                      {(authLoading || isFetchingProfile) && currentStep === 1 ? (
+                        <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Processing...</>
+                      ) : authLoading && currentStep === 2 ? (
+                         <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Processing...</>
+                      ) : currentStep === STEPS.length ? (
+                         'Login'
+                      ) : (
+                         <>Next <ArrowRight className="ml-2 h-4 w-4" /></>
+                      )}
+                  </Button>
+              </div>
+               {/* Hidden submit for Enter key */}
+               <button type="submit" disabled={isSubmitting} style={{ display: 'none' }} aria-hidden="true"></button>
+            </form>
         </div>
-      )}
-    </div>
-  );
-};
+      </Form>
 
-export default LoginForm;
+      <ForgotPasswordModal
+        isOpen={isForgotPasswordModalOpen}
+        onClose={() => setIsForgotPasswordModalOpen(false)}
+      />
+    </>
+  );
+}
