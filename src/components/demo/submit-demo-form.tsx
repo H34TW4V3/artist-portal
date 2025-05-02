@@ -5,7 +5,8 @@ import { useState, useRef, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Loader2, Music, UploadCloud, X, ArrowLeft, ArrowRight, User, Mail, Link as LinkIcon, Info, FileText, HelpCircle, Phone } from "lucide-react"; // Added ArrowLeft, ArrowRight
+// Updated icons: Added Send, removed Check
+import { Loader2, Music, UploadCloud, X, ArrowLeft, ArrowRight, User, Mail, Link as LinkIcon, Info, FileText, HelpCircle, Phone, Send } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -348,45 +349,64 @@ export function SubmitDemoForm({ onSuccess, onCancel, className }: SubmitDemoFor
                 </Form>
             </div>
 
-            {/* Footer with Action Buttons */}
-            <div className="flex justify-between p-4 border-t border-border/30 mt-auto">
-                {/* Back Button */}
-                <Button
-                    type="button"
-                    variant="outline"
-                    onClick={handlePrevious}
-                    disabled={currentStep === 1 || isSubmitting}
-                    className={cn(currentStep === 1 && "invisible")} // Hide on first step
-                    size="lg"
-                >
-                    <ArrowLeft className="mr-2 h-4 w-4" /> Back
-                </Button>
-                <div className="flex gap-2">
-                    {/* Cancel Button */}
-                    <Button type="button" variant="outline" onClick={onCancel} disabled={isSubmitting} size="lg">
-                        Cancel
-                    </Button>
-                    {/* Next/Submit Button */}
-                    <Button
-                        type="button" // Changed from submit to button
-                        onClick={handleNext} // Use handleNext for validation and step change/submission
-                        disabled={isSubmitting || (currentStep === DEMO_SUBMISSION_STEPS.length && !fileName)}
-                        className="bg-primary hover:bg-primary/90 text-primary-foreground"
-                        size="lg"
-                    >
-                        {isSubmitting ? (
-                            <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Sending...</>
-                        ) : currentStep === DEMO_SUBMISSION_STEPS.length ? (
-                            'Send Demo!'
-                        ) : (
-                            <>Next <ArrowRight className="ml-2 h-4 w-4" /></>
-                        )}
-                    </Button>
-                </div>
-            </div>
+            {/* Footer with Action Buttons - Use Icons */}
+             <div className="flex justify-between items-center p-4 border-t border-border/30 mt-auto">
+                 {/* Back Button Icon */}
+                 <Button
+                     type="button"
+                     variant="ghost" // Ghost variant for icon button
+                     size="icon"
+                     onClick={handlePrevious}
+                     disabled={currentStep === 1 || isSubmitting}
+                     className={cn(
+                         "h-10 w-10 text-muted-foreground hover:text-primary", // Adjusted size and color
+                         currentStep === 1 && "invisible" // Hide on first step
+                     )}
+                     aria-label="Previous Step"
+                 >
+                     <ArrowLeft className="h-6 w-6" />
+                 </Button>
+
+                 {/* Cancel Button Icon */}
+                 <Button
+                     type="button"
+                     variant="ghost" // Ghost variant for icon button
+                     size="icon"
+                     onClick={onCancel}
+                     disabled={isSubmitting}
+                     className="h-10 w-10 text-destructive hover:bg-destructive/10" // Adjusted size and color
+                     aria-label="Cancel Submission"
+                 >
+                     <X className="h-6 w-6" />
+                 </Button>
+
+                 {/* Next/Submit Button Icon */}
+                 <Button
+                     type="button"
+                     variant="ghost" // Use primary ghost variant for emphasis
+                     size="icon"
+                     onClick={handleNext}
+                     disabled={isSubmitting || (currentStep === DEMO_SUBMISSION_STEPS.length && !fileName)}
+                     className={cn(
+                         "h-10 w-10 text-primary hover:bg-primary/10 disabled:text-muted-foreground disabled:hover:bg-transparent", // Adjusted size, color, disabled state
+                         isSubmitting && "animate-pulse" // Simple pulse for loading
+                     )}
+                     aria-label={currentStep === DEMO_SUBMISSION_STEPS.length ? "Send Demo" : "Next Step"}
+                 >
+                     {isSubmitting ? (
+                         <Loader2 className="h-6 w-6 animate-spin" />
+                     ) : currentStep === DEMO_SUBMISSION_STEPS.length ? (
+                         <Send className="h-6 w-6" /> // Send icon for final step
+                     ) : (
+                         <ArrowRight className="h-6 w-6" /> // Right arrow for next
+                     )}
+                 </Button>
+             </div>
         </div>
          <DemoPolicyModal isOpen={isPolicyModalOpen} onClose={() => setIsPolicyModalOpen(false)} />
      </>
   );
 }
 
+
+    
