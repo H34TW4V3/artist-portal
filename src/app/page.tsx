@@ -74,42 +74,6 @@ export default function HomePage() {
     const [clientGreeting, setClientGreeting] = useState(""); // State for client-side greeting generation
     const [showSplash, setShowSplash] = useState(false); // State for splash screen visibility
     const [hasShownInitialSplash, setHasShownInitialSplash] = useState(false); // Track if initial splash was shown
-    const audioRef = useRef<HTMLAudioElement | null>(null); // Ref for the audio element
-
-     // Initialize and preload audio element
-     useEffect(() => {
-        // Ensure this runs only on the client
-        if (typeof window !== 'undefined') {
-            if (!audioRef.current) {
-                audioRef.current = new Audio(LOGIN_JINGLE_PATH);
-                audioRef.current.preload = 'auto';
-                console.log("HomePage: Audio element initialized and preloading:", LOGIN_JINGLE_PATH);
-            }
-        }
-     }, []);
-
-     // Function to play login sound
-     const playLoginSound = () => {
-         if (audioRef.current && typeof window !== 'undefined') {
-             // Check if sound has already been played in this session
-             if (sessionStorage.getItem(SESSION_SOUND_PLAYED_KEY)) {
-                 console.log("HomePage: Login sound already played this session.");
-                 return;
-             }
-
-             audioRef.current.currentTime = 0; // Rewind to start
-             audioRef.current.play().then(() => {
-                 console.log("HomePage: Login sound played successfully.");
-                 // Mark sound as played for this session
-                 sessionStorage.setItem(SESSION_SOUND_PLAYED_KEY, 'true');
-             }).catch(error => {
-                 console.error("HomePage: Error playing login sound:", error);
-                 // Handle autoplay restrictions if necessary
-             });
-         } else {
-             console.warn("HomePage: Login sound audio element not ready or not initialized.");
-         }
-     };
 
 
     // Fetch profile data from Firestore
@@ -170,15 +134,10 @@ export default function HomePage() {
                 return; // Stop further processing for this render cycle
             }
 
-            // Play sound only once per session when user data is available
-             playLoginSound();
 
             // Proceed with setting greeting if tutorial is completed or not applicable
-            // Prioritize profileData.name (Artist Name), then displayName, then email, then 'Artist'
-            const artistNameFromProfile = profileData?.name;
-            const nameFromAuth = user.displayName;
-            const nameFromEmail = user.email?.split('@')[0];
-            const finalName = artistNameFromProfile || nameFromAuth || nameFromEmail || 'Artist';
+            // **PRIORITIZE profileData.name**, then displayName, then email, then 'Artist'
+            const finalName = profileData?.name || user.displayName || user.email?.split('@')[0] || 'Artist';
 
             // Generate greeting on client side using the helper function
             setClientGreeting(getRandomGreeting(finalName));
@@ -220,6 +179,7 @@ export default function HomePage() {
     const isLoading = authLoading || profileLoading;
 
     // Determine display name and image URL based on loaded data or user defaults
+    // **PRIORITIZE profileData.name**
     const displayName = profileData?.name || user?.displayName || (user?.email ? user.email.split('@')[0] : 'Artist');
     const displayImageUrl = profileData?.imageUrl || user?.photoURL || null;
 

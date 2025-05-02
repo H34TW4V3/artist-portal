@@ -82,7 +82,7 @@ export default function UserProfile() {
                console.warn("Firestore data validation failed:", result.error);
                // Handle potentially incomplete/invalid data, maybe set defaults
                setProfileData({
-                   name: user.displayName || user.email?.split('@')[0] || "User",
+                   name: user.displayName || user.email?.split('@')[0] || "User", // Keep fallback here for partial profiles
                    email: user.email || "",
                    imageUrl: user.photoURL || null,
                    bio: null,
@@ -190,7 +190,7 @@ export default function UserProfile() {
 
 
   // Function to get initials from name
-  const getInitials = (name: string | undefined) => {
+  const getInitials = (name: string | undefined | null): string => { // Added null check
     return name?.split(' ').map(n => n[0]).join('').toUpperCase() || 'U'; // Default to 'U'
   };
 
@@ -198,7 +198,8 @@ export default function UserProfile() {
   const isLoading = authLoading || isProfileLoading;
 
   // Determine display name and image URL based on loaded data or user defaults
-  const artistName = profileData?.name || user?.displayName || (user?.email ? user.email.split('@')[0] : 'Artist'); // Use profileData.name first
+  // **PRIORITIZE profileData.name**
+  const displayName = profileData?.name || user?.displayName || (user?.email ? user.email.split('@')[0] : 'Artist');
   const displayImageUrl = profileData?.imageUrl || user?.photoURL || undefined;
 
 
@@ -223,9 +224,10 @@ export default function UserProfile() {
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="relative h-12 w-12 rounded-full p-0 border-2 border-primary/30 hover:border-primary/60 transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"> {/* Increased size */}
               <Avatar className="h-full w-full">
-                <AvatarImage src={displayImageUrl} alt={artistName} />
+                <AvatarImage src={displayImageUrl} alt={displayName} />
                 <AvatarFallback className="bg-muted text-muted-foreground font-semibold">
-                  {getInitials(artistName)}
+                   {/* Use displayName for initials */}
+                   {getInitials(displayName)}
                 </AvatarFallback>
               </Avatar>
               <span className="sr-only">Toggle user menu</span>
@@ -234,7 +236,8 @@ export default function UserProfile() {
           <DropdownMenuContent align="end" className="w-60 bg-popover border-border shadow-lg"> {/* Increased width */}
             <DropdownMenuLabel className="font-normal px-3 py-2"> {/* Adjusted padding */}
               <div className="flex flex-col space-y-1">
-                <p className="text-base font-medium leading-none text-foreground">{artistName}</p> {/* Display artistName */}
+                 {/* Display displayName (prioritizes profile name) */}
+                <p className="text-base font-medium leading-none text-foreground">{displayName}</p>
                 <p className="text-sm leading-none text-muted-foreground">{user?.email}</p> {/* Increased size to text-sm */}
               </div>
             </DropdownMenuLabel>
@@ -315,4 +318,3 @@ export default function UserProfile() {
     </div>
   );
 }
-
