@@ -155,7 +155,8 @@ export default function LoginPage() {
                       (!isLoginFormVisible || !isDemoCardVisible) && "opacity-0 pointer-events-none transition-opacity duration-300" // Hide when form animates out
                  )}>
                      <Separator orientation="vertical" className="h-full bg-border/50" />
-                     <span className="my-2 px-2 text-xs font-medium text-muted-foreground bg-background/50 rounded-full backdrop-blur-sm">
+                     {/* Increased text size, removed background */}
+                     <span className="my-2 px-2 text-xl font-medium text-muted-foreground rounded-full">
                          Or
                      </span>
                      <Separator orientation="vertical" className="h-full bg-border/50" />
@@ -166,7 +167,8 @@ export default function LoginPage() {
                       (!isLoginFormVisible || !isDemoCardVisible) && "opacity-0 pointer-events-none transition-opacity duration-300" // Hide when form animates out
                  )}>
                      <Separator className="flex-grow bg-border/50" />
-                     <span className="mx-2 text-xs font-medium text-muted-foreground bg-background/50 px-2 py-0.5 rounded-full backdrop-blur-sm">
+                     {/* Increased text size, removed background */}
+                     <span className="mx-2 text-xl font-medium text-muted-foreground px-2 py-0.5 rounded-full">
                          Or
                      </span>
                      <Separator className="flex-grow bg-border/50" />
