@@ -5,7 +5,7 @@ import { useState, useEffect } from "react";
 import UserProfile from "@/components/common/user-profile";
 import { TimeWeather } from "@/components/common/time-weather"; // Import TimeWeather - Re-enabled
 import { Card, CardDescription, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { CalendarClock, Home, PlusCircle } from "lucide-react"; // Use CalendarClock icon, add PlusCircle
+import { CalendarClock, Home, PlusCircle, ExternalLink } from "lucide-react"; // Use CalendarClock icon, add PlusCircle, ExternalLink
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/auth-context";
@@ -17,6 +17,8 @@ import { CreateEventModal } from "@/components/events/create-event-modal"; // Im
 import type { Event } from "@/types/event"; // Import Event type (will create)
 import { getEvents } from "@/services/events"; // Import getEvents service (will create)
 import { useToast } from "@/hooks/use-toast";
+
+const FOURVENUES_AUTH_URL = "https://id.fourvenues.com/authorization/hma77i39k0431018zdmytb6uhwU4BNVZ";
 
 export default function EventsPage() {
   const { user, loading } = useAuth();
@@ -164,10 +166,29 @@ export default function EventsPage() {
 
           {/* Events List & Actions Column */}
           <div className="lg:col-span-2 space-y-6">
+             {/* Fourvenues Link Card */}
+             <Card className="bg-card/60 dark:bg-card/50 border-border/30 shadow-md rounded-lg">
+               <CardHeader>
+                 <CardTitle className="text-lg font-semibold text-foreground">External Event Platform</CardTitle>
+                 <CardDescription className="text-muted-foreground">
+                    Access the Fourvenues platform for additional event management features.
+                 </CardDescription>
+               </CardHeader>
+               <CardContent>
+                  <a href={FOURVENUES_AUTH_URL} target="_blank" rel="noopener noreferrer">
+                      <Button className="w-full sm:w-auto">
+                        <ExternalLink className="mr-2 h-4 w-4" />
+                        Go to Fourvenues
+                      </Button>
+                  </a>
+               </CardContent>
+             </Card>
+
+            {/* Internal Events Card */}
             <Card className="bg-card/60 dark:bg-card/50 border-border/30 shadow-md rounded-lg"> {/* Adjusted opacity */}
               <CardHeader className="flex flex-row justify-between items-center">
                 <CardTitle className="text-lg font-semibold text-foreground">
-                  Upcoming Events
+                  My Events
                 </CardTitle>
                  <Button size="sm" onClick={() => setIsCreateModalOpen(true)}>
                    <PlusCircle className="mr-2 h-4 w-4" /> Create Event
