@@ -6,45 +6,45 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  DropdownMenuSeparator, // Add Separator back
-  DropdownMenuLabel, // Add Label back for sectioning
+  DropdownMenuSeparator,
+  DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch"; // Import Switch
-import { Label } from "@/components/ui/label"; // Import Label
-import { Pencil, Image as ImageIcon, Sun, Moon, Wind, Info } from "lucide-react"; // Renamed Image to avoid conflict, added Wind and Info icons
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { Pencil, Image as ImageIcon, Sun, Moon, Wind, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface SettingsMenuButtonProps {
   onOpenWallpaperModal: () => void;
-  onToggleTheme: () => void;
-  currentTheme: 'light' | 'dark';
-  onToggleWeatherAnimations: () => void; // Handler for toggling animations
-  weatherAnimationsEnabled: boolean; // Current state of animations
-  showWeatherToggle?: boolean; // Added optional prop to control visibility
-  onOpenAboutModal: () => void; // Handler for opening the About modal
+  onToggleTheme: () => void; // This now toggles the *preferred* theme
+  currentTheme: 'light' | 'dark'; // This is the *preferred* theme
+  onToggleWeatherAnimations: () => void;
+  weatherAnimationsEnabled: boolean;
+  showWeatherToggle?: boolean;
+  onOpenAboutModal: () => void;
   className?: string;
 }
 
 export function SettingsMenuButton({
   onOpenWallpaperModal,
   onToggleTheme,
-  currentTheme,
+  currentTheme, // This represents the preferred theme
   onToggleWeatherAnimations,
   weatherAnimationsEnabled,
-  showWeatherToggle = true, // Default to true - Re-enabled
-  onOpenAboutModal, // Receive the new handler
+  showWeatherToggle = true,
+  onOpenAboutModal,
   className,
 }: SettingsMenuButtonProps) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button
-          variant="secondary" // Use secondary for less emphasis than primary
+          variant="secondary"
           size="icon"
           className={cn(
-            "fixed bottom-4 right-4 z-50 h-12 w-12 rounded-full shadow-lg bg-card/60 dark:bg-card/50 border border-border/30 text-primary hover:bg-primary/10 hover:text-primary active:bg-primary/20 hover-glow focus-glow", // Adjusted opacity
-            "transition-transform duration-200 ease-out hover:scale-110 hover:rotate-6 focus-visible:scale-110 focus-visible:rotate-6", // Added hover/focus animation
+            "fixed bottom-4 right-4 z-50 h-12 w-12 rounded-full shadow-lg bg-card/60 dark:bg-card/50 border border-border/30 text-primary hover:bg-primary/10 hover:text-primary active:bg-primary/20 hover-glow focus-glow",
+            "transition-transform duration-200 ease-out hover:scale-110 hover:rotate-6 focus-visible:scale-110 focus-visible:rotate-6",
             className
           )}
           aria-label="Open Settings Menu"
@@ -58,15 +58,18 @@ export function SettingsMenuButton({
           <ImageIcon className="mr-2 h-4 w-4" />
           <span>Change Wallpaper</span>
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={onToggleTheme} className="cursor-pointer focus:bg-accent focus:text-accent-foreground">
-          {currentTheme === 'dark' ? (
-            <Sun className="mr-2 h-4 w-4" />
-          ) : (
-            <Moon className="mr-2 h-4 w-4" />
-          )}
-          <span>Switch to {currentTheme === 'dark' ? 'Light' : 'Dark'} Mode</span>
+        {/* Updated description for theme toggle */}
+        <DropdownMenuItem onClick={onToggleTheme} className="cursor-pointer focus:bg-accent focus:text-accent-foreground flex flex-col items-start gap-0.5">
+           <div className="flex items-center w-full">
+                {currentTheme === 'dark' ? (
+                    <Sun className="mr-2 h-4 w-4" />
+                ) : (
+                    <Moon className="mr-2 h-4 w-4" />
+                )}
+                <span>Set Preferred: {currentTheme === 'dark' ? 'Light' : 'Dark'}</span>
+           </div>
+           <span className="text-xs text-muted-foreground pl-6">Theme adjusts to wallpaper brightness</span>
         </DropdownMenuItem>
-         {/* Weather Animation Toggle - Conditionally Rendered */}
          {showWeatherToggle && (
              <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="cursor-default focus:bg-transparent focus:text-popover-foreground">
                 <div className="flex items-center justify-between w-full">
@@ -83,9 +86,7 @@ export function SettingsMenuButton({
                 </div>
             </DropdownMenuItem>
          )}
-        {/* Separator */}
         <DropdownMenuSeparator className="bg-border/50" />
-        {/* About Option */}
         <DropdownMenuItem onClick={onOpenAboutModal} className="cursor-pointer focus:bg-accent focus:text-accent-foreground">
           <Info className="mr-2 h-4 w-4" />
           <span>About</span>
@@ -94,4 +95,3 @@ export function SettingsMenuButton({
     </DropdownMenu>
   );
 }
-
