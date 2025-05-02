@@ -5,7 +5,7 @@ import { useState, useRef, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Loader2, Music, UploadCloud, X, ArrowLeft, ArrowRight, User, Mail, Link as LinkIcon, Info } from "lucide-react"; // Import necessary icons
+import { Loader2, Music, UploadCloud, X, ArrowLeft, ArrowRight, User, Mail, Link as LinkIcon, Info, FileText } from "lucide-react"; // Import necessary icons, added FileText
 
 import { Button } from "@/components/ui/button";
 import {
@@ -25,8 +25,8 @@ import { Progress } from "@/components/ui/progress"; // Import Progress
 
 // Define steps for the demo submission flow
 const DEMO_STEPS = [
-  { id: 1, name: "Artist & Contact Info" },
-  { id: 2, name: "Track Info & Upload" },
+  { id: 1, name: "Artist & Contact Info", icon: User },
+  { id: 2, name: "Track Info & Upload", icon: Music },
 ];
 
 // Schema remains the same, validation happens per step
@@ -165,6 +165,10 @@ export function SubmitDemoForm({ onSuccess, onCancel, className }: SubmitDemoFor
   };
 
   async function onSubmit(values: DemoFormValues) {
+    if (!values.demoFile) {
+         toast({ title: "Missing File", description: "Demo track file is required.", variant: "destructive" });
+         return;
+    }
     setIsSubmitting(true);
     const file = values.demoFile;
     try {
@@ -189,10 +193,7 @@ export function SubmitDemoForm({ onSuccess, onCancel, className }: SubmitDemoFor
   }
 
   // Define icons for steps
-  const stepIcons = [
-      <User className="h-8 w-8 text-primary" />,
-      <Music className="h-8 w-8 text-primary" />
-  ];
+  const StepIcon = DEMO_STEPS[currentStep - 1].icon;
 
   return (
      // Ensure the container uses flex-col and has a defined height or uses flex-grow from parent
@@ -200,7 +201,7 @@ export function SubmitDemoForm({ onSuccess, onCancel, className }: SubmitDemoFor
         {/* Header Section - Icon and Title */}
          <div className="flex flex-col items-center p-6 border-b border-border/30">
               <div className="mb-3 transition-transform duration-300">
-                 {stepIcons[currentStep - 1]}
+                 <StepIcon className="h-8 w-8 text-primary" />
               </div>
               <h3 className="text-xl font-semibold text-foreground">
                   {DEMO_STEPS[currentStep - 1].name}
@@ -220,10 +221,10 @@ export function SubmitDemoForm({ onSuccess, onCancel, className }: SubmitDemoFor
                        className={cn("space-y-4 absolute inset-0 transition-opacity duration-300", getAnimationClasses(1))}
                        aria-hidden={currentStep !== 1}
                    >
-                       <FormField control={form.control} name="artistName" render={({ field }) => ( <FormItem><FormLabel>Artist Name</FormLabel><FormControl><Input placeholder="Your stage name" {...field} disabled={isSubmitting} /></FormControl><FormMessage /></FormItem> )} />
-                       <FormField control={form.control} name="email" render={({ field }) => ( <FormItem><FormLabel>Contact Email</FormLabel><FormControl><Input type="email" placeholder="your.email@example.com" {...field} disabled={isSubmitting} /></FormControl><FormMessage /></FormItem> )} />
-                       <FormField control={form.control} name="socialLinks" render={({ field }) => ( <FormItem><FormLabel>Social Links (Optional)</FormLabel><FormControl><Textarea placeholder="Spotify, SoundCloud, Instagram..." className="resize-none" {...field} value={field.value ?? ""} disabled={isSubmitting} rows={2}/></FormControl><FormMessage /></FormItem> )} />
-                       <FormField control={form.control} name="bio" render={({ field }) => ( <FormItem><FormLabel>Short Bio (Optional)</FormLabel><FormControl><Textarea placeholder="Describe your music..." className="resize-none" {...field} value={field.value ?? ""} disabled={isSubmitting} rows={3}/></FormControl><FormMessage /></FormItem> )} />
+                       <FormField control={form.control} name="artistName" render={({ field }) => ( <FormItem><FormLabel>Artist Name</FormLabel><FormControl><div className="relative"><User className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input placeholder="Your stage name" {...field} disabled={isSubmitting} className="pl-8" /></div></FormControl><FormMessage /></FormItem> )} />
+                       <FormField control={form.control} name="email" render={({ field }) => ( <FormItem><FormLabel>Contact Email</FormLabel><FormControl><div className="relative"><Mail className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input type="email" placeholder="your.email@example.com" {...field} disabled={isSubmitting} className="pl-8" /></div></FormControl><FormMessage /></FormItem> )} />
+                       <FormField control={form.control} name="socialLinks" render={({ field }) => ( <FormItem><FormLabel>Social Links (Optional)</FormLabel><FormControl><div className="relative"><LinkIcon className="absolute left-2.5 top-3 h-4 w-4 text-muted-foreground" /><Textarea placeholder="Spotify, SoundCloud, Instagram..." className="resize-none pl-8" {...field} value={field.value ?? ""} disabled={isSubmitting} rows={2}/></div></FormControl><FormMessage /></FormItem> )} />
+                       <FormField control={form.control} name="bio" render={({ field }) => ( <FormItem><FormLabel>Short Bio (Optional)</FormLabel><FormControl><div className="relative"><FileText className="absolute left-2.5 top-3 h-4 w-4 text-muted-foreground" /><Textarea placeholder="Describe your music..." className="resize-none pl-8" {...field} value={field.value ?? ""} disabled={isSubmitting} rows={3}/></div></FormControl><FormMessage /></FormItem> )} />
                    </form>
 
                    {/* Step 2 Form */}
@@ -232,12 +233,12 @@ export function SubmitDemoForm({ onSuccess, onCancel, className }: SubmitDemoFor
                        className={cn("space-y-4 absolute inset-0 transition-opacity duration-300", getAnimationClasses(2))}
                        aria-hidden={currentStep !== 2}
                    >
-                        <FormField control={form.control} name="trackName" render={({ field }) => ( <FormItem><FormLabel>Demo Track Name</FormLabel><FormControl><Input placeholder="Title of your demo" {...field} disabled={isSubmitting} /></FormControl><FormMessage /></FormItem> )} />
+                        <FormField control={form.control} name="trackName" render={({ field }) => ( <FormItem><FormLabel>Demo Track Name</FormLabel><FormControl><div className="relative"><Music className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input placeholder="Title of your demo" {...field} disabled={isSubmitting} className="pl-8" /></div></FormControl><FormMessage /></FormItem> )} />
                         <FormField control={form.control} name="demoFile" render={({ fieldState }) => (
                             <FormItem>
                                 <FormLabel>Demo Track (MP3, max 50MB)</FormLabel>
                                 <FormControl>
-                                    <div className={cn("flex justify-center rounded-md border-2 border-dashed px-4 py-4", fieldState.error ? "border-destructive" : "border-input hover:border-accent", fileName ? "border-solid items-center" : "")}>
+                                    <div className={cn("flex justify-center rounded-md border-2 border-dashed px-4 py-4 bg-muted/20", fieldState.error ? "border-destructive" : "border-input hover:border-accent", fileName ? "border-solid items-center" : "")}>
                                         {fileName ? (
                                             <div className="flex items-center justify-between w-full">
                                                 <div className="flex items-center gap-2 text-sm font-medium text-foreground truncate mr-2"><Music className="h-5 w-5 text-muted-foreground" /><span>{fileName}</span></div>
@@ -258,6 +259,10 @@ export function SubmitDemoForm({ onSuccess, onCancel, className }: SubmitDemoFor
                                         )}
                                     </div>
                                 </FormControl>
+                                 <FormDescription className="text-xs flex items-start gap-1">
+                                     <Info className="h-3 w-3 mt-0.5 flex-shrink-0"/>
+                                     <span>Only original work, no remixes. MP3 format required.</span>
+                                 </FormDescription>
                                 <FormMessage />
                             </FormItem>
                         )} />
