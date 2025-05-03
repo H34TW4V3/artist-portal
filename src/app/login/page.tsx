@@ -16,7 +16,7 @@ import { SubmitDemoForm } from '@/components/demo/submit-demo-form';
 import { Separator } from '@/components/ui/separator';
 
 // Placeholder URL for the GIF - Updated URL
-const LOGIN_BACKGROUND_GIF_URL = "https://wallpapers-clan.com/wp-content/uploads/2024/03/starfall-night-sky-mountains-aesthetic-gif-preview-desktop-wallpaper.gif";
+const LOGIN_BACKGROUND_GIF_URL = "https://static1.squarespace.com/static/5fe4caeadae61a2f19719512/t/6696219ad6dcda40f9fa8ab6/1721115042117/16.gif?format=1500w";
 
 
 export default function LoginPage() {
