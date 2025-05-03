@@ -5,7 +5,7 @@ import { useState, useEffect, useRef } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
-import { Loader2, Upload, AlertCircle, Mail, Phone, User, FileText } from "lucide-react"; // Added Phone, User, FileText
+import { Loader2, Upload, AlertCircle, Mail, Phone, User, FileText, ShieldCheck } from "lucide-react"; // Added ShieldCheck
 import Image from "next/image";
 
 import { Button } from "@/components/ui/button";
@@ -26,9 +26,10 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Switch } from "@/components/ui/switch"; // Import Switch
 import { cn } from "@/lib/utils";
+import { Separator } from "@/components/ui/separator"; // Import Separator
 
 // Define the schema for profile data, including new fields
-// Add emailLinkSignInEnabled field
+// Add smsMfaEnabled field
 const profileSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters.").max(50, "Name must be 50 characters or less."),
   email: z.string().email("Invalid email address."), // Email is now editable
@@ -40,6 +41,7 @@ const profileSchema = z.object({
   imageUrl: z.string().url("Invalid URL.").optional().nullable(), // Store URL, upload handled separately
   hasCompletedTutorial: z.boolean().optional().default(false), // Add tutorial flag to schema
   emailLinkSignInEnabled: z.boolean().optional().default(false), // Added email link preference
+  // smsMfaEnabled: z.boolean().optional().default(false), // Renamed to reflect preference storage
 });
 
 export type ProfileFormValues = z.infer<typeof profileSchema>;
@@ -49,10 +51,20 @@ interface ProfileFormProps {
     updateFunction: (data: ProfileFormValues, newImageFile?: File) => Promise<{ updatedData: ProfileFormValues }>; // Function to call on submit
     onSuccess?: (updatedData: ProfileFormValues) => void; // Callback on successful update
     onCancel?: () => void; // Callback for cancel action (optional)
+    onManageMfa: () => void; // Callback to open MFA management modal
+    isSmsMfaEnrolled: boolean; // Pass enrollment status from parent
     className?: string;
 }
 
-export function ProfileForm({ initialData, updateFunction, onSuccess, onCancel, className }: ProfileFormProps) {
+export function ProfileForm({
+    initialData,
+    updateFunction,
+    onSuccess,
+    onCancel,
+    onManageMfa,
+    isSmsMfaEnrolled, // Receive enrollment status
+    className
+}: ProfileFormProps) {
     const { toast } = useToast();
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [currentImageUrl, setCurrentImageUrl] = useState<string | undefined>(initialData?.imageUrl ?? undefined);
@@ -71,6 +83,7 @@ export function ProfileForm({ initialData, updateFunction, onSuccess, onCancel, 
             imageUrl: "",
             hasCompletedTutorial: false,
             emailLinkSignInEnabled: false,
+            // smsMfaEnabled: false, // Initialize preference
         },
         mode: "onChange",
     });
@@ -88,6 +101,7 @@ export function ProfileForm({ initialData, updateFunction, onSuccess, onCancel, 
                 imageUrl: null,
                 hasCompletedTutorial: false,
                 emailLinkSignInEnabled: false,
+                // smsMfaEnabled: false, // Don't reset MFA preference based on initial data alone if it exists
                 ...initialData,
             };
             form.reset(mergedDefaults);
@@ -141,6 +155,7 @@ export function ProfileForm({ initialData, updateFunction, onSuccess, onCancel, 
          }
 
         try {
+            // Pass the optional newImageFile to the updateFunction
             const { updatedData } = await updateFunction(dataToSubmit, selectedImageFile);
 
             // Update local state *after* successful updateFunction call
@@ -210,10 +225,15 @@ export function ProfileForm({ initialData, updateFunction, onSuccess, onCancel, 
                 <FormField control={form.control} name="email" render={({ field }) => ( <FormItem><FormLabel className="flex items-center gap-1.5"><Mail className="h-3.5 w-3.5"/>Account Email</FormLabel><FormControl><Input type="email" placeholder="your.email@example.com" {...field} disabled={isSubmitting} /></FormControl><FormDescription className="text-xs">Change your sign-in email. Verification will be required.</FormDescription><FormMessage /></FormItem> )} />
 
                 {/* Phone Number */}
-                <FormField control={form.control} name="phoneNumber" render={({ field }) => ( <FormItem><FormLabel className="flex items-center gap-1.5"><Phone className="h-3.5 w-3.5"/>Phone Number (Optional)</FormLabel><FormControl><Input type="tel" placeholder="e.g., +1 555-123-4567" {...field} value={field.value ?? ""} disabled={isSubmitting} /></FormControl><FormDescription className="text-xs">Used for urgent communication or verification if needed.</FormDescription><FormMessage /></FormItem> )} />
+                <FormField control={form.control} name="phoneNumber" render={({ field }) => ( <FormItem><FormLabel className="flex items-center gap-1.5"><Phone className="h-3.5 w-3.5"/>Phone Number (Needed for SMS 2FA)</FormLabel><FormControl><Input type="tel" placeholder="e.g., +1 555-123-4567" {...field} value={field.value ?? ""} disabled={isSubmitting} /></FormControl><FormDescription className="text-xs">Used for SMS verification and urgent communication.</FormDescription><FormMessage /></FormItem> )} />
 
                 {/* Bio */}
                 <FormField control={form.control} name="bio" render={({ field }) => ( <FormItem><FormLabel className="flex items-center gap-1.5"><FileText className="h-3.5 w-3.5"/>Bio</FormLabel><FormControl><Textarea placeholder="Tell us a little bit about yourself or your music..." className="resize-y min-h-[80px] sm:min-h-[100px]" {...field} value={field.value ?? ""} disabled={isSubmitting} /></FormControl><FormDescription className="text-xs">A short bio (optional, max 300 characters).</FormDescription><FormMessage /></FormItem> )} />
+
+                <Separator className="my-6" />
+
+                {/* Account Security Section */}
+                 <h3 className="text-lg font-semibold text-foreground mb-3">Account Security</h3>
 
                  {/* Email Link Sign-in Preference */}
                  <FormField
@@ -241,8 +261,33 @@ export function ProfileForm({ initialData, updateFunction, onSuccess, onCancel, 
                     )}
                  />
 
+                {/* SMS Multi-Factor Authentication */}
+                 <div className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm bg-background/50 dark:bg-background/30">
+                    <div className="space-y-0.5">
+                        <FormLabel className="flex items-center gap-2">
+                             <ShieldCheck className="h-4 w-4" /> SMS Two-Factor Auth (2FA)
+                        </FormLabel>
+                        <FormDescription className="text-xs">
+                             Add an extra layer of security using your phone number.
+                             {isSmsMfaEnrolled ? <span className="text-green-600 font-medium ml-1">(Enabled)</span> : <span className="text-muted-foreground ml-1">(Disabled)</span>}
+                        </FormDescription>
+                    </div>
+                     {/* Button to open MFA management modal */}
+                     <Button
+                         type="button"
+                         variant="outline"
+                         size="sm"
+                         onClick={onManageMfa}
+                         disabled={isSubmitting || !form.watch('phoneNumber')} // Disable if no phone number
+                         title={!form.watch('phoneNumber') ? "Add phone number to manage SMS 2FA" : "Manage SMS 2FA"}
+                     >
+                         {isSmsMfaEnrolled ? 'Manage 2FA' : 'Setup 2FA'}
+                     </Button>
+                 </div>
+
+
                  {/* Form Actions (Save/Cancel) */}
-                <div className="flex justify-end gap-2 pt-4">
+                <div className="flex justify-end gap-2 pt-4 mt-6">
                      {onCancel && ( <Button type="button" variant="outline" onClick={onCancel} disabled={isSubmitting}>Cancel</Button> )}
                     <Button type="submit" disabled={isSubmitting || !formIsDirty || !formIsValid} className="min-w-[80px]">
                         {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
