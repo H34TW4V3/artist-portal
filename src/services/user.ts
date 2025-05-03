@@ -1,15 +1,17 @@
 import {
     getFirestore,
+    collection,
+    query,
+    where,
+    getDocs,
     doc,
-    getDoc,
     setDoc,
     updateDoc,
     Timestamp,
-    collection,
-    where,
-    query,
-    limit,
-    getDocs
+    orderBy,
+    limit, // Import limit
+    addDoc, // Use addDoc for creating new documents with auto-generated IDs
+    getDoc, // Import getDoc to fetch a single document
   } from "firebase/firestore";
   import { getAuth } from "firebase/auth"; // Import getAuth
   import { app, db } from './firebase-config'; // Import initialized db
@@ -94,7 +96,7 @@ import {
     } catch (error: any) { // Catch specific Firestore errors
       console.error(`getUserProfileByUid: Error fetching user profile for UID ${uid}:`, error);
        if (error.code === 'permission-denied') {
-           console.error("Firestore Permission Denied: Check your security rules for reading '/users/{userId}/publicProfile/profile'.");
+           console.error("Firestore Permission Denied: Check your security rules allow reading document '/users/{userId}/publicProfile/profile'.");
            throw new Error(`Permission denied while fetching profile for ${uid}.`);
        }
        // Rethrowing a simplified error message for other errors
@@ -146,7 +148,7 @@ import {
          // Log specific Firestore error codes if available
          if (error.code === 'permission-denied') {
              // Be more explicit about which rule failed
-             console.error("Firestore Permission Denied: Check your security rules allow authenticated users to query the 'users' collection by email AND project specific fields (email, uid, name, imageUrl).");
+             console.error("Firestore Permission Denied: Check your security rules allow authenticated users to query the 'users' collection by email AND project specific fields (email, uid, name, imageUrl) on the root user document.");
              throw new Error("Failed to fetch user profile due to permissions. Please check Firestore rules.");
          } else {
              throw new Error("Failed to fetch user profile by email.");
