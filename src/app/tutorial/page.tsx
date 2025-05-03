@@ -4,7 +4,8 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/auth-context";
-import { getFirestore, doc, updateDoc } from "firebase/firestore";
+// Import setDoc instead of updateDoc
+import { getFirestore, doc, setDoc } from "firebase/firestore";
 import { app } from "@/services/firebase-config";
 import { Button } from "@/components/ui/button";
 // Import CardFooter
@@ -98,10 +99,11 @@ export default function TutorialPage() {
       // Path to the specific profile document within the subcollection
       const profileDocRef = doc(db, "users", user.uid, "publicProfile", "profile");
       console.log("Attempting to update tutorial status at path:", profileDocRef.path);
-      await updateDoc(profileDocRef, {
+      // Use setDoc with merge: true instead of updateDoc
+      await setDoc(profileDocRef, {
         hasCompletedTutorial: true,
-      });
-      console.log("Tutorial status updated successfully in Firestore.");
+      }, { merge: true }); // This will create the doc if it doesn't exist, or merge if it does
+      console.log("Tutorial status updated/set successfully in Firestore.");
       toast({
           title: "Tutorial Completed!",
           description: "Welcome to the Artist Hub!",
