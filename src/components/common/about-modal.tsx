@@ -13,8 +13,8 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 
-// Placeholder version - Getting the commit ID requires build-time configuration.
-const APP_VERSION = process.env.NEXT_PUBLIC_COMMIT_SHA || "Development Build"; // Use env var if available, else placeholder
+// Access environment variables for build info
+const APP_BUILD_ID = process.env.NEXT_PUBLIC_COMMIT_SHA || "Development Build"; // Use commit SHA as build ID
 const APP_CODENAME = process.env.NEXT_PUBLIC_CODENAME || "Unspecified"; // Get codename from env var
 
 // Array of quotes
@@ -62,10 +62,11 @@ export function AboutModal({ isOpen, onClose }: AboutModalProps) {
         </DialogHeader>
 
         <div className="py-4 text-center text-foreground space-y-1">
-          {/* Version and Codename */}
-          <p className="text-base font-medium">Version: {APP_VERSION}</p>
+          {/* Version (Build ID) and Codename */}
+          {/* Changed "Version" to "Build ID" */}
+          <p className="text-base font-medium">Build ID: {APP_BUILD_ID}</p>
           <p className="text-base font-medium">Codename: {APP_CODENAME}</p>
-           {APP_VERSION === "Development Build" && (
+           {APP_BUILD_ID === "Development Build" && (
              <p className="text-xs text-muted-foreground mt-1">
                  (Set NEXT_PUBLIC_COMMIT_SHA at build time for commit ID)
              </p>
