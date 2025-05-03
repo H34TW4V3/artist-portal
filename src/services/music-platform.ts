@@ -67,7 +67,8 @@ import {
 
   // Type for adding an existing release - Artist is now optional here
   // Make artworkUrl optional as well for consistency with how it's used
-  export type ExistingReleaseData = Omit<ReleaseMetadata, 'userId' | 'createdAt' | 'zipUrl' | 'status' | 'artworkUrl' | 'artist'> & { artworkUrl?: string | null, artist?: string | null, releaseDate: string | Date };
+  // Changed to accept Date object for releaseDate, formatting handled internally.
+  export type ExistingReleaseData = Omit<ReleaseMetadata, 'userId' | 'createdAt' | 'zipUrl' | 'status' | 'artworkUrl' | 'artist' | 'releaseDate'> & { artworkUrl?: string | null, artist?: string | null, releaseDate: Date };
 
 
   // --- Helper Functions ---
@@ -265,6 +266,7 @@ import {
    * Does not include zipUrl. Artwork URL is optional. Status is 'existing'.
    * @param data - The release data including title, date, tracks, spotifyLink. artist is optional.
    * @returns The ID of the newly created Firestore document.
+   * @throws Error if authentication fails or Firestore operation fails.
    */
   export async function addExistingRelease(data: ExistingReleaseData): Promise<string> {
       const userId = getCurrentUserId();
@@ -291,12 +293,17 @@ import {
       };
 
       const releasesRef = collection(db, "users", userId, "releases");
-      const docRef = await addDoc(releasesRef, {
-          ...releaseData,
-          createdAt: serverTimestamp(),
-      });
-      console.log("Existing release document created in Firestore with ID:", docRef.id);
-      return docRef.id;
+      try {
+          const docRef = await addDoc(releasesRef, {
+              ...releaseData,
+              createdAt: serverTimestamp(),
+          });
+          console.log("Existing release document created in Firestore with ID:", docRef.id);
+          return docRef.id;
+      } catch (firestoreError) {
+          console.error("Firestore document creation failed for existing release:", firestoreError);
+          throw new Error("Failed to save existing release data.");
+      }
   }
 
 
@@ -481,3 +488,5 @@ import {
     }
   }
 
+
+    

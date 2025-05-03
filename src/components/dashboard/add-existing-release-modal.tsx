@@ -163,25 +163,25 @@ export function AddExistingReleaseModal({ isOpen, onClose, onSuccess }: AddExist
         console.log("Artwork uploaded for existing release:", artworkUrl);
       }
 
-      // 2. Prepare data for Firestore - REMOVED artist from values
+      // 2. Prepare data for Firestore service - REMOVED artist from values
+      // The service function will handle fetching the artist name internally.
       const releaseData: ExistingReleaseData = {
         title: values.title,
-        // artist: values.artist, // REMOVED
-        releaseDate: format(values.releaseDate, "yyyy-MM-dd"), // Format date as string
+        releaseDate: values.releaseDate, // Pass Date object, service handles formatting
         artworkUrl: artworkUrl, // URL from upload or null
         tracks: values.tracks,
         spotifyLink: values.spotifyLink || null,
       };
 
-      // 3. Call the service function
-      await addExistingRelease(releaseData); // Service function now handles artist name internally
+      // 3. Call the service function to add the existing release to Firestore
+      await addExistingRelease(releaseData);
 
       toast({
         title: "Release Added",
         description: `"${values.title}" has been added successfully.`,
         variant: "default",
       });
-      onSuccess(); // Call success callback
+      onSuccess(); // Call success callback (which should trigger a refetch in the parent)
       onClose();   // Close modal
 
     } catch (error) {
@@ -431,3 +431,6 @@ export function AddExistingReleaseModal({ isOpen, onClose, onSuccess }: AddExist
     </Dialog>
   );
 }
+
+
+    
