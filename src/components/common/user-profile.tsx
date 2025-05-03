@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from "react";
@@ -29,6 +30,8 @@ import { useToast } from "@/hooks/use-toast";
 import { LogOut, UserCog, KeyRound, Loader2, MailCheck } from "lucide-react"; // Added MailCheck
 import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"; // Import Alert components
+
 
 const profileSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters.").max(50, "Name must be 50 characters or less."),
@@ -88,10 +91,11 @@ export default function UserProfile() {
             imageUrl: user.photoURL || null,
             bio: null,
             phoneNumber: null,
-            hasCompletedTutorial: false,
-            emailLinkSignInEnabled: false,
+            hasCompletedTutorial: false, // Initialize tutorial flag to false
+            emailLinkSignInEnabled: false, // Initialize email link flag to false
           };
-          await setPublicProfile(user.uid, defaultData, false);
+           // Use setPublicProfile to create the doc in the subcollection AND the root doc
+          await setPublicProfile(user.uid, defaultData, false); // Correct function call, merge=false
           setProfileData(defaultData);
         }
       } catch (error) {
@@ -108,8 +112,8 @@ export default function UserProfile() {
             imageUrl: user.photoURL || null,
             bio: null,
             phoneNumber: null,
-            hasCompletedTutorial: false,
-            emailLinkSignInEnabled: false,
+            hasCompletedTutorial: false, // Assume false on error
+            emailLinkSignInEnabled: false, // Assume false on error
         });
       } finally {
         setIsProfileLoading(false);
@@ -397,12 +401,12 @@ export default function UserProfile() {
                     <ProfileForm
                         key={user?.uid || 'profile-form'}
                         initialData={profileData}
-                        updateFunction={handleUpdateProfile}
+                        updateFunction={handleUpdateProfile} // Pass the correct update function
                         onCancel={() => setIsProfileModalOpen(false)}
                          onSuccess={(updatedData) => {
                              // Modal is closed by handleUpdateProfile on success
                              // Update local state if needed (though handleUpdateProfile already does)
-                             // setProfileData(updatedData);
+                             setProfileData(updatedData);
                          }}
                          className="bg-transparent shadow-none border-0 p-0 mt-2"
                     />
@@ -438,3 +442,4 @@ export default function UserProfile() {
     </div>
   );
 }
+
