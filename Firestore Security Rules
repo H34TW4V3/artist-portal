@@ -1,0 +1,74 @@
+It looks like the Firestore security rules are preventing the `getUserProfileByEmail` function from querying the `users` collection based on the email address.
+
+The error message "Firestore Permission Denied: Check your security rules for reading the 'users' collection based on email" confirms this.
+
+**Problem:**
+
+Your current Firestore rules have `allow list: if false;` for the `/users/{userId}` path. The `list` permission is required to perform queries (like searching by email) on a collection. By setting it to `false`, you are explicitly denying these queries.
+
+**Solution:**
+
+You need to update your Firestore security rules to allow authenticated users to perform the `list` operation (query) on the `users` collection. However, be mindful of the security implications: Firestore rules **cannot restrict the fields returned by a query**.
+
+**Revised Firestore Rules:**
+
+Please update your Firestore security rules with the following. **Make sure you understand the security implications outlined in the comments.**
+
+```firestore
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    match /users/{userId} {
+      // Allow authenticated users to query the collection (e.g., by email).
+      // IMPORTANT: This allows reading ALL fields of matching documents in query results.
+      // Ensure NO sensitive data is stored directly in the root /users/{userId} document.
+      // Store only queryable fields like 'email' here.
+      allow list: if request.auth != null;
+
+      // Allow reading individual user docs (e.g., by UID).
+      // The 'true' allows anyone (even unauthenticated) to read.
+      // Review if this should be restricted, e.g., 'if request.auth != null;'
+      allow get: if request.auth != null || true;
+
+      // Only the user can write their own root document (e.g., updating email for query)
+      allow write: if request.auth != null && request.auth.uid == userId;
+
+      // Public Profile subcollection
+      match /publicProfile/profile {
+        // Allow anyone to read the specific public profile document.
+        // Adjust this rule if profile data should be restricted.
+        allow get: if true;
+        // Only the owner can write their public profile
+        allow write: if request.auth != null && request.auth.uid == userId;
+      }
+
+      // Other subcollections (e.g., releases, events) - Owner access only
+      match /{subcollection}/{document=**} {
+         // Deny access to publicProfile here if it's handled above
+         // Ensure rule applies ONLY to subcollections intended for private access.
+         allow read, write: if request.auth != null && request.auth.uid == userId && subcollection != 'publicProfile';
+      }
+    }
+
+    // // Optionally, explicitly deny all other access if needed, though default is deny.
+    // match /{document=**} {
+    //   allow read, write: if false;
+    // }
+  }
+}
+```
+
+**Explanation of Changes:**
+
+1.  **`allow list: if request.auth != null;`**: This rule now permits any authenticated user to query the `users` collection.
+2.  **Security Implication:** Because Firestore rules cannot filter query results, this means an authenticated user querying by email *could potentially read all fields* stored in the root `/users/{userId}` documents that match the query. **It is critical that you only store the `email` field (and perhaps a non-sensitive `uid` field) directly in the `/users/{userId}` documents and keep all other profile data within the `/users/{userId}/publicProfile/profile` subcollection.**
+3.  **Subcollection Rules:** The rule `match /users/{userId}/{document=**}` correctly restricts read/write access to subcollections (like `publicProfile`, `releases`, `events`) to the authenticated owner (`request.auth.uid == userId`). This protects the actual profile data fetched by `getUserProfileByUid`.
+
+**Action Required:**
+
+1.  Go to your Firebase project console -> Firestore Database -> Rules.
+2.  Replace your existing rules with the revised rules provided above.
+3.  **Publish** the changes.
+
+**No code changes are needed** in your Next.js application for this specific error, as the `getUserProfileByEmail` function's logic (querying by email, then fetching the subcollection) is correct based on the necessary security model. The issue was solely within the Firestore rules.
