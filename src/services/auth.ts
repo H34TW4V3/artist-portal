@@ -23,6 +23,7 @@ import {
     // Import email update and verification functions
     verifyBeforeUpdateEmail as firebaseVerifyBeforeUpdateEmail,
     sendEmailVerification as firebaseSendEmailVerification,
+    reload, // Import reload
     // Import MFA functions
     MultiFactorResolver,
     MultiFactorInfo,
@@ -39,6 +40,11 @@ const auth = getAuth(app);
 // --- Constants ---
 const ID_TOKEN_COOKIE_NAME = 'firebaseIdToken';
 const EMAIL_FOR_SIGN_IN_KEY = 'emailForSignIn';
+
+// Store verifier instance globally (use with caution, better context/state management preferred)
+// This helps prevent re-initialization issues if the component re-renders quickly.
+let globalRecaptchaVerifier: RecaptchaVerifier | null = null;
+
 
 // --- Helper Functions ---
 
@@ -81,56 +87,95 @@ export const onAuthStateChange = (callback: (user: User | null) => void): (() =>
 
 // --- Service Functions ---
 
+/**
+ * Initializes or retrieves a RecaptchaVerifier instance for a given container ID.
+ * Ensures the container exists and attempts to avoid re-initialization if possible.
+ * @param containerId - The ID of the HTML element where the reCAPTCHA widget should render.
+ * @returns A promise resolving with the RecaptchaVerifier instance.
+ */
 export function initializeRecaptchaVerifier(containerId: string): RecaptchaVerifier {
+    console.log(`Attempting to initialize reCAPTCHA on container: ${containerId}`);
+
     if (!auth) throw new Error("Firebase auth not initialized");
     if (typeof window === 'undefined') throw new Error("reCAPTCHA must be initialized client-side");
 
-    // Ensure the container exists
+    // Check if container exists in the DOM
     const container = document.getElementById(containerId);
-    if (!container) throw new Error(`reCAPTCHA container with ID "${containerId}" not found.`);
-
-    // Clear previous instance if exists on the same container
-    // (This is a workaround, ideally manage verifier instance lifecycle better)
-    if ((window as any).recaptchaVerifierInstance) {
-        try {
-             (window as any).recaptchaVerifierInstance.clear();
-        } catch (e) {
-             console.warn("Could not clear previous reCAPTCHA instance:", e);
-        }
+    if (!container) {
+        console.error(`reCAPTCHA container with ID "${containerId}" not found in the DOM.`);
+        throw new Error(`reCAPTCHA container with ID "${containerId}" not found.`);
     }
 
+    // Attempt to reuse the global instance if it exists and wasn't cleared
+    // if (globalRecaptchaVerifier) {
+    //     console.log("Reusing existing global reCAPTCHA verifier.");
+    //     // Optional: Could try to re-render if needed, but often reuse works.
+    //     // Be cautious with this, might cause issues if the context changed.
+    //     return globalRecaptchaVerifier;
+    // }
 
-    const verifier = new RecaptchaVerifier(auth, containerId, {
-        'size': 'invisible',
-        'callback': (response: any) => {
-            console.log("reCAPTCHA verified");
-        },
-        'expired-callback': () => {
-             console.warn("reCAPTCHA expired");
-             // Consider resetting the verifier or prompting the user
+    try {
+        // Clear any previous content in the container *before* initializing
+        // This helps if the component remounted and left old elements
+        container.innerHTML = '';
+
+        console.log(`Creating new RecaptchaVerifier for container: ${containerId}`);
+        const verifier = new RecaptchaVerifier(auth, container, { // Pass the element directly
+            'size': 'invisible',
+            'callback': (response: any) => {
+                console.log(`reCAPTCHA verified for ${containerId}`);
+                // reCAPTCHA solved, allow signInWithPhoneNumber.
+            },
+            'expired-callback': () => {
+                 console.warn(`reCAPTCHA expired for ${containerId}. Resetting...`);
+                 // Response expired. Ask user to solve reCAPTCHA again.
+                 // Consider clearing and re-initializing or prompting user.
+                 verifier.render().catch(renderError => {
+                     console.error(`Error re-rendering expired reCAPTCHA for ${containerId}:`, renderError);
+                 });
+            },
+            'error-callback': (error: any) => {
+                 console.error(`reCAPTCHA error for ${containerId}:`, error);
+                 // Handle error (e.g., network issue)
+            }
+        });
+
+        // Render the verifier explicitly
+        verifier.render().then((widgetId) => {
+            console.log(`reCAPTCHA rendered successfully for ${containerId}, widgetId: ${widgetId}`);
+        }).catch(renderError => {
+            console.error(`Error rendering reCAPTCHA for ${containerId}:`, renderError);
+            // Attempt cleanup if render fails
+            try {
+                container.innerHTML = ''; // Clear container again on render error
+            } catch (cleanupError){
+                console.error("Error cleaning up container after render error:", cleanupError);
+            }
+            throw new Error("Failed to render reCAPTCHA widget."); // Propagate error
+        });
+
+        // Store the new instance globally (consider context/state for better management)
+        globalRecaptchaVerifier = verifier;
+
+        return verifier;
+
+    } catch (error) {
+        console.error(`Failed to initialize RecaptchaVerifier for ${containerId}:`, error);
+        throw new Error("Could not initialize security check.");
+    }
+}
+
+// Function to clear the global verifier, call this on component unmount or modal close
+export function clearGlobalRecaptchaVerifier() {
+    if (globalRecaptchaVerifier) {
+        try {
+            globalRecaptchaVerifier.clear();
+            console.log("Global reCAPTCHA verifier cleared.");
+        } catch (e) {
+            console.error("Error clearing global reCAPTCHA verifier:", e);
         }
-    });
-
-     // Store instance globally for potential cleanup (use with caution)
-     (window as any).recaptchaVerifierInstance = verifier;
-
-     // Render the verifier immediately
-      verifier.render().catch(err => {
-           console.error("Error rendering reCAPTCHA:", err);
-           // If rendering fails, try resetting the container and retrying once
-           container.innerHTML = ''; // Clear container
-           try {
-                const retryVerifier = new RecaptchaVerifier(auth, containerId, { /* options */ });
-                (window as any).recaptchaVerifierInstance = retryVerifier;
-                retryVerifier.render().catch(retryErr => {
-                     console.error("Error rendering reCAPTCHA on retry:", retryErr);
-                });
-           } catch (initErr) {
-                 console.error("Error initializing reCAPTCHA on retry:", initErr);
-           }
-      });
-
-    return verifier;
+        globalRecaptchaVerifier = null;
+    }
 }
 
 
@@ -456,7 +501,7 @@ export async function unenrollSmsMfa(user: User): Promise<void> {
 export async function getUserMfaInfo(user: User): Promise<MultiFactorInfo[]> {
     try {
         // Ensure the user object is up-to-date
-        await user.reload();
+        await reload(user); // Use the imported reload
         const updatedUser = auth.currentUser;
         if (!updatedUser) throw new Error("User not available after reload.");
 
@@ -466,4 +511,3 @@ export async function getUserMfaInfo(user: User): Promise<MultiFactorInfo[]> {
         throw new Error("Could not fetch MFA information.");
     }
 }
-

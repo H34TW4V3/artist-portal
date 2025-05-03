@@ -5,6 +5,7 @@ import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/context/auth-context";
 import {
     initializeRecaptchaVerifier,
+    clearGlobalRecaptchaVerifier, // Import the cleanup function
     sendSmsVerificationCode,
     enrollSmsMfa,
     unenrollSmsMfa,
@@ -77,43 +78,61 @@ export function MfaManagementModal({
 
   // Initialize reCAPTCHA and check status when modal opens
   useEffect(() => {
-    if (isOpen && user && typeof window !== 'undefined') {
-        setError(null);
-        setVerificationCode('');
-        setVerificationId(null);
-        checkEnrollmentStatus(user); // Check status first
+      let verifier: RecaptchaVerifier | null = null; // Local variable for cleanup
 
-        // Initialize reCAPTCHA only if needed (not enrolled) and not already initialized
-        if (!isEnrolled && recaptchaContainerRef.current && !recaptchaVerifier) {
-            try {
-                 if (!recaptchaContainerRef.current.id) {
-                     recaptchaContainerRef.current.id = `mfa-recaptcha-${Date.now()}`;
+      const initialize = async () => {
+        if (isOpen && user && typeof window !== 'undefined') {
+            setError(null);
+            setVerificationCode('');
+            setVerificationId(null);
+            await checkEnrollmentStatus(user); // Check status first
+
+            // Initialize reCAPTCHA only if needed (not enrolled) and container exists
+            // Check isEnrolled state *after* checkEnrollmentStatus finishes
+            if (!isEnrolled && recaptchaContainerRef.current) {
+                 const containerId = `mfa-recaptcha-${Date.now()}`;
+                 recaptchaContainerRef.current.id = containerId;
+                 console.log(`Preparing to initialize reCAPTCHA for MFA on container: ${containerId}`);
+                 try {
+                     verifier = initializeRecaptchaVerifier(containerId); // Assign to local var
+                     setRecaptchaVerifier(verifier); // Set state
+                     console.log(`MFA reCAPTCHA Initialized successfully on container: ${containerId}`);
+                 } catch (err) {
+                     console.error(`Failed to initialize MFA reCAPTCHA on container ${containerId}:`, err);
+                     setError("Could not initialize security check.");
+                     toast({ title: "Security Error", description: "Failed to initialize reCAPTCHA.", variant: "destructive" });
                  }
-                 const verifier = initializeRecaptchaVerifier(recaptchaContainerRef.current.id);
-                 setRecaptchaVerifier(verifier);
-                 console.log("reCAPTCHA Initialized for MFA modal on container:", recaptchaContainerRef.current.id);
-            } catch (err) {
-                 console.error("Failed to initialize reCAPTCHA for MFA:", err);
-                 setError("Could not initialize security check.");
-                 toast({ title: "Security Error", description: "Failed to initialize reCAPTCHA.", variant: "destructive" });
             }
         }
-    } else if (!isOpen) {
-        // Optional: Reset state when modal closes
-        setCurrentStep('initial');
-        setIsLoading(false);
-        setError(null);
-        // Consider resetting recaptchaVerifier if it causes issues, but often reusable
-        // if (recaptchaVerifier) {
-        //     recaptchaVerifier.clear();
-        //     setRecaptchaVerifier(null);
-        // }
-    }
-  }, [isOpen, user, isEnrolled]); // Re-run if enrollment status changes or modal opens
+      };
+
+      initialize();
+
+      // Cleanup function when component unmounts OR modal closes (isOpen becomes false)
+      return () => {
+          if (!isOpen) { // Cleanup only when closing
+             // Explicitly clear the global verifier when the modal closes
+             clearGlobalRecaptchaVerifier();
+             setRecaptchaVerifier(null); // Clear local state as well
+
+             // Reset other states on close
+             setCurrentStep('initial');
+             setIsLoading(false);
+             setError(null);
+             setVerificationCode('');
+             setVerificationId(null);
+             console.log("MFA Modal closed, state reset and global verifier cleared.");
+          }
+      };
+  // Re-run effect when isOpen or user changes. Also depends on isEnrolled to decide if reCAPTCHA needed.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, user, isEnrolled]);
+
 
   const handleSendCode = async () => {
     if (!user || !recaptchaVerifier || !phoneNumber) {
       setError("User, phone number, or security verifier is missing.");
+      toast({ title: "Error", description: "Cannot send code. Ensure phone number is saved and security check is ready.", variant: "destructive" });
       return;
     }
     setIsLoading(true);
@@ -127,7 +146,7 @@ export function MfaManagementModal({
     } catch (err) {
       console.error("Error sending SMS verification code:", err);
       setError(err instanceof Error ? err.message : "Failed to send verification code.");
-      toast({ title: "Error Sending Code", description: error, variant: "destructive" });
+      toast({ title: "Error Sending Code", description: error || "Unknown error", variant: "destructive" }); // Use error state
     } finally {
       setIsLoading(false);
     }
@@ -150,7 +169,7 @@ export function MfaManagementModal({
     } catch (err) {
       console.error("Error verifying code and enrolling MFA:", err);
       setError(err instanceof Error ? err.message : "Failed to verify code or enroll.");
-      toast({ title: "Enrollment Failed", description: error, variant: "destructive" });
+      toast({ title: "Enrollment Failed", description: error || "Unknown error", variant: "destructive" }); // Use error state
     } finally {
       setIsLoading(false);
     }
@@ -170,10 +189,11 @@ export function MfaManagementModal({
     } catch (err) {
         console.error("Error unenrolling MFA:", err);
         setError(err instanceof Error ? err.message : "Failed to disable 2FA.");
-        toast({ title: "Unenrollment Failed", description: error, variant: "destructive" });
+        toast({ title: "Unenrollment Failed", description: error || "Unknown error", variant: "destructive" }); // Use error state
+        setCurrentStep('enrolled'); // Go back to enrolled view even on error
     } finally {
         setIsLoading(false);
-        setCurrentStep('enrolled'); // Go back to enrolled view even on error
+        // setCurrentStep('enrolled'); // Removed redundant step change
     }
   }
 
@@ -201,8 +221,8 @@ export function MfaManagementModal({
                     <AlertDescription>{error}</AlertDescription>
                 </Alert>
             )}
-             {/* Invisible reCAPTCHA container */}
-             <div ref={recaptchaContainerRef} id={`mfa-recaptcha-${Date.now()}`} className="my-2 h-0 overflow-hidden"></div>
+             {/* Invisible reCAPTCHA container with ref */}
+             <div ref={recaptchaContainerRef} className="my-2 h-0 overflow-hidden"></div>
 
             <Button onClick={handleSendCode} disabled={isLoading || !phoneNumber || !recaptchaVerifier} className="w-full">
               {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ShieldCheck className="mr-2 h-4 w-4" />}
