@@ -7,7 +7,8 @@ import { useAuth } from "@/context/auth-context";
 import { getFirestore, doc, updateDoc } from "firebase/firestore";
 import { app } from "@/services/firebase-config";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+// Import CardFooter
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { ArrowLeft, ArrowRight, CheckCircle } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
@@ -94,8 +95,9 @@ export default function TutorialPage() {
     if (!user) return;
 
     try {
-      const userDocRef = doc(db, "users", user.uid);
-      await updateDoc(userDocRef, {
+      // Path to the specific profile document
+      const profileDocRef = doc(db, "users", user.uid, "publicProfile", "profile");
+      await updateDoc(profileDocRef, {
         hasCompletedTutorial: true,
       });
       toast({
@@ -173,3 +175,4 @@ export default function TutorialPage() {
     </div>
   );
 }
+
