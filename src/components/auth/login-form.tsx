@@ -542,12 +542,16 @@ export function LoginForm({ className }: { className?: string }) {
 
                 {/* Step 5: Email Link Sent Confirmation (Passwordless OR Chosen Email Link) */}
                 <div className={cn("space-y-4 h-full flex flex-col items-center justify-center text-center", getAnimationClasses(5))} aria-hidden={currentStep !== 5}>
-                    <MailCheck className="h-20 w-20 mb-6 text-green-500" />
-                    <h3 className="text-xl font-semibold tracking-tight text-foreground">Check Your Inbox!</h3>
-                    <p className="text-muted-foreground text-sm max-w-xs">
-                        We've sent a secure sign-in link to <span className="font-medium text-foreground">{form.getValues("artistId")}</span>. Click the link in the email to complete your sign-in.
-                    </p>
-                     <p className="text-xs text-muted-foreground mt-4">(You can close this window)</p>
+                    {currentStep === 5 && ( // Conditionally render the content for step 5
+                        <>
+                            <MailCheck className="h-20 w-20 mb-6 text-green-500" />
+                            <h3 className="text-xl font-semibold tracking-tight text-foreground">Check Your Inbox!</h3>
+                            <p className="text-muted-foreground text-sm max-w-xs">
+                                We've sent a secure sign-in link to <span className="font-medium text-foreground">{form.getValues("artistId")}</span>. Click the link in the email to complete your sign-in.
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-4">(You can close this window)</p>
+                        </>
+                     )}
                 </div>
 
 
@@ -585,4 +589,3 @@ export function LoginForm({ className }: { className?: string }) {
   );
 }
 
-    
