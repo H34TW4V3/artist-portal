@@ -95,11 +95,13 @@ export default function TutorialPage() {
     if (!user) return;
 
     try {
-      // Path to the specific profile document
+      // Path to the specific profile document within the subcollection
       const profileDocRef = doc(db, "users", user.uid, "publicProfile", "profile");
+      console.log("Attempting to update tutorial status at path:", profileDocRef.path);
       await updateDoc(profileDocRef, {
         hasCompletedTutorial: true,
       });
+      console.log("Tutorial status updated successfully in Firestore.");
       toast({
           title: "Tutorial Completed!",
           description: "Welcome to the Artist Hub!",
@@ -108,8 +110,11 @@ export default function TutorialPage() {
       router.replace("/"); // Redirect to the main home page
     } catch (error) {
       console.error("Error updating tutorial status:", error);
+      // Log the specific error details
+      console.error("Firestore Error Code:", (error as any).code);
+      console.error("Firestore Error Message:", (error as any).message);
        toast({
-           title: "Error",
+           title: "Error Saving Status",
            description: "Could not save tutorial completion status. Please try finishing again.",
            variant: "destructive",
        })
