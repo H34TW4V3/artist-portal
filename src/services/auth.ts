@@ -1,4 +1,5 @@
 
+
 // Import necessary Firebase modules
 import {
     getAuth,
@@ -124,6 +125,8 @@ export function initializeRecaptchaVerifier(containerId: string): RecaptchaVerif
             'expired-callback': () => {
                  console.warn(`reCAPTCHA expired for ${containerId}. Resetting required if action pending.`);
                  // Response expired. Ask user to solve reCAPTCHA again.
+                 // Optionally, try to re-render or reset the verifier here if needed
+                 // Example: globalRecaptchaVerifier?.render().catch(...)
             },
             'error-callback': (error: any) => {
                  console.error(`reCAPTCHA error for ${containerId}:`, error);
@@ -140,7 +143,8 @@ export function initializeRecaptchaVerifier(containerId: string): RecaptchaVerif
             } catch (cleanupError){
                 console.error("Error cleaning up container after render error:", cleanupError);
             }
-            throw new Error("Failed to render reCAPTCHA widget."); // Propagate error
+            // Don't necessarily throw here, allow potential recovery or error display
+            // throw new Error("Failed to render reCAPTCHA widget."); // Propagate error
         });
 
         globalRecaptchaVerifier = verifier;
@@ -150,6 +154,9 @@ export function initializeRecaptchaVerifier(containerId: string): RecaptchaVerif
         console.error(`Failed to initialize RecaptchaVerifier for ${containerId}:`, error);
         if ((error as AuthError)?.code === 'auth/argument-error') {
              console.error("Firebase Auth Argument Error - Ensure 'auth' instance and containerId/element are valid.");
+             // Attempt to clear existing instance if it exists? Risky, but might help.
+             clearGlobalRecaptchaVerifier();
+             throw new Error("Invalid argument initializing reCAPTCHA. Please refresh.");
         }
         throw new Error("Could not initialize security check.");
     }
@@ -184,15 +191,24 @@ export async function login(email: string, password: string): Promise<User | { m
         }
 
         console.error("Firebase Service: Login error:", authError.code, authError.message);
-         if (authError.code === 'auth/invalid-credential' || authError.code === 'auth/user-not-found' || authError.code === 'auth/wrong-password' || authError.code === 'auth/invalid-login-credentials') {
+         // Updated error handling based on latest Firebase v9/v10 error codes
+         if (authError.code === 'auth/invalid-credential' || authError.code === 'auth/user-not-found' || authError.code === 'auth/wrong-password') {
               throw new Error("Invalid Artist ID or password.");
-         } else if (authError.code === 'auth/api-key-not-valid.-please-pass-a-valid-api-key.') {
+         } else if (authError.code === 'auth/api-key-not-valid') { // Corrected common API key error code
+            console.error("Firebase API Key Error: Check NEXT_PUBLIC_FIREBASE_API_KEY.");
             throw new Error("Authentication service is not configured correctly. Please contact support.");
          }
          throw new Error("Login failed. Please try again.");
     }
 }
 
+/**
+  * Sends an MFA verification code via SMS. Used during the sign-in flow when MFA is required.
+  * @param mfaResolver - The MultiFactorResolver obtained after initial login attempt failed with 'auth/multi-factor-auth-required'.
+  * @param phoneInfoOptions - Options containing the MFA hint and session.
+  * @param recaptchaVerifier - The initialized RecaptchaVerifier instance.
+  * @returns A promise resolving with the verification ID.
+  */
  export async function sendMfaVerificationCode(mfaResolver: MultiFactorResolver, phoneInfoOptions: PhoneInfoOptions, recaptchaVerifier: RecaptchaVerifier): Promise<string> {
     try {
         const phoneAuthProvider = new PhoneAuthProvider(auth);
@@ -205,6 +221,15 @@ export async function login(email: string, password: string): Promise<User | { m
         if ((error as AuthError).code === 'auth/unauthorized-domain') {
              throw new Error("This domain is not authorized for MFA operations. Please check Firebase settings.");
         }
+         if ((error as AuthError).code === 'auth/missing-multi-factor-info') {
+             throw new Error("Multi-factor information is missing for this user.");
+         }
+         if ((error as AuthError).code === 'auth/missing-phone-number') {
+              throw new Error("User's phone number is missing or not registered.");
+         }
+         if ((error as AuthError).code === 'auth/captcha-check-failed') {
+              throw new Error("Security check failed. Please try again.");
+         }
         throw new Error("Failed to send verification code.");
     }
  }
@@ -267,6 +292,9 @@ export async function login(email: string, password: string): Promise<User | { m
 
     let email = localStorage.getItem(EMAIL_FOR_SIGN_IN_KEY);
     if (!email) {
+        // Attempt to prompt if absolutely necessary, but generally avoid this
+        // Better to guide the user back to the login page if email is missing
+        console.warn("Email for sign-in link not found in localStorage. Prompting user.");
         email = window.prompt('Please provide your email for confirmation');
         if (!email) {
             throw new Error("Email confirmation required.");
@@ -284,6 +312,8 @@ export async function login(email: string, password: string): Promise<User | { m
         if (authError.code === 'auth/invalid-action-code') {
             throw new Error("Sign-in link is invalid or has expired. Please request a new one.");
         }
+        // Clear stored email if link is invalid/used
+        localStorage.removeItem(EMAIL_FOR_SIGN_IN_KEY);
         throw new Error("Could not sign in using the provided link.");
     }
  }
@@ -433,6 +463,9 @@ export async function sendSmsVerificationCodeEnrollment( // Renamed for clarity
          if ((error as AuthError).code === 'auth/unauthorized-domain') {
              throw new Error("This domain is not authorized for MFA operations. Please check Firebase settings.");
          }
+          if ((error as AuthError).code === 'auth/captcha-check-failed') {
+              throw new Error("Security check failed. Please try again.");
+          }
         throw new Error("Failed to send verification code.");
     }
 }
@@ -461,6 +494,9 @@ export async function enrollSmsMfa(
          } else if ((error as AuthError).code === 'auth/code-expired') {
              throw new Error("Verification code has expired. Please request a new one.");
          }
+          else if ((error as AuthError).code === 'auth/missing-verification-code') {
+             throw new Error("Verification code is missing.");
+          }
         throw new Error("Failed to enroll SMS two-factor authentication.");
     }
 }
@@ -497,8 +533,9 @@ export async function unenrollSmsMfa(user: User): Promise<void> {
  */
 export async function getUserMfaInfo(user: User): Promise<MultiFactorInfo[]> {
     try {
+        // Reload the user data to get the latest MFA info
         await reload(user);
-        const updatedUser = auth.currentUser;
+        const updatedUser = auth.currentUser; // Get the potentially updated user object
         if (!updatedUser) throw new Error("User not available after reload.");
         return multiFactor(updatedUser).enrolledFactors;
     } catch (error) {
@@ -506,9 +543,7 @@ export async function getUserMfaInfo(user: User): Promise<MultiFactorInfo[]> {
         throw new Error("Could not fetch MFA information.");
     }
 }
-
-// Rename original sendSmsVerificationCode to sendSmsVerificationCodeEnrollment
-// Removed the duplicate export below:
-// export { sendSmsVerificationCodeEnrollment as sendSmsVerificationCode };
 // Keep the single, correctly named export
 export { sendSmsVerificationCodeEnrollment };
+
+
