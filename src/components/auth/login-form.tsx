@@ -24,8 +24,8 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"; // Import Avatar
-// Import getUserProfileByUid and getUserProfileByEmail directly from user service
-import { getUserProfileByUid, getUserProfileByEmail } from "@/services/user"; // Corrected import
+// Import getUserProfileByUid directly from user service
+import { getUserProfileByUid } from "@/services/user"; // Corrected import
 import type { ProfileFormValues } from "@/components/profile/profile-form"; // Import profile type
 // Import login and MFA functions from auth service, and new email link functions
 import {
@@ -232,37 +232,6 @@ export function LoginForm({ className }: { className?: string }) {
     return isValid;
   };
 
-   // Fetch profile and UID using email before showing password step
-   const fetchProfileForPasswordStep = async (): Promise<void> => {
-    const email = form.getValues("artistId");
-    if (!email) return; // Should not happen due to validation
-
-    try {
-        // Fetch profile AND UID using the email-based function
-        const result = await getUserProfileByEmail(email);
-
-        if (result) {
-             setFetchedProfile(result.profile); // Store profile data (could be null)
-             setFetchedUid(result.uid); // Store the UID
-             console.log("Fetched profile for password step:", result.profile?.name, "UID:", result.uid);
-        } else {
-             // If user not found by email, treat as potentially new or incorrect email
-             console.warn("User not found by email:", email);
-             setFetchedProfile(null);
-             setFetchedUid(null);
-             // Optionally show a toast, but maybe wait for password attempt error
-             // toast({ title: "Email Not Found", description: "No user found with this email.", variant: "destructive", duration: 2000 });
-        }
-
-    } catch (error) {
-        console.error("Error fetching profile for password step:", error);
-        setFetchedProfile(null); // Clear profile on error
-        setFetchedUid(null); // Clear UID on error
-        toast({ title: "Profile Error", description: "Could not load profile details.", variant: "destructive", duration: 2000 });
-    }
-   };
-
-
   // Handle "Next" button click
   const handleNext = async () => {
      if (await validateStep(currentStep)) {
@@ -272,7 +241,8 @@ export function LoginForm({ className }: { className?: string }) {
          } else if (currentStep === 2) {
              // Based on loginMethod chosen in Step 2, go to Password (3) or Email Sent (5)
              if (loginMethod === 'password') {
-                 await fetchProfileForPasswordStep(); // Fetch profile and UID before going to password step
+                 // Fetching profile by email before password step is problematic due to rules.
+                 // Profile info will be available after successful login via listener.
                  goToStep(3);
              }
              else if (loginMethod === 'emailLink') await handleSendEmailLink(); // Trigger sending link
@@ -323,9 +293,9 @@ export function LoginForm({ className }: { className?: string }) {
      }
      setIsSubmitting(true);
      setSplashLoadingText("Logging in...");
-     // Set splash state based on fetched profile OR email
-     setSplashUserName(fetchedProfile?.name || values.artistId.split('@')[0]);
-     setSplashUserImageUrl(fetchedProfile?.imageUrl || null);
+     // Use email for splash initially, profile fetched later
+     setSplashUserName(values.artistId.split('@')[0]);
+     setSplashUserImageUrl(null);
      setShowSplash(true);
 
      try {
@@ -364,11 +334,19 @@ export function LoginForm({ className }: { className?: string }) {
           setIsSubmitting(false); // Reset submitting state for MFA step
 
        } else if (loginResult && 'uid' in loginResult) {
-          // Standard login successful - Update splash screen text after successful login
+          // Standard login successful - Fetch profile for splash display
           console.log("LoginForm: Login successful via service. User UID:", loginResult.uid);
-          setSplashLoadingText(`Welcome, ${fetchedProfile?.name || loginResult.email?.split('@')[0] || 'User'}!`);
-          // No need to fetch profile again, already done if password method was used.
-          // If email link method, profile is fetched after link verification.
+           try {
+              const profile = await getUserProfileByUid(loginResult.uid);
+              setSplashUserName(profile?.name || loginResult.email?.split('@')[0] || 'User');
+              setSplashUserImageUrl(profile?.imageUrl || loginResult.photoURL || null);
+           } catch (profileError) {
+               console.error("Error fetching profile after successful login:", profileError);
+               // Use auth details as fallback
+               setSplashUserName(loginResult.email?.split('@')[0] || 'User');
+               setSplashUserImageUrl(loginResult.photoURL || null);
+           }
+          setSplashLoadingText(`Welcome!`);
           // AuthProvider listener handles redirect, splash remains until then.
           // setIsSubmitting(false); // No need to set here, splash is showing
 
@@ -436,16 +414,24 @@ export function LoginForm({ className }: { className?: string }) {
       }
       setIsSubmitting(true);
       setSplashLoadingText("Verifying code...");
-      // Set splash state based on fetched profile OR email
-      setSplashUserName(fetchedProfile?.name || form.getValues("artistId").split('@')[0]);
-      setSplashUserImageUrl(fetchedProfile?.imageUrl || null);
+      // Fetch profile post-MFA for splash
       setShowSplash(true);
 
       try {
           const user = await completeMfaSignIn(mfaResolver, verificationId, code);
           console.log("MFA sign-in successful. User UID:", user.uid);
-          // Update splash text after successful MFA
-          setSplashLoadingText(`Welcome, ${fetchedProfile?.name || user.email?.split('@')[0] || 'User'}!`);
+          // Fetch profile for splash display
+           try {
+               const profile = await getUserProfileByUid(user.uid);
+               setSplashUserName(profile?.name || user.email?.split('@')[0] || 'User');
+               setSplashUserImageUrl(profile?.imageUrl || user.photoURL || null);
+            } catch (profileError) {
+                console.error("Error fetching profile after MFA login:", profileError);
+                // Use auth details as fallback
+                setSplashUserName(user.email?.split('@')[0] || 'User');
+                setSplashUserImageUrl(user.photoURL || null);
+            }
+            setSplashLoadingText(`Welcome!`);
            // Redirect handled by listener
 
       } catch (error) {
@@ -549,16 +535,16 @@ export function LoginForm({ className }: { className?: string }) {
                       {currentStep === 3 && loginMethod === 'password' && ( // Show only if password method chosen
                           <>
                               <div className="flex flex-col items-center text-center p-6 border-b border-border/30">
-                                   {/* Display avatar based on fetched profile data or initials */}
+                                   {/* Display avatar - will show initials based on email until profile fetched post-login */}
                                    <Avatar className="h-20 w-20 mb-4 border-4 border-primary/50">
-                                        <AvatarImage src={fetchedProfile?.imageUrl || undefined} alt={fetchedProfile?.name || form.getValues("artistId").split('@')[0]} />
+                                        {/* Removed direct image src - relies on fallback initially */}
                                         <AvatarFallback className="text-3xl bg-muted text-muted-foreground">
-                                            {getInitials()}
+                                            {form.getValues("artistId")?.charAt(0).toUpperCase() || 'U'}
                                         </AvatarFallback>
                                     </Avatar>
                                     <h3 className="text-xl font-semibold tracking-tight text-foreground">
-                                         {/* Display fetched profile name or email prefix */}
-                                         {fetchedProfile?.name || form.getValues("artistId").split('@')[0]}
+                                         {/* Display email prefix initially */}
+                                         {form.getValues("artistId").split('@')[0]}
                                     </h3>
                               </div>
                               <div className="flex-grow p-6 space-y-4">
@@ -643,4 +629,3 @@ export function LoginForm({ className }: { className?: string }) {
     </div>
   );
 }
-
