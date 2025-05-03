@@ -1,5 +1,4 @@
 
-
 // Import necessary Firebase modules
 import {
     getAuth,
@@ -543,7 +542,8 @@ export async function getUserMfaInfo(user: User): Promise<MultiFactorInfo[]> {
         throw new Error("Could not fetch MFA information.");
     }
 }
-// Keep the single, correctly named export
-export { sendSmsVerificationCodeEnrollment };
+// Explicitly keep the single export at the end
+// export { sendSmsVerificationCodeEnrollment }; // This line was causing the duplicate export error
 
+// Make sure no other export statements for sendSmsVerificationCodeEnrollment exist above.
 
