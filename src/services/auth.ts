@@ -50,7 +50,7 @@ let globalRecaptchaVerifier: RecaptchaVerifier | null = null;
 
 const setTokenCookie = (token: string) => {
   Cookies.set(ID_TOKEN_COOKIE_NAME, token, {
-    expires: 1,
+    expires: 1, // Expires in 1 day
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'strict',
   });
@@ -74,7 +74,7 @@ export const onAuthStateChange = (callback: (user: User | null) => void): (() =>
             } catch (error) {
                  console.error("Firebase Service: Error getting ID token:", error);
                  removeTokenCookie();
-                 user = null;
+                 user = null; // Treat as logged out if token fetch fails
             }
         } else {
             console.log("Firebase Service: No user detected by listener.");
@@ -107,13 +107,11 @@ export function initializeRecaptchaVerifier(containerId: string): RecaptchaVerif
     }
 
     // Clear any previous content in the container *before* initializing
-    // This helps if the component remounted and left old elements
     try {
         container.innerHTML = '';
     } catch (e) {
         console.warn("Could not clear container before initializing reCAPTCHA", e);
     }
-
 
     try {
         console.log(`Creating new RecaptchaVerifier for container: ${containerId}`);
@@ -126,12 +124,8 @@ export function initializeRecaptchaVerifier(containerId: string): RecaptchaVerif
             'expired-callback': () => {
                  console.warn(`reCAPTCHA expired for ${containerId}. Resetting required if action pending.`);
                  // Response expired. Ask user to solve reCAPTCHA again.
-                 // The component logic should handle prompting the user or re-initializing.
-                 // We don't automatically re-render here.
             },
             'error-callback': (error: any) => {
-                 // Log the error, but don't try to re-initialize automatically here.
-                 // The component using the verifier should handle this failure state.
                  console.error(`reCAPTCHA error for ${containerId}:`, error);
             }
         });
@@ -141,7 +135,6 @@ export function initializeRecaptchaVerifier(containerId: string): RecaptchaVerif
             console.log(`reCAPTCHA rendered successfully for ${containerId}, widgetId: ${widgetId}`);
         }).catch(renderError => {
             console.error(`Error rendering reCAPTCHA for ${containerId}:`, renderError);
-            // Attempt cleanup if render fails
             try {
                 container.innerHTML = ''; // Clear container again on render error
             } catch (cleanupError){
@@ -150,14 +143,11 @@ export function initializeRecaptchaVerifier(containerId: string): RecaptchaVerif
             throw new Error("Failed to render reCAPTCHA widget."); // Propagate error
         });
 
-        // Store the new instance globally (consider context/state for better management)
         globalRecaptchaVerifier = verifier;
-
         return verifier;
 
     } catch (error) {
         console.error(`Failed to initialize RecaptchaVerifier for ${containerId}:`, error);
-        // Check if it's the specific argument error
         if ((error as AuthError)?.code === 'auth/argument-error') {
              console.error("Firebase Auth Argument Error - Ensure 'auth' instance and containerId/element are valid.");
         }
@@ -211,6 +201,10 @@ export async function login(email: string, password: string): Promise<User | { m
         return verificationId;
     } catch (error) {
         console.error("Firebase Service: Error sending MFA code:", error);
+        // Add specific handling for unauthorized domain during MFA SMS sending if applicable
+        if ((error as AuthError).code === 'auth/unauthorized-domain') {
+             throw new Error("This domain is not authorized for MFA operations. Please check Firebase settings.");
+        }
         throw new Error("Failed to send verification code.");
     }
  }
@@ -243,13 +237,19 @@ export async function login(email: string, password: string): Promise<User | { m
 
     try {
         await firebaseSendSignInLinkToEmail(auth, email, actionCodeSettings);
-        window.localStorage.setItem(EMAIL_FOR_SIGN_IN_KEY, email);
+        // Use localStorage for email persistence across browser sessions until link is used
+        localStorage.setItem(EMAIL_FOR_SIGN_IN_KEY, email);
         console.log("Firebase Service: Sign-in link sent to:", email);
     } catch (error) {
         const authError = error as AuthError;
         console.error("Firebase Service: Error sending sign-in link:", authError.code, authError.message);
          if (authError.code === 'auth/invalid-email') {
              throw new Error("Please enter a valid email address.");
+         }
+         // Add specific error handling for unauthorized continue URI
+         if (authError.code === 'auth/unauthorized-continue-uri') {
+             console.error(`Firebase Auth Error: The domain used in redirectUrl ('${redirectUrl}') is not authorized. Add it to your Firebase project's Authentication -> Settings -> Authorized domains.`);
+             throw new Error("This domain is not configured for email link sign-in. Please contact support or check Firebase settings.");
          }
         throw new Error("Could not send sign-in link. Please try again.");
     }
@@ -264,21 +264,17 @@ export async function login(email: string, password: string): Promise<User | { m
         throw new Error("Invalid sign-in link.");
     }
 
-    let email = window.localStorage.getItem(EMAIL_FOR_SIGN_IN_KEY);
+    let email = localStorage.getItem(EMAIL_FOR_SIGN_IN_KEY);
     if (!email) {
-        // Prompt user for email if not found in localStorage
         email = window.prompt('Please provide your email for confirmation');
         if (!email) {
             throw new Error("Email confirmation required.");
         }
-        // Optionally save the entered email back to localStorage if needed later
-        // window.localStorage.setItem(EMAIL_FOR_SIGN_IN_KEY, email);
     }
-
 
     try {
         const userCredential = await firebaseSignInWithEmailLink(auth, email, url);
-        window.localStorage.removeItem(EMAIL_FOR_SIGN_IN_KEY);
+        localStorage.removeItem(EMAIL_FOR_SIGN_IN_KEY);
         console.log("Firebase Service: Sign-in with email link successful.");
         return userCredential.user;
     } catch (error) {
@@ -313,7 +309,6 @@ export async function sendPasswordResetEmail(email: string): Promise<void> {
         const authError = error as AuthError;
         console.error("Firebase Service: Error sending password reset email:", authError.code, authError.message);
          if (authError.code === 'auth/user-not-found' || authError.code === 'auth/invalid-email') {
-             // Don't reveal if email exists
              throw new Error("If an account exists for this email, a password reset link has been sent.");
          }
         throw new Error("Could not send password reset email. Please try again.");
@@ -352,13 +347,13 @@ export async function verifyBeforeUpdateEmail(newEmail: string): Promise<void> {
     if (!user) {
         throw new Error("No authenticated user found.");
     }
-    // Optional: Basic check if email is the same
     if (user.email === newEmail) {
         throw new Error("The new email is the same as the current one.");
     }
 
     try {
-        await firebaseVerifyBeforeUpdateEmail(user, newEmail); // Call without settings if no redirect needed
+        // Use default action code settings (no specific redirect needed unless desired)
+        await firebaseVerifyBeforeUpdateEmail(user, newEmail);
         console.log("Firebase Service: Verification email sent to new address:", newEmail);
     } catch (error) {
         const authError = error as AuthError;
@@ -385,14 +380,12 @@ export async function sendVerificationEmail(): Promise<void> {
         throw new Error("No authenticated user found.");
     }
     if (user.emailVerified) {
-        // Optionally, just return without error if already verified
         console.log("Firebase Service: Email is already verified.");
         return;
-        // Or: throw new Error("Your email is already verified.");
     }
 
     try {
-        await firebaseSendEmailVerification(user); // Call without settings if no redirect needed
+        await firebaseSendEmailVerification(user);
         console.log("Firebase Service: Verification email sent to current address:", user.email);
     } catch (error) {
         const authError = error as AuthError;
@@ -409,19 +402,19 @@ export async function sendVerificationEmail(): Promise<void> {
 /**
  * Sends an SMS verification code to the user's phone number for MFA enrollment.
  * @param user - The currently authenticated Firebase User object.
- * @param phoneNumber - The phone number to verify (must be associated with the user or provided).
+ * @param phoneNumber - The phone number to verify.
  * @param recaptchaVerifier - The initialized RecaptchaVerifier instance.
  * @returns A promise resolving with the verification ID.
  */
-export async function sendSmsVerificationCode(
+export async function sendSmsVerificationCodeEnrollment( // Renamed for clarity
     user: User,
-    phoneNumber: string, // Assuming phone number is passed in
+    phoneNumber: string,
     recaptchaVerifier: RecaptchaVerifier
 ): Promise<string> {
     try {
         const multiFactorSession: MultiFactorSession = await multiFactor(user).getSession();
         const phoneInfoOptions: PhoneInfoOptions = {
-            phoneNumber: phoneNumber, // Use the provided phone number
+            phoneNumber: phoneNumber,
             session: multiFactorSession,
         };
         const phoneAuthProvider = new PhoneAuthProvider(auth);
@@ -434,6 +427,10 @@ export async function sendSmsVerificationCode(
              throw new Error("The provided phone number is invalid.");
          } else if ((error as AuthError).code === 'auth/too-many-requests') {
               throw new Error("Too many verification codes sent recently. Please wait.");
+         }
+         // Check for unauthorized domain during enrollment SMS sending
+         if ((error as AuthError).code === 'auth/unauthorized-domain') {
+             throw new Error("This domain is not authorized for MFA operations. Please check Firebase settings.");
          }
         throw new Error("Failed to send verification code.");
     }
@@ -454,7 +451,7 @@ export async function enrollSmsMfa(
     try {
         const phoneAuthCredential = PhoneAuthProvider.credential(verificationId, verificationCode);
         const multiFactorAssertion = PhoneMultiFactorGenerator.assertion(phoneAuthCredential);
-        await multiFactor(user).enroll(multiFactorAssertion, `My SMS Factor ${Date.now()}`); // Optional display name
+        await multiFactor(user).enroll(multiFactorAssertion, `My SMS Factor ${Date.now()}`);
         console.log("Firebase Service: SMS MFA enrolled successfully for user:", user.uid);
     } catch (error) {
         console.error("Firebase Service: Error enrolling SMS MFA:", error);
@@ -469,7 +466,6 @@ export async function enrollSmsMfa(
 
 /**
  * Unenrolls the user from SMS MFA.
- * Requires the factor UID, which needs to be retrieved first.
  * @param user - The currently authenticated Firebase User object.
  * @returns A promise resolving when unenrollment is complete.
  */
@@ -500,14 +496,16 @@ export async function unenrollSmsMfa(user: User): Promise<void> {
  */
 export async function getUserMfaInfo(user: User): Promise<MultiFactorInfo[]> {
     try {
-        // Ensure the user object is up-to-date
-        await reload(user); // Use the imported reload
+        await reload(user);
         const updatedUser = auth.currentUser;
         if (!updatedUser) throw new Error("User not available after reload.");
-
         return multiFactor(updatedUser).enrolledFactors;
     } catch (error) {
         console.error("Firebase Service: Error retrieving MFA info:", error);
         throw new Error("Could not fetch MFA information.");
     }
 }
+
+// Rename original sendSmsVerificationCode to sendSmsVerificationCodeEnrollment
+// export { sendSmsVerificationCodeEnrollment as sendSmsVerificationCode };
+export { sendSmsVerificationCodeEnrollment };
