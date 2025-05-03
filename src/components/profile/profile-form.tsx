@@ -75,6 +75,9 @@ export function ProfileForm({ initialData, updateFunction, onSuccess, onCancel, 
         mode: "onChange",
     });
 
+    // Destructure formState for easier access
+    const { isDirty: formIsDirtyState, isValid: formIsValidState } = form.formState;
+
     useEffect(() => {
         if (initialData) {
              const mergedDefaults = {
@@ -114,7 +117,7 @@ export function ProfileForm({ initialData, updateFunction, onSuccess, onCancel, 
                 setImagePreviewUrl(reader.result as string);
             };
             reader.readAsDataURL(file);
-            form.setValue('imageUrl', '', { shouldDirty: true });
+            form.setValue('imageUrl', '', { shouldDirty: true }); // Mark form as dirty when image changes
         }
     };
 
@@ -123,45 +126,49 @@ export function ProfileForm({ initialData, updateFunction, onSuccess, onCancel, 
     };
 
     async function onSubmit(values: ProfileFormValues) {
+        console.log("ProfileForm onSubmit triggered!"); // Add log
         setIsSubmitting(true);
         const isImageChanged = !!selectedImageFile;
 
         let dataToSubmit = { ...values };
+         // If a new image was selected, we don't need to send the old imageUrl
          if (isImageChanged) {
              dataToSubmit.imageUrl = null;
+         } else {
+             // If no new image, ensure the currentImageUrl (from initialData) is included
+             // This prevents accidentally wiping the image if the user only changed text fields
+             dataToSubmit.imageUrl = currentImageUrl || null;
          }
 
         try {
             const { updatedData } = await updateFunction(dataToSubmit, selectedImageFile);
 
-            // Don't show success toast here if email change initiated verification
-            // The updateFunction's caller (UserProfile) will handle specific toasts
-            // based on whether email was changed.
-
+            // Update local state *after* successful updateFunction call
             setFormInitialName(updatedData.name);
             setCurrentImageUrl(updatedData.imageUrl ?? undefined);
             setSelectedImageFile(undefined);
             setImagePreviewUrl(null);
+
+            // Reset form with the new data from the backend to clear dirty state
             form.reset(updatedData, { keepValues: false, keepDirty: false, keepDefaultValues: false });
-            onSuccess?.(updatedData);
+
+            onSuccess?.(updatedData); // Call success callback if provided
 
         } catch (error) {
-            console.error("Error updating profile:", error);
-            // Error toast is now handled primarily by the caller (UserProfile)
-            // to provide context (e.g., "requires recent login").
-            // Keep a generic fallback here if needed, but prefer caller's handling.
-            // toast({
-            //     title: "Update Failed",
-            //     description: error instanceof Error ? error.message : "An unexpected error occurred.",
-            //     variant: "destructive",
-            // });
+            console.error("Error in ProfileForm onSubmit calling updateFunction:", error);
+            // Error toast is handled primarily by the caller (UserProfile)
         } finally {
             setIsSubmitting(false);
         }
     }
 
-    const formIsDirty = form.formState.isDirty || !!selectedImageFile;
-    const formIsValid = form.formState.isValid;
+    // Recalculate formIsDirty to include selectedImageFile
+    const formIsDirty = formIsDirtyState || !!selectedImageFile;
+    const formIsValid = formIsValidState;
+
+    // Log button state for debugging
+    console.log("ProfileForm Button State:", { isSubmitting, formIsDirty, formIsValid });
+
 
     return (
         <Form {...form}>
