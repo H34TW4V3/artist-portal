@@ -24,8 +24,8 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"; // Import Avatar
-// Import getUserProfileByUid directly
-import { getUserProfileByUid } from "@/services/user"; // Corrected import
+// Import getUserProfileByUid and getUserProfileByEmail directly from user service
+import { getUserProfileByUid, getUserProfileByEmail } from "@/services/user"; // Corrected import
 import type { ProfileFormValues } from "@/components/profile/profile-form"; // Import profile type
 // Import login and MFA functions from auth service, and new email link functions
 import {
@@ -71,6 +71,7 @@ export function LoginForm({ className }: { className?: string }) {
   const [splashUserName, setSplashUserName] = useState<string | null>(null); // Name for splash
   // State to store fetched profile for display on password step
   const [fetchedProfile, setFetchedProfile] = useState<ProfileFormValues | null>(null);
+  const [fetchedUid, setFetchedUid] = useState<string | null>(null); // Store UID when fetching by email
   const [loginMethod, setLoginMethod] = useState<'password' | 'emailLink' | null>(null); // Track selected login method
   const [isProcessingEmailLink, setIsProcessingEmailLink] = useState(false); // State for when verifying email link
 
@@ -125,11 +126,13 @@ export function LoginForm({ className }: { className?: string }) {
             setShowSplash(true);
             try {
                 const user = await signInWithEmailLink(window.location.href);
-                // Fetch profile after successful link sign-in
+                // Fetch profile after successful link sign-in using UID
                 if (user.uid) {
                      try {
+                        // Use UID to fetch profile
                         const profile = await getUserProfileByUid(user.uid);
-                        setFetchedProfile(profile);
+                        setFetchedProfile(profile); // Store the profile data
+                        setFetchedUid(user.uid); // Store the UID
                         setSplashUserName(profile?.name || user.email?.split('@')[0] || 'User');
                         setSplashUserImageUrl(profile?.imageUrl || user.photoURL || null);
                      } catch (profileError) {
@@ -137,6 +140,7 @@ export function LoginForm({ className }: { className?: string }) {
                          // Use auth details as fallback
                          setSplashUserName(user.email?.split('@')[0] || 'User');
                          setSplashUserImageUrl(user.photoURL || null);
+                         setFetchedUid(user.uid); // Still store UID
                      }
                 }
                 // Success! Listener will handle state update and redirect
@@ -228,17 +232,32 @@ export function LoginForm({ className }: { className?: string }) {
     return isValid;
   };
 
+   // Fetch profile and UID using email before showing password step
    const fetchProfileForPasswordStep = async (): Promise<void> => {
     const email = form.getValues("artistId");
     if (!email) return; // Should not happen due to validation
 
     try {
-        const profile = await getUserProfileByUid(email); // Using UID based fetch
-        setFetchedProfile(profile);
-        console.log("Fetched profile for password step:", profile?.name);
+        // Fetch profile AND UID using the email-based function
+        const result = await getUserProfileByEmail(email);
+
+        if (result) {
+             setFetchedProfile(result.profile); // Store profile data (could be null)
+             setFetchedUid(result.uid); // Store the UID
+             console.log("Fetched profile for password step:", result.profile?.name, "UID:", result.uid);
+        } else {
+             // If user not found by email, treat as potentially new or incorrect email
+             console.warn("User not found by email:", email);
+             setFetchedProfile(null);
+             setFetchedUid(null);
+             // Optionally show a toast, but maybe wait for password attempt error
+             // toast({ title: "Email Not Found", description: "No user found with this email.", variant: "destructive", duration: 2000 });
+        }
+
     } catch (error) {
         console.error("Error fetching profile for password step:", error);
         setFetchedProfile(null); // Clear profile on error
+        setFetchedUid(null); // Clear UID on error
         toast({ title: "Profile Error", description: "Could not load profile details.", variant: "destructive", duration: 2000 });
     }
    };
@@ -253,7 +272,7 @@ export function LoginForm({ className }: { className?: string }) {
          } else if (currentStep === 2) {
              // Based on loginMethod chosen in Step 2, go to Password (3) or Email Sent (5)
              if (loginMethod === 'password') {
-                 await fetchProfileForPasswordStep(); // Fetch profile before going to password step
+                 await fetchProfileForPasswordStep(); // Fetch profile and UID before going to password step
                  goToStep(3);
              }
              else if (loginMethod === 'emailLink') await handleSendEmailLink(); // Trigger sending link
@@ -284,6 +303,7 @@ export function LoginForm({ className }: { className?: string }) {
             // Go back from Password or Email Sent step
             setLoginMethod(null); // Reset method choice
             setFetchedProfile(null); // Clear fetched profile when going back from password step
+            setFetchedUid(null); // Clear fetched UID
             goToStep(2); // Go back to Choose Method step
         } else if (currentStep === 2) {
             // Go back from Choose Method step
@@ -309,7 +329,8 @@ export function LoginForm({ className }: { className?: string }) {
      setShowSplash(true);
 
      try {
-       const loginResult = await login(values.artistId, values.password!); // Use non-null assertion for password
+       // Use non-null assertion for password since we checked it above
+       const loginResult = await login(values.artistId, values.password!);
 
        if (loginResult && typeof loginResult === 'object' && 'mfaResolver' in loginResult) {
          // MFA is required
@@ -622,3 +643,4 @@ export function LoginForm({ className }: { className?: string }) {
     </div>
   );
 }
+

@@ -50,13 +50,14 @@ import {
         };
         return completeProfile;
       } else {
+        // Profile sub-document might not exist even if the user document does.
         console.warn("getUserProfileByUid: No public profile document found at path:", profileDocRef.path);
         return null;
       }
     } catch (error) {
       console.error(`getUserProfileByUid: Error fetching user profile for UID ${uid}:`, error);
       // Rethrowing the error to be caught by the calling component
-      throw new Error(`Failed to fetch user profile.`); // Simplified error message
+      throw new Error(`Failed to fetch user profile for UID ${uid}.`);
     }
   }
 
@@ -68,7 +69,7 @@ import {
    * @param email - The user's email address.
    * @returns A promise resolving to the ProfileFormValues or null if not found/error.
    */
-  export async function getUserProfileByEmail(email: string): Promise<ProfileFormValues | null> {
+  export async function getUserProfileByEmail(email: string): Promise<{ uid: string, profile: ProfileFormValues | null } | null> {
     if (!email) {
         console.error("getUserProfileByEmail: Received null or empty email.");
         return null;
@@ -76,7 +77,8 @@ import {
     console.log("getUserProfileByEmail: Querying for user with email:", email);
     // Query the root 'users' collection to find the document ID (UID) based on email
     const usersRef = collection(db, "users");
-    const q = query(usersRef, where("email", "==", email), limit(1));
+    // IMPORTANT: Firestore queries are case-sensitive by default. Ensure email is stored consistently (e.g., lowercase).
+    const q = query(usersRef, where("email", "==", email.toLowerCase()), limit(1));
 
     try {
       const querySnapshot = await getDocs(q);
@@ -87,14 +89,10 @@ import {
         // Now use the UID to fetch the profile data from the subcollection
         console.log(`getUserProfileByEmail: Found UID ${userId} for email ${email}. Fetching profile...`);
         const profileData = await getUserProfileByUid(userId); // Reuse the UID-based fetcher
-        if (profileData) {
-             console.log("getUserProfileByEmail: Profile data found for email:", email);
-             return profileData;
-        } else {
-             // User doc exists, but profile subcollection doc might not (edge case/initial setup)
-             console.warn("getUserProfileByEmail: User found, but no public profile sub-document for email:", email);
-             return null;
-        }
+
+        // Return both UID and profile data (or null if profile sub-doc doesn't exist)
+        return { uid: userId, profile: profileData };
+
       } else {
         console.warn("getUserProfileByEmail: No user document found with email:", email);
         return null;
