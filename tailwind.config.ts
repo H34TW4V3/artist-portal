@@ -1,3 +1,4 @@
+
 import type { Config } from "tailwindcss";
 
 export default {
@@ -145,8 +146,8 @@ export default {
             'fall': 'fall 1.5s linear infinite', // Added fall animation
             'sway-fall': 'sway-fall 3s ease-in-out infinite', // Added sway-fall animation
             'progress-indeterminate': 'progress-indeterminate 1.5s ease-in-out infinite', // Added indeterminate progress animation
-             // Added step slide animations
-             'slide-in-from-right': 'slide-in-from-right 0.4s ease-out', // Slower slide
+             // Added step slide animations - Added 'forwards' to slide-out animations
+             'slide-in-from-right': 'slide-in-from-right 0.4s ease-out',
              'slide-out-to-left': 'slide-out-to-left 0.4s ease-out forwards',
              'slide-in-from-left': 'slide-in-from-left 0.4s ease-out',
              'slide-out-to-right': 'slide-out-to-right 0.4s ease-out forwards',
