@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useState, useEffect, useRef } from "react";
@@ -6,7 +7,7 @@ import { useAuth } from "@/context/auth-context";
 import {
     initializeRecaptchaVerifier,
     clearGlobalRecaptchaVerifier, // Import the cleanup function
-    sendSmsVerificationCode,
+    sendSmsVerificationCode, // Use the correctly named function
     enrollSmsMfa,
     unenrollSmsMfa,
     getUserMfaInfo, // Function to get current MFA status
@@ -139,14 +140,15 @@ export function MfaManagementModal({
     setError(null);
 
     try {
-      const verId = await sendSmsVerificationCode(user, phoneNumber, recaptchaVerifier);
+      const verId = await sendSmsVerificationCode(user, phoneNumber, recaptchaVerifier); // Use the imported function
       setVerificationId(verId);
       setCurrentStep('verifyCode');
       toast({ title: "Verification Code Sent", description: `A code has been sent to ${phoneNumber}.`, duration: 3000 });
     } catch (err) {
       console.error("Error sending SMS verification code:", err);
-      setError(err instanceof Error ? err.message : "Failed to send verification code.");
-      toast({ title: "Error Sending Code", description: error || "Unknown error", variant: "destructive" }); // Use error state
+      const errorMessage = err instanceof Error ? err.message : "Failed to send verification code.";
+      setError(errorMessage);
+      toast({ title: "Error Sending Code", description: errorMessage, variant: "destructive" });
     } finally {
       setIsLoading(false);
     }
@@ -168,8 +170,9 @@ export function MfaManagementModal({
       toast({ title: "SMS 2FA Enabled", description: "Two-factor authentication is now active.", variant: "default" });
     } catch (err) {
       console.error("Error verifying code and enrolling MFA:", err);
-      setError(err instanceof Error ? err.message : "Failed to verify code or enroll.");
-      toast({ title: "Enrollment Failed", description: error || "Unknown error", variant: "destructive" }); // Use error state
+      const errorMessage = err instanceof Error ? err.message : "Failed to verify code or enroll.";
+      setError(errorMessage);
+      toast({ title: "Enrollment Failed", description: errorMessage, variant: "destructive" });
     } finally {
       setIsLoading(false);
     }
@@ -188,8 +191,9 @@ export function MfaManagementModal({
         toast({ title: "SMS 2FA Disabled", description: "Two-factor authentication has been turned off.", variant: "default" });
     } catch (err) {
         console.error("Error unenrolling MFA:", err);
-        setError(err instanceof Error ? err.message : "Failed to disable 2FA.");
-        toast({ title: "Unenrollment Failed", description: error || "Unknown error", variant: "destructive" }); // Use error state
+        const errorMessage = err instanceof Error ? err.message : "Failed to disable 2FA.";
+        setError(errorMessage);
+        toast({ title: "Unenrollment Failed", description: errorMessage, variant: "destructive" });
         setCurrentStep('enrolled'); // Go back to enrolled view even on error
     } finally {
         setIsLoading(false);
@@ -337,3 +341,4 @@ export function MfaManagementModal({
     </Dialog>
   );
 }
+```
