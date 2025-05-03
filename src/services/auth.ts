@@ -10,18 +10,19 @@ import {
     type AuthError,
     sendPasswordResetEmail as firebaseSendPasswordResetEmail,
     updatePassword as firebaseUpdatePassword,
-    // Import necessary MFA functions
     RecaptchaVerifier,
     signInWithPhoneNumber,
     PhoneAuthProvider,
     PhoneMultiFactorGenerator,
     multiFactor,
-    getMultiFactorResolver, // Import this helper
-    // Import Email Link functions
+    getMultiFactorResolver,
     sendSignInLinkToEmail as firebaseSendSignInLinkToEmail,
     isSignInWithEmailLink as firebaseIsSignInWithEmailLink,
     signInWithEmailLink as firebaseSignInWithEmailLink,
     ActionCodeSettings,
+    // Import email update and verification functions
+    verifyBeforeUpdateEmail as firebaseVerifyBeforeUpdateEmail,
+    sendEmailVerification as firebaseSendEmailVerification,
 } from "firebase/auth";
 import { app } from './firebase-config'; // Import your Firebase config
 import Cookies from 'js-cookie'; // Import js-cookie
@@ -30,22 +31,20 @@ import Cookies from 'js-cookie'; // Import js-cookie
 const auth = getAuth(app);
 
 // --- Constants ---
-const ID_TOKEN_COOKIE_NAME = 'firebaseIdToken'; // Cookie name for storing the token
-const EMAIL_FOR_SIGN_IN_KEY = 'emailForSignIn'; // localStorage key for email link sign-in
+const ID_TOKEN_COOKIE_NAME = 'firebaseIdToken';
+const EMAIL_FOR_SIGN_IN_KEY = 'emailForSignIn';
 
 // --- Helper Functions ---
 
-// Set token cookie
 const setTokenCookie = (token: string) => {
   Cookies.set(ID_TOKEN_COOKIE_NAME, token, {
-    expires: 1, // Expires in 1 day
-    secure: process.env.NODE_ENV === 'production', // Only send over HTTPS in production
-    sameSite: 'strict', // Protection against CSRF
+    expires: 1,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'strict',
   });
   console.log("Firebase Service: ID token cookie set.");
 };
 
-// Remove token cookie
 const removeTokenCookie = () => {
   Cookies.remove(ID_TOKEN_COOKIE_NAME);
   console.log("Firebase Service: ID token cookie removed.");
@@ -53,85 +52,69 @@ const removeTokenCookie = () => {
 
 // --- Authentication State Listener ---
 
-// Updated listener that also manages the cookie
 export const onAuthStateChange = (callback: (user: User | null) => void): (() => void) => {
     return onIdTokenChanged(auth, async (user) => {
         if (user) {
             console.log("Firebase Service: User detected by listener.");
             try {
-                const idToken = await getIdToken(user, /* forceRefresh */ true); // Force refresh to get latest token
+                const idToken = await getIdToken(user, true);
                 setTokenCookie(idToken);
             } catch (error) {
                  console.error("Firebase Service: Error getting ID token:", error);
-                 // Handle error appropriately, maybe sign the user out or clear the cookie
                  removeTokenCookie();
-                 user = null; // Treat as signed out if token fetching fails
+                 user = null;
             }
         } else {
             console.log("Firebase Service: No user detected by listener.");
             removeTokenCookie();
         }
-        callback(user); // Notify the application of the auth state change
+        callback(user);
     });
 };
 
 
 // --- Service Functions ---
 
-// Function to initialize reCAPTCHA (used for phone MFA, potentially other actions)
 export function initializeRecaptchaVerifier(containerId: string): RecaptchaVerifier {
-    // Ensure auth is initialized
     if (!auth) throw new Error("Firebase auth not initialized");
-    // Ensure this runs client-side
     if (typeof window === 'undefined') throw new Error("reCAPTCHA must be initialized client-side");
 
-    // IMPORTANT: Add your reCAPTCHA site key from Firebase Console
-    // You might need to handle widget cleanup if the component unmounts
     return new RecaptchaVerifier(auth, containerId, {
-        'size': 'invisible', // Or 'normal'
+        'size': 'invisible',
         'callback': (response: any) => {
-            // reCAPTCHA solved, allow phone number submission.
             console.log("reCAPTCHA verified");
         },
         'expired-callback': () => {
-            // Response expired. Ask user to solve reCAPTCHA again.
              console.warn("reCAPTCHA expired");
         }
     });
 }
 
 
-// Login with Email and Password - Handles MFA requirement
-export async function login(email: string, password: string): Promise<User | { mfaResolver: any, hints: any[] }> { // Return type updated
+export async function login(email: string, password: string): Promise<User | { mfaResolver: any, hints: any[] }> {
     try {
         const userCredential = await signInWithEmailAndPassword(auth, email, password);
-        // Standard login successful, token is handled by the listener
         console.log("Firebase Service: Standard login successful.");
         return userCredential.user;
     } catch (error) {
         const authError = error as AuthError;
         if (authError.code === 'auth/multi-factor-auth-required') {
             console.log("Firebase Service: MFA required.");
-            // Get the resolver and hints from the error
             const resolver = getMultiFactorResolver(auth, authError);
-            const hints = resolver.hints; // Hints contain info about enrolled factors (like phone number)
-            // Return necessary info to the UI to handle MFA
+            const hints = resolver.hints;
             return { mfaResolver: resolver, hints: hints };
         }
 
         console.error("Firebase Service: Login error:", authError.code, authError.message);
-         // Provide more specific error messages based on common codes
          if (authError.code === 'auth/invalid-credential' || authError.code === 'auth/user-not-found' || authError.code === 'auth/wrong-password' || authError.code === 'auth/invalid-login-credentials') {
-              throw new Error("Invalid Artist ID or password."); // Keep using generic message for security
+              throw new Error("Invalid Artist ID or password.");
          } else if (authError.code === 'auth/api-key-not-valid.-please-pass-a-valid-api-key.') {
             throw new Error("Authentication service is not configured correctly. Please contact support.");
          }
-         // Fallback for other errors
          throw new Error("Login failed. Please try again.");
     }
 }
 
- // Send SMS Verification Code for MFA
  export async function sendMfaVerificationCode(mfaResolver: any, phoneInfoOptions: any, recaptchaVerifier: RecaptchaVerifier): Promise<string> {
     try {
         const phoneAuthProvider = new PhoneAuthProvider(auth);
@@ -144,16 +127,12 @@ export async function login(email: string, password: string): Promise<User | { m
     }
  }
 
- // Complete MFA Sign-in with SMS Code
  export async function completeMfaSignIn(mfaResolver: any, verificationId: string, verificationCode: string): Promise<User> {
     try {
         const phoneAuthCredential = PhoneAuthProvider.credential(verificationId, verificationCode);
         const multiFactorAssertion = PhoneMultiFactorGenerator.assertion(phoneAuthCredential);
         const userCredential = await mfaResolver.resolveSignIn(multiFactorAssertion);
-
-        // Token setting is handled by the listener on successful sign-in
         console.log("Firebase Service: MFA sign-in successful.");
-
         return userCredential.user;
     } catch (error) {
         console.error("Firebase Service: Error verifying MFA code:", error);
@@ -168,26 +147,14 @@ export async function login(email: string, password: string): Promise<User | { m
 
  // --- Email Link Sign-in Functions ---
 
- /**
-  * Sends a sign-in link to the user's email.
-  * @param email The email address to send the link to.
-  * @param redirectUrl The URL the user should be redirected to after clicking the link.
-  */
  export async function sendSignInLinkToEmail(email: string, redirectUrl: string): Promise<void> {
     const actionCodeSettings: ActionCodeSettings = {
-        // URL you want to redirect back to. The domain (www.example.com) for this
-        // URL must be authorized domain list in the Firebase Console.
         url: redirectUrl,
-        // This must be true.
         handleCodeInApp: true,
-        // Optional iOS/Android settings can be added here
     };
 
     try {
         await firebaseSendSignInLinkToEmail(auth, email, actionCodeSettings);
-        // The link was successfully sent. Inform the user.
-        // Save the email locally so you don't need to ask the user for it again
-        // if they open the link on the same device.
         window.localStorage.setItem(EMAIL_FOR_SIGN_IN_KEY, email);
         console.log("Firebase Service: Sign-in link sent to:", email);
     } catch (error) {
@@ -200,44 +167,23 @@ export async function login(email: string, password: string): Promise<User | { m
     }
  }
 
- /**
-  * Checks if the current URL is a Firebase email sign-in link.
-  * @param url The current window URL.
-  * @returns True if it's a sign-in link, false otherwise.
-  */
  export function isSignInWithEmailLink(url: string): boolean {
     return firebaseIsSignInWithEmailLink(auth, url);
  }
 
- /**
-  * Signs the user in using the email link.
-  * @param url The full URL the user clicked.
-  * @returns A promise resolving to the signed-in User object.
-  * @throws Error if sign-in fails or email is missing.
-  */
  export async function signInWithEmailLink(url: string): Promise<User> {
-    // Confirm the link is authentic.
     if (!firebaseIsSignInWithEmailLink(auth, url)) {
         throw new Error("Invalid sign-in link.");
     }
 
-    // Get the email from localStorage if available.
     let email = window.localStorage.getItem(EMAIL_FOR_SIGN_IN_KEY);
     if (!email) {
-      // User opened the link on a different device. To prevent session fixation
-      // attacks, ask the user to provide the email again. For simplicity here,
-      // we'll throw an error, but a real app should prompt the user.
-      // email = window.prompt('Please provide your email for confirmation');
-      // if (!email) {
         throw new Error("Email confirmation required. Please try signing in again on the original device or enter your email when prompted.");
-      // }
     }
 
     try {
         const userCredential = await firebaseSignInWithEmailLink(auth, email, url);
-        // Clear the email from storage.
         window.localStorage.removeItem(EMAIL_FOR_SIGN_IN_KEY);
-        // Token setting is handled by the listener on successful sign-in
         console.log("Firebase Service: Sign-in with email link successful.");
         return userCredential.user;
     } catch (error) {
@@ -255,7 +201,7 @@ export async function login(email: string, password: string): Promise<User | { m
 export async function logout(): Promise<void> {
     try {
         await signOut(auth);
-        removeTokenCookie(); // Ensure cookie is removed immediately
+        removeTokenCookie();
         console.log("Firebase Service: User signed out successfully.");
     } catch (error) {
         console.error("Firebase Service: Logout error:", error);
@@ -272,7 +218,6 @@ export async function sendPasswordResetEmail(email: string): Promise<void> {
         const authError = error as AuthError;
         console.error("Firebase Service: Error sending password reset email:", authError.code, authError.message);
          if (authError.code === 'auth/user-not-found' || authError.code === 'auth/invalid-email') {
-            // Don't reveal if email exists for security
              throw new Error("If an account exists for this email, a password reset link has been sent.");
          }
         throw new Error("Could not send password reset email. Please try again.");
@@ -297,5 +242,74 @@ export async function updateUserPassword(newPassword: string): Promise<void> {
              throw new Error("Password is too weak. Please choose a stronger password.");
         }
         throw new Error("Could not update password. Please try again.");
+    }
+}
+
+/**
+ * Sends a verification link to the user's NEW email address before updating it.
+ * Handles cases where re-authentication is required.
+ * @param newEmail - The new email address to verify and update to.
+ * @returns A promise resolving when the verification email is sent.
+ */
+export async function verifyBeforeUpdateEmail(newEmail: string): Promise<void> {
+    const user = auth.currentUser;
+    if (!user) {
+        throw new Error("No authenticated user found.");
+    }
+    // Optional: Basic check if email is the same
+    if (user.email === newEmail) {
+        throw new Error("The new email is the same as the current one.");
+    }
+
+    // Define actionCodeSettings for the verification link if needed
+    // (e.g., redirect URL after verification)
+    // const actionCodeSettings = { url: 'http://localhost:3000/profile' }; // Example redirect
+
+    try {
+        // await firebaseVerifyBeforeUpdateEmail(user, newEmail, actionCodeSettings);
+        await firebaseVerifyBeforeUpdateEmail(user, newEmail); // Call without settings if no redirect needed
+        console.log("Firebase Service: Verification email sent to new address:", newEmail);
+    } catch (error) {
+        const authError = error as AuthError;
+        console.error("Firebase Service: Error sending email update verification:", authError.code, authError.message);
+        if (authError.code === 'auth/requires-recent-login') {
+            throw new Error("This operation is sensitive and requires recent authentication. Please log out and log back in before changing your email.");
+        } else if (authError.code === 'auth/email-already-in-use') {
+             throw new Error("This email address is already associated with another account.");
+        } else if (authError.code === 'auth/invalid-email') {
+            throw new Error("The new email address is invalid.");
+        }
+        throw new Error("Could not send verification email. Please try again.");
+    }
+}
+
+/**
+ * Sends an email verification link to the user's currently registered email address.
+ * Useful if the user's email is not yet verified.
+ * @returns A promise resolving when the verification email is sent.
+ */
+export async function sendVerificationEmail(): Promise<void> {
+    const user = auth.currentUser;
+    if (!user) {
+        throw new Error("No authenticated user found.");
+    }
+    if (user.emailVerified) {
+        throw new Error("Your email is already verified.");
+    }
+
+    // Optional: Define actionCodeSettings for redirect after verification
+    // const actionCodeSettings = { url: 'http://localhost:3000/dashboard' }; // Example redirect
+
+    try {
+        // await firebaseSendEmailVerification(user, actionCodeSettings);
+        await firebaseSendEmailVerification(user); // Call without settings if no redirect needed
+        console.log("Firebase Service: Verification email sent to current address:", user.email);
+    } catch (error) {
+        const authError = error as AuthError;
+        console.error("Firebase Service: Error sending verification email:", authError.code, authError.message);
+         if (authError.code === 'auth/too-many-requests') {
+             throw new Error("Too many verification emails sent recently. Please wait before trying again.");
+         }
+        throw new Error("Could not send verification email. Please try again.");
     }
 }

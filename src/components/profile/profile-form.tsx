@@ -5,7 +5,7 @@ import { useState, useEffect, useRef } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
-import { Loader2, Upload, AlertCircle, Mail } from "lucide-react"; // Added Mail icon
+import { Loader2, Upload, AlertCircle, Mail, Phone, User, FileText } from "lucide-react"; // Added Phone, User, FileText
 import Image from "next/image";
 
 import { Button } from "@/components/ui/button";
@@ -31,7 +31,7 @@ import { cn } from "@/lib/utils";
 // Add emailLinkSignInEnabled field
 const profileSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters.").max(50, "Name must be 50 characters or less."),
-  email: z.string().email("Invalid email address."), // Email usually comes from auth, but keep for display/form structure
+  email: z.string().email("Invalid email address."), // Email is now editable
   bio: z.string().max(300, "Bio must be 300 characters or less.").optional().nullable(), // Allow null for reset
   phoneNumber: z.string().optional().nullable() // Basic validation, make optional
       .refine(val => !val || /^[+]*[(]{0,1}[0-9]{1,4}[)]{0,1}[-\s\./0-9]*$/.test(val), {
@@ -44,10 +44,6 @@ const profileSchema = z.object({
 
 export type ProfileFormValues = z.infer<typeof profileSchema>;
 
-// Removed mock functions fetchProfileData and updateProfileData
-// They will be passed in or handled by the parent component (UserProfile)
-
-
 interface ProfileFormProps {
     initialData?: ProfileFormValues; // Make initial data optional, parent handles fetching
     updateFunction: (data: ProfileFormValues, newImageFile?: File) => Promise<{ updatedData: ProfileFormValues }>; // Function to call on submit
@@ -58,32 +54,29 @@ interface ProfileFormProps {
 
 export function ProfileForm({ initialData, updateFunction, onSuccess, onCancel, className }: ProfileFormProps) {
     const { toast } = useToast();
-    // Removed isLoading state, parent manages loading indicator
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [currentImageUrl, setCurrentImageUrl] = useState<string | undefined>(initialData?.imageUrl ?? undefined); // State for current image display
-    const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null); // State for image preview
-    const [selectedImageFile, setSelectedImageFile] = useState<File | undefined>(undefined); // State for the selected file
+    const [currentImageUrl, setCurrentImageUrl] = useState<string | undefined>(initialData?.imageUrl ?? undefined);
+    const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
+    const [selectedImageFile, setSelectedImageFile] = useState<File | undefined>(undefined);
     const fileInputRef = useRef<HTMLInputElement>(null);
-    const [formInitialName, setFormInitialName] = useState(initialData?.name || "Artist Name"); // Use for avatar fallback
+    const [formInitialName, setFormInitialName] = useState(initialData?.name || "Artist Name");
 
     const form = useForm<ProfileFormValues>({
         resolver: zodResolver(profileSchema),
-        defaultValues: initialData || { // Use initialData if provided
+        defaultValues: initialData || {
             name: "",
             email: "",
             bio: "",
             phoneNumber: "",
             imageUrl: "",
             hasCompletedTutorial: false,
-            emailLinkSignInEnabled: false, // Default email link pref
+            emailLinkSignInEnabled: false,
         },
         mode: "onChange",
     });
 
-    // Reset form state if initialData changes (e.g., fetched by parent)
     useEffect(() => {
         if (initialData) {
-            // Merge initial data with defaults to ensure all fields are present
              const mergedDefaults = {
                 name: "",
                 email: "",
@@ -97,18 +90,16 @@ export function ProfileForm({ initialData, updateFunction, onSuccess, onCancel, 
             form.reset(mergedDefaults);
             setCurrentImageUrl(initialData.imageUrl ?? undefined);
             setFormInitialName(initialData.name);
-            // Reset upload state when new initial data comes in
             setSelectedImageFile(undefined);
             setImagePreviewUrl(null);
         }
     }, [initialData, form]);
 
 
-    // Handle file selection
     const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
         if (file) {
-            if (file.size > 5 * 1024 * 1024) { // Limit size (e.g., 5MB)
+            if (file.size > 5 * 1024 * 1024) {
                 toast({ title: "Image Too Large", description: "Please select an image smaller than 5MB.", variant: "destructive" });
                 return;
             }
@@ -123,54 +114,47 @@ export function ProfileForm({ initialData, updateFunction, onSuccess, onCancel, 
                 setImagePreviewUrl(reader.result as string);
             };
             reader.readAsDataURL(file);
-            form.setValue('imageUrl', '', { shouldDirty: true }); // Mark form as dirty
+            form.setValue('imageUrl', '', { shouldDirty: true });
         }
     };
 
-    // Trigger file input click
     const handleAvatarClick = () => {
         fileInputRef.current?.click();
     };
 
-    // Handle form submission - Calls the passed updateFunction
     async function onSubmit(values: ProfileFormValues) {
         setIsSubmitting(true);
         const isImageChanged = !!selectedImageFile;
 
-        // Prepare data, potentially excluding imageUrl if a new file is uploaded
-        // (The updateFunction should handle assigning the *new* URL)
         let dataToSubmit = { ...values };
          if (isImageChanged) {
-            // Let the updateFunction handle the imageUrl based on the upload result
-             dataToSubmit.imageUrl = null; // Or keep currentImageUrl if backend needs it for deletion context
+             dataToSubmit.imageUrl = null;
          }
 
-
         try {
-            // Call the injected update function
             const { updatedData } = await updateFunction(dataToSubmit, selectedImageFile);
 
-            toast({
-                title: "Profile Updated",
-                description: "Your profile information has been saved successfully.",
-                variant: "default",
-                 duration: 2000,
-            });
+            // Don't show success toast here if email change initiated verification
+            // The updateFunction's caller (UserProfile) will handle specific toasts
+            // based on whether email was changed.
+
             setFormInitialName(updatedData.name);
             setCurrentImageUrl(updatedData.imageUrl ?? undefined);
             setSelectedImageFile(undefined);
             setImagePreviewUrl(null);
-             // Ensure form resets with *all* fields from updatedData, including new ones
             form.reset(updatedData, { keepValues: false, keepDirty: false, keepDefaultValues: false });
-            onSuccess?.(updatedData); // Call the parent's success callback
+            onSuccess?.(updatedData);
 
         } catch (error) {
             console.error("Error updating profile:", error);
-            toast({
-                title: "Update Failed",
-                description: error instanceof Error ? error.message : "An unexpected error occurred.",
-                variant: "destructive",
-            });
+            // Error toast is now handled primarily by the caller (UserProfile)
+            // to provide context (e.g., "requires recent login").
+            // Keep a generic fallback here if needed, but prefer caller's handling.
+            // toast({
+            //     title: "Update Failed",
+            //     description: error instanceof Error ? error.message : "An unexpected error occurred.",
+            //     variant: "destructive",
+            // });
         } finally {
             setIsSubmitting(false);
         }
@@ -213,16 +197,16 @@ export function ProfileForm({ initialData, updateFunction, onSuccess, onCancel, 
                 </FormItem>
 
                 {/* Artist Name */}
-                <FormField control={form.control} name="name" render={({ field }) => ( <FormItem><FormLabel>Artist Name</FormLabel><FormControl><Input placeholder="Your artist or band name" {...field} disabled={isSubmitting} /></FormControl><FormMessage /></FormItem> )} />
+                <FormField control={form.control} name="name" render={({ field }) => ( <FormItem><FormLabel className="flex items-center gap-1.5"><User className="h-3.5 w-3.5"/>Artist Name</FormLabel><FormControl><Input placeholder="Your artist or band name" {...field} disabled={isSubmitting} /></FormControl><FormMessage /></FormItem> )} />
 
-                {/* Email (Read-only) */}
-                <FormField control={form.control} name="email" render={({ field }) => ( <FormItem><FormLabel>Account Email</FormLabel><FormControl><Input type="email" placeholder="your.email@example.com" {...field} disabled={true} readOnly className="bg-muted/50 cursor-not-allowed"/></FormControl><FormDescription className="text-xs">Email associated with your login account (cannot be changed here).</FormDescription><FormMessage /></FormItem> )} />
+                {/* Email (NOW EDITABLE) */}
+                <FormField control={form.control} name="email" render={({ field }) => ( <FormItem><FormLabel className="flex items-center gap-1.5"><Mail className="h-3.5 w-3.5"/>Account Email</FormLabel><FormControl><Input type="email" placeholder="your.email@example.com" {...field} disabled={isSubmitting} /></FormControl><FormDescription className="text-xs">Change your sign-in email. Verification will be required.</FormDescription><FormMessage /></FormItem> )} />
 
                 {/* Phone Number */}
-                <FormField control={form.control} name="phoneNumber" render={({ field }) => ( <FormItem><FormLabel>Phone Number (Optional)</FormLabel><FormControl><Input type="tel" placeholder="e.g., +1 555-123-4567" {...field} value={field.value ?? ""} disabled={isSubmitting} /></FormControl><FormDescription className="text-xs">Used for urgent communication or verification if needed.</FormDescription><FormMessage /></FormItem> )} />
+                <FormField control={form.control} name="phoneNumber" render={({ field }) => ( <FormItem><FormLabel className="flex items-center gap-1.5"><Phone className="h-3.5 w-3.5"/>Phone Number (Optional)</FormLabel><FormControl><Input type="tel" placeholder="e.g., +1 555-123-4567" {...field} value={field.value ?? ""} disabled={isSubmitting} /></FormControl><FormDescription className="text-xs">Used for urgent communication or verification if needed.</FormDescription><FormMessage /></FormItem> )} />
 
                 {/* Bio */}
-                <FormField control={form.control} name="bio" render={({ field }) => ( <FormItem><FormLabel>Bio</FormLabel><FormControl><Textarea placeholder="Tell us a little bit about yourself or your music..." className="resize-y min-h-[80px] sm:min-h-[100px]" {...field} value={field.value ?? ""} disabled={isSubmitting} /></FormControl><FormDescription className="text-xs">A short bio (optional, max 300 characters).</FormDescription><FormMessage /></FormItem> )} />
+                <FormField control={form.control} name="bio" render={({ field }) => ( <FormItem><FormLabel className="flex items-center gap-1.5"><FileText className="h-3.5 w-3.5"/>Bio</FormLabel><FormControl><Textarea placeholder="Tell us a little bit about yourself or your music..." className="resize-y min-h-[80px] sm:min-h-[100px]" {...field} value={field.value ?? ""} disabled={isSubmitting} /></FormControl><FormDescription className="text-xs">A short bio (optional, max 300 characters).</FormDescription><FormMessage /></FormItem> )} />
 
                  {/* Email Link Sign-in Preference */}
                  <FormField
@@ -243,7 +227,6 @@ export function ProfileForm({ initialData, updateFunction, onSuccess, onCancel, 
                                     checked={field.value}
                                     onCheckedChange={field.onChange}
                                     disabled={isSubmitting}
-                                    aria-readonly // Prevent accidental changes via keyboard?
                                 />
                             </FormControl>
                             <FormMessage />
