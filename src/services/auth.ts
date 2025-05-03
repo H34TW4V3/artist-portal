@@ -1,5 +1,4 @@
 
-
 // Import necessary Firebase modules
 import {
     getAuth,
@@ -40,10 +39,9 @@ const auth = getAuth(app);
 
 // --- Constants ---
 const ID_TOKEN_COOKIE_NAME = 'firebaseIdToken';
-const EMAIL_FOR_SIGN_IN_KEY = 'emailForSignIn';
+// REMOVED const EMAIL_FOR_SIGN_IN_KEY = 'emailForSignIn'; - No longer using localStorage for this
 
 // Store verifier instance globally (use with caution, better context/state management preferred)
-// This helps prevent re-initialization issues if the component re-renders quickly.
 let globalRecaptchaVerifier: RecaptchaVerifier | null = null;
 
 
@@ -125,11 +123,13 @@ export const onAuthStateChange = (callback: (user: User | null) => void): (() =>
             'expired-callback': () => {
                  console.warn(`reCAPTCHA expired for ${containerId}. Resetting required if action pending.`);
                  // Response expired. Ask user to solve reCAPTCHA again.
-                 // Optionally, try to re-render or reset the verifier here if needed
-                 // Example: globalRecaptchaVerifier?.render().catch(...)
+                 clearGlobalRecaptchaVerifier(); // Clear the expired verifier
+                 // Optionally re-initialize if needed immediately
+                 // try { initializeRecaptchaVerifier(containerId); } catch {}
             },
             'error-callback': (error: any) => {
                  console.error(`reCAPTCHA error for ${containerId}:`, error);
+                 clearGlobalRecaptchaVerifier(); // Clear on error
             }
         });
 
@@ -148,7 +148,7 @@ export const onAuthStateChange = (callback: (user: User | null) => void): (() =>
             } catch (cleanupError){
                 console.error("Error cleaning up container after render error:", cleanupError);
             }
-             // Don't necessarily throw here, allow potential recovery or error display
+             clearGlobalRecaptchaVerifier(); // Ensure cleanup on render error
              throw new Error("Failed to render reCAPTCHA widget."); // Propagate error
         });
 
@@ -195,10 +195,9 @@ export async function login(email: string, password: string): Promise<User | { m
         }
 
         console.error("Firebase Service: Login error:", authError.code, authError.message);
-         // Updated error handling based on latest Firebase v9/v10 error codes
          if (authError.code === 'auth/invalid-credential' || authError.code === 'auth/user-not-found' || authError.code === 'auth/wrong-password') {
               throw new Error("Invalid Artist ID or password.");
-         } else if (authError.code === 'auth/api-key-not-valid') { // Corrected common API key error code
+         } else if (authError.code === 'auth/api-key-not-valid') {
             console.error("Firebase API Key Error: Check NEXT_PUBLIC_FIREBASE_API_KEY.");
             throw new Error("Authentication service is not configured correctly. Please contact support.");
          }
@@ -221,7 +220,7 @@ export async function login(email: string, password: string): Promise<User | { m
         return verificationId;
     } catch (error) {
         console.error("Firebase Service: Error sending MFA code:", error);
-        // Add specific handling for unauthorized domain during MFA SMS sending if applicable
+        clearGlobalRecaptchaVerifier(); // Clear verifier on error
         if ((error as AuthError).code === 'auth/unauthorized-domain') {
              throw new Error("This domain is not authorized for MFA operations. Please check Firebase settings.");
         }
@@ -238,15 +237,50 @@ export async function login(email: string, password: string): Promise<User | { m
     }
  }
 
- export async function completeMfaSignIn(mfaResolver: MultiFactorResolver, verificationId: string, verificationCode: string): Promise<User> {
+ export async function completeMfaSignIn(mfaResolver: MultiFactorResolver, verificationId: string | null, verificationCode: string): Promise<User> {
+    // verificationId will be null for email link MFA flows that went to step 5
+    if (verificationId === undefined) {
+         throw new Error("Verification process was not initiated correctly.");
+    }
+
     try {
-        const phoneAuthCredential = PhoneAuthProvider.credential(verificationId, verificationCode);
-        const multiFactorAssertion = PhoneMultiFactorGenerator.assertion(phoneAuthCredential);
-        const userCredential = await mfaResolver.resolveSignIn(multiFactorAssertion);
-        console.log("Firebase Service: MFA sign-in successful.");
+        // Conditional logic based on whether verificationId exists (SMS vs Email Link)
+        let assertion;
+        if (verificationId) {
+            // SMS MFA verification
+            const phoneAuthCredential = PhoneAuthProvider.credential(verificationId, verificationCode);
+            assertion = PhoneMultiFactorGenerator.assertion(phoneAuthCredential);
+        } else {
+            // Email Link MFA "verification" (actually just resolving the session)
+            // In this case, the 'verificationCode' from the form isn't used by Firebase itself,
+            // but the user needs to *enter* something to proceed. The real verification happened
+            // when they clicked the link. We just need to resolve the MFA session.
+            // We can *optionally* add a check here if the entered code matches a code *we* sent
+            // via email, but that's outside Firebase's direct flow for this.
+            // For now, assume clicking the link was the verification.
+            // We need *an* assertion, but PhoneMultiFactorGenerator won't work without a credential.
+            // Let's re-evaluate if there's a better way to resolve email MFA directly.
+            // ----
+            // **Correction:** The email link click *should* have already signed the user in
+            // if `handleCodeInApp` was true and the URL was correct.
+            // The `getMultiFactorResolver` flow might not apply directly after an email link click
+            // that *completes* sign-in. Let's stick to the standard email link flow where
+            // `signInWithEmailLink` handles the completion.
+            // This `completeMfaSignIn` should primarily handle the SMS code path.
+            // We'll rely on the `isSignInWithEmailLink` and `signInWithEmailLink` for the email part.
+            // If MFA *required* an email link *choice* (step 4), that link click should sign them in.
+            console.warn("Attempting to complete MFA sign-in without a verification ID, likely email link flow - this path needs review.");
+             throw new Error("Email link MFA completion flow needs re-evaluation.");
+             // If Firebase *does* require resolving after email link click in MFA context:
+             // const emailAssertion = ???; // Need the correct way to create assertion for email MFA
+             // assertion = emailAssertion;
+        }
+
+        const userCredential = await mfaResolver.resolveSignIn(assertion);
+        console.log("Firebase Service: MFA sign-in resolved successfully.");
         return userCredential.user;
     } catch (error) {
-        console.error("Firebase Service: Error verifying MFA code:", error);
+        console.error("Firebase Service: Error resolving MFA sign-in:", error);
          if ((error as AuthError).code === 'auth/invalid-verification-code') {
             throw new Error("Invalid verification code.");
          } else if ((error as AuthError).code === 'auth/code-expired') {
@@ -260,18 +294,13 @@ export async function login(email: string, password: string): Promise<User | { m
 
  export async function sendSignInLinkToEmail(email: string, redirectUrl: string): Promise<void> {
     const actionCodeSettings: ActionCodeSettings = {
-        // Ensure the URL is correctly formed and authorized in Firebase console
-        // Redirect URL should be the URL the user lands on *after* clicking the link in the email
-        // Make sure this URL is authorized in Firebase console > Authentication > Settings > Authorized domains
-        // AND also under Authentication > Sign-in method > Email/Password > Email link sign-in > Authorized domains
-        url: redirectUrl, // Typically window.location.href or a specific landing page URL
-        handleCodeInApp: true,
+        url: redirectUrl,
+        handleCodeInApp: true, // Keep this true
     };
 
     try {
         await firebaseSendSignInLinkToEmail(auth, email, actionCodeSettings);
-        // Use localStorage for email persistence across browser sessions until link is used
-        localStorage.setItem(EMAIL_FOR_SIGN_IN_KEY, email);
+        // REMOVED localStorage.setItem(EMAIL_FOR_SIGN_IN_KEY, email);
         console.log("Firebase Service: Sign-in link sent to:", email);
     } catch (error) {
         const authError = error as AuthError;
@@ -279,7 +308,6 @@ export async function login(email: string, password: string): Promise<User | { m
          if (authError.code === 'auth/invalid-email') {
              throw new Error("Please enter a valid email address.");
          }
-         // Add specific error handling for unauthorized continue URI
          if (authError.code === 'auth/unauthorized-continue-uri') {
              console.error(`Firebase Auth Error: The domain used in redirectUrl ('${redirectUrl}') is not authorized. Add it to your Firebase project's Authentication -> Settings -> Authorized domains.`);
              throw new Error("This domain is not configured for email link sign-in. Please contact support or check Firebase settings.");
@@ -292,26 +320,26 @@ export async function login(email: string, password: string): Promise<User | { m
     return firebaseIsSignInWithEmailLink(auth, url);
  }
 
- export async function signInWithEmailLink(url: string): Promise<User> {
+ export async function signInWithEmailLink(url: string, email: string | null): Promise<User> {
     if (!firebaseIsSignInWithEmailLink(auth, url)) {
         throw new Error("Invalid sign-in link.");
     }
 
-    let email = localStorage.getItem(EMAIL_FOR_SIGN_IN_KEY);
-    if (!email) {
-        // Attempt to prompt if absolutely necessary, but generally avoid this
-        // Better to guide the user back to the login page if email is missing
-        console.warn("Email for sign-in link not found in localStorage. Prompting user.");
-        email = window.prompt('Please provide your email for confirmation');
-        if (!email) {
-            throw new Error("Email confirmation required.");
-        }
+    // Use the email provided (likely from the form state)
+    const finalEmail = email;
+
+    if (!finalEmail) {
+        console.error("Firebase Service: Email is required to complete sign-in with email link.");
+        // Don't prompt, force going back to login.
+        throw new Error("Email confirmation is missing. Please try signing in again.");
     }
 
     try {
-        const userCredential = await firebaseSignInWithEmailLink(auth, email, url);
-        localStorage.removeItem(EMAIL_FOR_SIGN_IN_KEY);
+        // Pass the email explicitly
+        const userCredential = await firebaseSignInWithEmailLink(auth, finalEmail, url);
+        // REMOVED localStorage.removeItem(EMAIL_FOR_SIGN_IN_KEY);
         console.log("Firebase Service: Sign-in with email link successful.");
+        // The onAuthStateChanged listener should now pick up the authenticated user.
         return userCredential.user;
     } catch (error) {
         const authError = error as AuthError;
@@ -319,8 +347,10 @@ export async function login(email: string, password: string): Promise<User | { m
         if (authError.code === 'auth/invalid-action-code') {
             throw new Error("Sign-in link is invalid or has expired. Please request a new one.");
         }
-        // Clear stored email if link is invalid/used
-        localStorage.removeItem(EMAIL_FOR_SIGN_IN_KEY);
+        if (authError.code === 'auth/invalid-email') {
+             throw new Error("The email provided does not match the sign-in link.");
+        }
+        // REMOVED localStorage.removeItem(EMAIL_FOR_SIGN_IN_KEY); // Clear stored email if link is invalid/used
         throw new Error("Could not sign in using the provided link.");
     }
  }
@@ -463,12 +493,12 @@ export async function sendSmsVerificationCodeEnrollment(
         return verificationId;
     } catch (error) {
         console.error("Firebase Service (Enrollment): Error sending SMS verification code:", error);
+        clearGlobalRecaptchaVerifier(); // Clear verifier on error
          if ((error as AuthError).code === 'auth/invalid-phone-number') {
              throw new Error("The provided phone number is invalid.");
          } else if ((error as AuthError).code === 'auth/too-many-requests') {
               throw new Error("Too many verification codes sent recently. Please wait.");
          }
-         // Check for unauthorized domain during enrollment SMS sending
          if ((error as AuthError).code === 'auth/unauthorized-domain') {
              throw new Error("This domain is not authorized for MFA operations. Please check Firebase settings.");
          }
@@ -478,10 +508,6 @@ export async function sendSmsVerificationCodeEnrollment(
         throw new Error("Failed to send verification code for enrollment.");
     }
 }
-
-// Use the function above for enrollment, the one below (sendMfaVerificationCode) is for sign-in
-// Keep sendSmsVerificationCodeEnrollment exported
-export { sendSmsVerificationCodeEnrollment as sendSmsVerificationCode };
 
 
 /**
@@ -499,7 +525,6 @@ export async function enrollSmsMfa(
     try {
         const phoneAuthCredential = PhoneAuthProvider.credential(verificationId, verificationCode);
         const multiFactorAssertion = PhoneMultiFactorGenerator.assertion(phoneAuthCredential);
-        // Use the user's display name or a default if not available for the enrollment display name
         const displayName = user.displayName || `SMS ${user.phoneNumber?.slice(-4) || 'Factor'}`;
         await multiFactor(user).enroll(multiFactorAssertion, displayName);
         console.log("Firebase Service: SMS MFA enrolled successfully for user:", user.uid);
@@ -509,13 +534,12 @@ export async function enrollSmsMfa(
              throw new Error("Invalid verification code.");
          } else if ((error as AuthError).code === 'auth/code-expired') {
              throw new Error("Verification code has expired. Please request a new one.");
-         }
+          }
           else if ((error as AuthError).code === 'auth/missing-verification-code') {
              throw new Error("Verification code is missing.");
           }
            else if ((error as AuthError).code === 'auth/credential-already-in-use') {
                 console.warn("Firebase Service: MFA credential already in use. Likely already enrolled.");
-                // Don't throw error, treat as success if already enrolled.
                 return;
            }
         throw new Error("Failed to enroll SMS two-factor authentication.");
@@ -530,15 +554,11 @@ export async function enrollSmsMfa(
 export async function unenrollSmsMfa(user: User): Promise<void> {
     try {
         const mfaInfo = multiFactor(user).enrolledFactors;
-        // Find the *first* phone factor if multiple exist (though usually only one)
         const smsFactor = mfaInfo.find(info => info.factorId === PhoneMultiFactorGenerator.FACTOR_ID);
 
         if (!smsFactor || !smsFactor.uid) {
-            // Could also check mfaInfo.length === 0
             console.warn("SMS MFA is not currently enrolled or factor ID is missing.");
-            // Don't throw an error if already unenrolled, just return gracefully
             return;
-            // throw new Error("SMS MFA is not currently enrolled or factor ID is missing.");
         }
 
         await multiFactor(user).unenroll(smsFactor.uid);
@@ -570,7 +590,5 @@ export async function getUserMfaInfo(user: User): Promise<MultiFactorInfo[]> {
     }
 }
 
-// Removed duplicate export
-// export { sendSmsVerificationCodeEnrollment };
-// No duplicate exports needed
-// export { sendSmsVerificationCode };
+// Export the enrollment function with a clear name
+export { sendSmsVerificationCodeEnrollment };

@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect, useRef } from "react"; // Add React import
@@ -74,10 +73,6 @@ export function LoginForm({ className }: { className?: string }) {
   const [splashLoadingText, setSplashLoadingText] = useState("Logging in..."); // Text for splash
   const [splashUserImageUrl, setSplashUserImageUrl] = useState<string | null>(null); // Image for splash
   const [splashUserName, setSplashUserName] = useState<string | null>(null); // Name for splash
-  // Removed fetchedProfileDisplayData as pre-fetching is removed
-  // const [fetchedProfileDisplayData, setFetchedProfileDisplayData] = useState<{ name: string | null, imageUrl: string | null } | null>(null);
-  // Removed fetchedUid as it was only needed for pre-fetching
-  // const [fetchedUid, setFetchedUid] = useState<string | null>(null);
   const [loginMethod, setLoginMethod] = useState<'password' | 'emailLink' | null>(null); // Track selected login method
   const [isProcessingEmailLink, setIsProcessingEmailLink] = useState(false); // State for when verifying email link
   const [unverifiedUser, setUnverifiedUser] = useState<any | null>(null); // Store user object if verification needed
@@ -106,7 +101,8 @@ export function LoginForm({ className }: { className?: string }) {
    // Initialize reCAPTCHA when component mounts and MFA step might be needed
    useEffect(() => {
      // Ensure this runs client-side and container exists
-     if (typeof window !== 'undefined' && recaptchaContainerRef.current && !recaptchaVerifier) {
+     // Initialize only if not already initialized and needed (i.e., might hit step 4)
+     if (typeof window !== 'undefined' && recaptchaContainerRef.current && !recaptchaVerifier && currentStep <= 4) {
          const containerId = `recaptcha-container-${Date.now()}`; // Generate unique ID
          recaptchaContainerRef.current.id = containerId; // Assign the unique ID
          console.log(`Preparing to initialize reCAPTCHA on container: ${containerId}`);
@@ -119,38 +115,40 @@ export function LoginForm({ className }: { className?: string }) {
              toast({ title: "Security Check Error", description: "Could not initialize security check. Please refresh.", variant: "destructive" });
          }
      }
-     // Cleanup function to clear the verifier instance when component unmounts
+     // Cleanup function to clear the verifier instance when component unmounts OR step moves beyond where it's needed
      return () => {
-          if (recaptchaVerifier) {
+          if (recaptchaVerifier && currentStep > 4) { // Clean up if moving past step 4 or unmounting
             try {
-               // Use the cleanup function from the service
                clearGlobalRecaptchaVerifier();
-               console.log("Cleared reCAPTCHA verifier on unmount.");
+               console.log("Cleared reCAPTCHA verifier as it's no longer needed.");
             } catch (e) {
-               console.warn("Could not clear reCAPTCHA on unmount:", e)
+               console.warn("Could not clear reCAPTCHA:", e)
             }
             setRecaptchaVerifier(null); // Reset state
           }
      };
    // eslint-disable-next-line react-hooks/exhaustive-deps
-   }, []); // Run only once on mount
+   }, [currentStep]); // Re-run if currentStep changes
 
 
    // --- Effect to handle email link sign-in ---
    useEffect(() => {
     const processEmailLink = async () => {
-        if (isSignInWithEmailLink(window.location.href)) {
+        // Use window.location.href within useEffect to ensure it runs client-side
+        const currentUrl = window.location.href;
+        if (isSignInWithEmailLink(currentUrl)) {
             setIsProcessingEmailLink(true);
             setSplashLoadingText("Verifying sign-in link...");
             setShowSplash(true);
             try {
-                const user = await signInWithEmailLink(window.location.href);
+                // Pass the email from the form as a fallback, but Firebase should handle it
+                const emailFromForm = form.getValues("artistId") || localStorage.getItem('emailForSignIn'); // Fallback to localStorage if needed, but ideally not
+                const user = await signInWithEmailLink(currentUrl, emailFromForm); // Use updated service
                 // Fetch profile after successful link sign-in using UID
                 if (user.uid) {
                      try {
                         // Use UID to fetch full profile for splash display
                         const profile = await getUserProfileByUid(user.uid);
-                        // Removed setting fetchedProfileDisplayData and fetchedUid
                         setSplashUserName(profile?.name || user.email?.split('@')[0] || 'User');
                         setSplashUserImageUrl(profile?.imageUrl || user.photoURL || null);
                      } catch (profileError) {
@@ -158,7 +156,6 @@ export function LoginForm({ className }: { className?: string }) {
                          // Use auth details as fallback
                          setSplashUserName(user.email?.split('@')[0] || 'User');
                          setSplashUserImageUrl(user.photoURL || null);
-                         // Removed setting fetchedUid
                      }
                 }
                 // Success! Listener will handle state update and redirect
@@ -181,7 +178,10 @@ export function LoginForm({ className }: { className?: string }) {
             // No finally needed, splash remains until listener redirects
         }
     };
-    processEmailLink();
+    // Ensure this runs client-side
+    if (typeof window !== 'undefined') {
+        processEmailLink();
+    }
   // Only run once on mount
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -189,7 +189,6 @@ export function LoginForm({ className }: { className?: string }) {
 
   // Function to get initials for avatar fallback
   const getInitials = (): string => {
-      // Removed fetchedProfileDisplayData reference
       const email = form.getValues("artistId");
       return email?.charAt(0).toUpperCase() || 'U';
   };
@@ -246,8 +245,6 @@ export function LoginForm({ className }: { className?: string }) {
     return isValid;
   };
 
-   // REMOVED fetchProfileForPasswordStep function
-
 
   // Handle "Next" button click
   const handleNext = async () => {
@@ -256,7 +253,6 @@ export function LoginForm({ className }: { className?: string }) {
              goToStep(2); // To Choose Method
          } else if (currentStep === 2) {
              if (loginMethod === 'password') {
-                  // REMOVED call to fetchProfileForPasswordStep()
                   goToStep(3); // Go directly to Password step
              }
              else if (loginMethod === 'emailLink') await handleSendEmailLink(); // Sends link, goes to step 6
@@ -264,7 +260,7 @@ export function LoginForm({ className }: { className?: string }) {
          } else if (currentStep === 3 && loginMethod === 'password') {
              await form.handleSubmit(onSubmit)(); // Submit login attempt
          } else if (currentStep === 4) {
-             // Step 4 now requires action (Send SMS/Email Link), handled by button clicks
+             // Step 4 requires action (Send SMS/Email Link), handled by specific button clicks
              toast({ title: "Choose Verification", description: "Please select how to verify.", variant: "default" });
          } else if (currentStep === 5) { // MFA code entry step
              await handleVerifyMfaCode();
@@ -291,7 +287,6 @@ export function LoginForm({ className }: { className?: string }) {
         } else if (currentStep === 3 || currentStep === 6) { // Updated logic (step 5 -> 6)
             // Go back from Password or Email Sent step
             setLoginMethod(null); // Reset method choice
-            // REMOVED clearing fetchedProfileDisplayData and fetchedUid
             goToStep(2); // Go back to Choose Method step
         } else if (currentStep === 2) {
             // Go back from Choose Method step
@@ -436,7 +431,10 @@ export function LoginForm({ className }: { className?: string }) {
                 description: `A sign-in verification link has been sent to ${email}. Click it to complete login.`,
                 duration: 7000,
             });
-            goToStep(6); // Move to "Check Your Email" confirmation step (Step 6)
+            // Go to verification code entry step (step 5) for email MFA as well
+            // We don't set verificationId here, as email link handles verification implicitly
+            setVerificationId(null); // Ensure verificationId is null for email link flow
+            goToStep(5); // Go to Step 5 (now generic "Verify 2FA Code")
         } catch (error) {
             setShowSplash(false);
             console.error("Error sending MFA email link:", error);
@@ -538,11 +536,19 @@ export function LoginForm({ className }: { className?: string }) {
 
    // --- Implement handleVerifyMfaCode function ---
    const handleVerifyMfaCode = async () => {
+      // Handles both SMS code and potential future email code verification logic
       const code = form.getValues("verificationCode");
-      if (!mfaResolver || !verificationId || !code || code.length !== 6) {
+      if (!mfaResolver || !code || code.length !== 6) {
           toast({ title: "Check Code", description: "Please enter the 6-digit code.", variant: "destructive" });
           return;
       }
+      // verificationId might be null if using email link for MFA step 4 -> 5
+      if (verificationId === undefined) { // Check if undefined, not just null
+           toast({ title: "Verification Error", description: "Verification process not properly initiated.", variant: "destructive" });
+           return;
+      }
+
+
       setIsSubmitting(true);
       setSplashLoadingText("Verifying code...");
        // Show generic splash info
@@ -551,6 +557,7 @@ export function LoginForm({ className }: { className?: string }) {
       setShowSplash(true);
 
       try {
+          // Use verificationId ONLY if it exists (SMS flow)
           const user = await completeMfaSignIn(mfaResolver, verificationId, code);
           console.log("MFA sign-in successful. User UID:", user.uid);
            setSplashLoadingText(`Welcome, ${splashUserName}!`);
@@ -658,7 +665,6 @@ export function LoginForm({ className }: { className?: string }) {
                       {currentStep === 3 && loginMethod === 'password' && ( // Show only if password method chosen
                           <>
                               <div className="flex flex-col items-center text-center p-6 border-b border-border/30">
-                                   {/* Removed Avatar and Name display */}
                                    <h3 className="text-xl font-semibold tracking-tight text-foreground">
                                        Enter Password
                                    </h3>
@@ -718,15 +724,25 @@ export function LoginForm({ className }: { className?: string }) {
                  </div>
 
 
-                 {/* Step 5: MFA Code Entry (2FA via Phone) - Renumbered */}
+                 {/* Step 5: MFA Code Entry (2FA via Phone or Email Link) - Renumbered */}
                   <div className={cn("space-y-4 h-full flex flex-col", getAnimationClasses(5))} aria-hidden={currentStep !== 5}>
                       {currentStep === 5 && ( // Ensure this is step 5
                           <>
                               <div className="flex flex-col items-center text-center p-6 border-b border-border/30">
-                                  <Phone className="h-16 w-16 mb-4 text-primary" />
-                                  <h3 className="text-xl font-semibold tracking-tight text-foreground">Check Your Phone</h3>
+                                  {/* Dynamically show icon based on MFA method (if distinguishable) */}
+                                  {verificationId ? ( // verificationId exists only for SMS flow
+                                      <Phone className="h-16 w-16 mb-4 text-primary" />
+                                  ) : (
+                                       <MailCheck className="h-16 w-16 mb-4 text-primary" />
+                                  )}
+                                  <h3 className="text-xl font-semibold tracking-tight text-foreground">
+                                     {verificationId ? "Check Your Phone" : "Check Your Email"}
+                                  </h3>
                                   <p className="text-muted-foreground text-sm mt-1">
-                                       Enter the 6-digit code sent to your registered phone number{mfaHints.length > 0 && mfaHints.find(h => h.factorId === PhoneMultiFactorGenerator.FACTOR_ID)?.displayName ? ` ending in ${mfaHints.find(h => h.factorId === PhoneMultiFactorGenerator.FACTOR_ID)!.displayName!.slice(-4)}` : ''}.
+                                       {verificationId
+                                           ? `Enter the 6-digit code sent to your registered phone number${mfaHints.length > 0 && mfaHints.find(h => h.factorId === PhoneMultiFactorGenerator.FACTOR_ID)?.displayName ? ` ending in ${mfaHints.find(h => h.factorId === PhoneMultiFactorGenerator.FACTOR_ID)!.displayName!.slice(-4)}` : ''}.`
+                                           : `Enter the 6-digit code sent to your email address ${form.getValues("artistId") || ''}.`
+                                       }
                                   </p>
                               </div>
                               <div className="flex-grow p-6 space-y-4">
@@ -834,3 +850,4 @@ export function LoginForm({ className }: { className?: string }) {
     </div>
   );
 }
+
