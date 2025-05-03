@@ -23,8 +23,8 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"; // Import Avatar
-// Import getUserProfileByUid directly from user service
-import { getUserProfileByUid } from "@/services/user"; // Corrected import
+// Import getUserProfileByUid and getUserProfileByEmail directly from user service
+import { getUserProfileByUid, getUserProfileByEmail } from "@/services/user"; // Corrected import
 import type { ProfileFormValues } from "@/components/profile/profile-form"; // Import profile type
 // Import login and MFA functions from auth service, and new email link functions
 import {
@@ -298,21 +298,38 @@ export function LoginForm({ className }: { className?: string }) {
      }
       setIsSubmitting(true); // Show loading indicator
      try {
-         // Use the UID fetched via email query to get the profile data
-         const profileInfo = await getUserProfileByUid(fetchedUid || ''); // Use fetchedUid
+         // Query Firestore to get the user document by email
+         const userInfo = await getUserProfileByEmail(email); // Use the service function
 
-         if (profileInfo) {
-            setFetchedProfile(profileInfo);
+         if (userInfo && userInfo.uid) {
+             setFetchedUid(userInfo.uid); // Store the fetched UID
+             console.log("User UID fetched by email:", userInfo.uid);
+
+             // Now use the fetched UID to get the profile sub-document
+             const profileInfo = await getUserProfileByUid(userInfo.uid);
+             if (profileInfo) {
+                 setFetchedProfile(profileInfo);
+                 console.log("User profile fetched by UID:", profileInfo);
+             } else {
+                 setFetchedProfile(null);
+                 console.warn("No detailed profile sub-document found for UID", userInfo.uid, "using fallback display.");
+             }
+             goToStep(3); // Proceed to password step
          } else {
-             setFetchedProfile(null); // Handle case where profile sub-doc might not exist yet
-             console.warn("No detailed profile found for", email, "using fallback display.");
+             console.warn("No user found with email:", email);
+             // Handle case where user document doesn't exist (though email might be registered)
+             // Proceed to password step anyway, login might still work if auth record exists
+             setFetchedProfile(null);
+             setFetchedUid(null); // Ensure UID is null
+             goToStep(3);
          }
-         goToStep(3); // Proceed to password step
+
      } catch (error) {
-         console.error("Error fetching profile before password step:", error);
+         console.error("Error fetching user info before password step:", error);
          // Do not show error toast here, proceed to password step anyway
          // User might exist even if profile fetch failed (e.g., permission issue temporarily)
          setFetchedProfile(null); // Ensure profile state is null
+         setFetchedUid(null); // Ensure UID is null
          goToStep(3);
      } finally {
          setIsSubmitting(false);
@@ -331,7 +348,9 @@ export function LoginForm({ className }: { className?: string }) {
      // Use profile name/image if fetched, otherwise fallback
      setSplashUserName(fetchedProfile?.name || values.artistId.split('@')[0]);
      setSplashUserImageUrl(fetchedProfile?.imageUrl || null);
-     // Don't show full splash immediately, handle based on login result
+     // Show splash screen immediately when login starts
+     setShowSplash(true);
+
 
      try {
        // Use non-null assertion for password since we checked it above
@@ -342,7 +361,8 @@ export function LoginForm({ className }: { className?: string }) {
          console.log("MFA Required, hints:", loginResult.hints);
          setMfaResolver(loginResult.mfaResolver);
          setMfaHints(loginResult.hints);
-         // setShowSplash(false); // Don't show splash for MFA
+         setShowSplash(false); // Hide splash for MFA step
+
 
          // Attempt to automatically send SMS code
           const phoneHint = loginResult.hints?.find(hint => hint.factorId === PhoneMultiFactorGenerator.FACTOR_ID);
@@ -382,6 +402,7 @@ export function LoginForm({ className }: { className?: string }) {
                } catch (verificationError) {
                     toast({ title: "Verification Error", description: "Could not send verification email. Please try resending.", variant: "destructive" });
                }
+               setShowSplash(false); // Hide splash for verification step
                goToStep(6); // Go to email verification step
                setIsSubmitting(false); // Allow interaction on verification step
                return; // Stop further processing until verified
@@ -400,9 +421,8 @@ export function LoginForm({ className }: { className?: string }) {
                setSplashUserName(user.email?.split('@')[0] || 'User');
                setSplashUserImageUrl(user.photoURL || null);
            }
-          setSplashLoadingText(`Welcome!`);
-          setShowSplash(true); // Show splash screen now
-          // AuthProvider listener handles redirect, splash remains until then.
+          setSplashLoadingText(`Welcome, ${splashUserName}!`); // Update splash text
+          // Splash remains visible, AuthProvider listener handles redirect.
           // setIsSubmitting(false); // No need to set here, splash is showing
 
        } else {
@@ -426,26 +446,34 @@ export function LoginForm({ className }: { className?: string }) {
    const handleCheckVerification = async () => {
        if (!unverifiedUser) return;
        setIsSubmitting(true); // Show loading
+        setSplashLoadingText("Checking email verification...");
+        setShowSplash(true); // Show splash while checking
+
        try {
            await reload(unverifiedUser); // Reload user data from Firebase
-           if (unverifiedUser.emailVerified) {
+           // Must re-get the user object after reload to see the updated emailVerified status
+           const refreshedUser = getAuth(app).currentUser;
+           if (refreshedUser?.emailVerified) {
                // Verification successful! Proceed with splash/redirect
+               setUnverifiedUser(null); // Clear state
                toast({ title: "Email Verified!", variant: "default" });
                 // Fetch profile again for splash
                 try {
-                    const profile = await getUserProfileByUid(unverifiedUser.uid);
-                    setSplashUserName(profile?.name || unverifiedUser.email?.split('@')[0] || 'User');
-                    setSplashUserImageUrl(profile?.imageUrl || unverifiedUser.photoURL || null);
+                    const profile = await getUserProfileByUid(refreshedUser.uid);
+                    setSplashUserName(profile?.name || refreshedUser.email?.split('@')[0] || 'User');
+                    setSplashUserImageUrl(profile?.imageUrl || refreshedUser.photoURL || null);
                 } catch (profileError) {
-                    setSplashUserName(unverifiedUser.email?.split('@')[0] || 'User');
-                    setSplashUserImageUrl(unverifiedUser.photoURL || null);
+                    setSplashUserName(refreshedUser.email?.split('@')[0] || 'User');
+                    setSplashUserImageUrl(refreshedUser.photoURL || null);
                 }
-               setSplashLoadingText(`Welcome!`);
-               setShowSplash(true);
+               setSplashLoadingText(`Welcome, ${splashUserName}!`);
+               // Splash stays visible, listener will redirect
            } else {
+               setShowSplash(false); // Hide splash if still not verified
                toast({ title: "Still Waiting", description: "Email not verified yet. Please check your inbox and click the link.", variant: "default" });
            }
        } catch (error) {
+            setShowSplash(false); // Hide splash on error
             toast({ title: "Verification Check Failed", description: "Could not check verification status. Please try again.", variant: "destructive" });
        } finally {
            setIsSubmitting(false);
@@ -479,12 +507,14 @@ export function LoginForm({ className }: { className?: string }) {
       setSplashLoadingText("Sending sign-in link...");
        setSplashUserName(email.split('@')[0]); // Use email for splash initially
        setSplashUserImageUrl(null);
-       // setShowSplash(true); // Don't show full splash for sending link
+       setShowSplash(true); // Show splash while sending link
+
 
       try {
           // Construct the redirect URL (current base URL)
           const redirectUrl = window.location.origin + window.location.pathname;
           await sendSignInLinkToEmail(email, redirectUrl);
+          setShowSplash(false); // Hide splash after sending
           toast({
               title: "Check Your Email!",
               description: `A sign-in link has been sent to ${email}.`,
@@ -492,6 +522,7 @@ export function LoginForm({ className }: { className?: string }) {
           });
           goToStep(5); // Move to "Email Sent" confirmation step
       } catch (error) {
+          setShowSplash(false); // Hide splash on error
           console.error("Error sending email link:", error);
           toast({
               title: "Email Link Failed",
@@ -500,7 +531,6 @@ export function LoginForm({ className }: { className?: string }) {
           });
       } finally {
           setIsSubmitting(false);
-          // setShowSplash(false);
       }
    };
 
@@ -514,7 +544,7 @@ export function LoginForm({ className }: { className?: string }) {
       }
       setIsSubmitting(true);
       setSplashLoadingText("Verifying code...");
-      // Fetch profile post-MFA for splash
+       // Fetch profile post-MFA for splash
       setShowSplash(true);
 
       try {
@@ -531,8 +561,8 @@ export function LoginForm({ className }: { className?: string }) {
                 setSplashUserName(user.email?.split('@')[0] || 'User');
                 setSplashUserImageUrl(user.photoURL || null);
             }
-            setSplashLoadingText(`Welcome!`);
-           // Redirect handled by listener
+            setSplashLoadingText(`Welcome, ${splashUserName}!`);
+           // Splash stays, Redirect handled by listener
 
       } catch (error) {
           toast({ title: "Verification Failed", description: (error as Error).message, variant: "destructive" });
