@@ -231,6 +231,7 @@ export async function login(email: string, password: string): Promise<User | { m
 
  export async function sendSignInLinkToEmail(email: string, redirectUrl: string): Promise<void> {
     const actionCodeSettings: ActionCodeSettings = {
+        // Ensure the URL is correctly formed and authorized in Firebase console
         url: redirectUrl,
         handleCodeInApp: true,
     };
@@ -507,5 +508,7 @@ export async function getUserMfaInfo(user: User): Promise<MultiFactorInfo[]> {
 }
 
 // Rename original sendSmsVerificationCode to sendSmsVerificationCodeEnrollment
+// Removed the duplicate export below:
 // export { sendSmsVerificationCodeEnrollment as sendSmsVerificationCode };
+// Keep the single, correctly named export
 export { sendSmsVerificationCodeEnrollment };
