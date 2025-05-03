@@ -277,39 +277,34 @@ export function SubmitDemoForm({ onSuccess, onCancel, className }: SubmitDemoFor
             </div>
 
             {/* Form Area - Increased min-height and use relative positioning for transitions */}
-            <div className="flex-grow p-4 sm:p-6 relative min-h-[300px] sm:min-h-[350px]"> {/* Adjusted min-height */}
+            <div className="flex-grow p-4 sm:p-6 relative min-h-[300px] sm:min-h-[350px] overflow-hidden"> {/* Added overflow-hidden */}
                 <Form {...form}>
                     {/* Note: Removed onSubmit from form tag, handled by button click */}
-                    <form className="space-y-5" aria-live="polite">
+                    <form className="h-full" aria-live="polite"> {/* Ensure form takes full height */}
 
-                        {/* Step 1: Artist Name */}
-                        <div className={cn("space-y-5", getAnimationClasses(1))} aria-hidden={currentStep !== 1}>
+                        {/* Wrap each step's content in a div for absolute positioning and animation */}
+                        <div className={cn("absolute inset-0 px-4 sm:px-6 space-y-5", getAnimationClasses(1))} aria-hidden={currentStep !== 1}>
                             <FormField control={form.control} name="artistName" render={({ field }) => ( <FormItem><FormLabel>Your Artist/Band Name</FormLabel><FormControl><div className="relative"><User className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input placeholder="What name do you go by?" {...field} disabled={isSubmitting || currentStep !== 1} className="pl-8 text-base" /></div></FormControl><FormMessage /></FormItem> )} />
                         </div>
 
-                        {/* Step 2: Contact Email */}
-                        <div className={cn("space-y-5", getAnimationClasses(2))} aria-hidden={currentStep !== 2}>
+                        <div className={cn("absolute inset-0 px-4 sm:px-6 space-y-5", getAnimationClasses(2))} aria-hidden={currentStep !== 2}>
                             <FormField control={form.control} name="email" render={({ field }) => ( <FormItem><FormLabel>Your Best Email</FormLabel><FormControl><div className="relative"><Mail className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input type="email" placeholder="Where can we reply?" {...field} disabled={isSubmitting || currentStep !== 2} className="pl-8 text-base" /></div></FormControl><FormMessage /></FormItem> )} />
                         </div>
 
-                        {/* Step 3: Phone Number (Optional) */}
-                        <div className={cn("space-y-5", getAnimationClasses(3))} aria-hidden={currentStep !== 3}>
+                        <div className={cn("absolute inset-0 px-4 sm:px-6 space-y-5", getAnimationClasses(3))} aria-hidden={currentStep !== 3}>
                             <FormField control={form.control} name="phoneNumber" render={({ field }) => ( <FormItem><FormLabel>Your Phone (Optional)</FormLabel><FormControl><div className="relative"><Phone className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input type="tel" placeholder="Just in case email fails..." {...field} value={field.value ?? ""} disabled={isSubmitting || currentStep !== 3} className="pl-8 text-base" /></div></FormControl><FormDescription className="text-xs">Only used if we urgently need to reach you.</FormDescription><FormMessage /></FormItem> )} />
                         </div>
 
-                        {/* Step 4: Socials & Bio (Optional) */}
-                        <div className={cn("space-y-5", getAnimationClasses(4))} aria-hidden={currentStep !== 4}>
+                        <div className={cn("absolute inset-0 px-4 sm:px-6 space-y-5", getAnimationClasses(4))} aria-hidden={currentStep !== 4}>
                             <FormField control={form.control} name="socialLinks" render={({ field }) => ( <FormItem><FormLabel>Your Links (Optional)</FormLabel><FormControl><div className="relative"><LinkIcon className="absolute left-2.5 top-3 h-4 w-4 text-muted-foreground" /><Textarea placeholder="Spotify, SoundCloud, Insta, Website... Drop 'em here!" className="resize-none pl-8 text-base" {...field} value={field.value ?? ""} disabled={isSubmitting || currentStep !== 4} rows={3}/></div></FormControl><FormDescription className="text-xs">Show us where you live online!</FormDescription><FormMessage /></FormItem> )} />
                             <FormField control={form.control} name="bio" render={({ field }) => ( <FormItem><FormLabel>Quick Bio (Optional)</FormLabel><FormControl><div className="relative"><FileText className="absolute left-2.5 top-3 h-4 w-4 text-muted-foreground" /><Textarea placeholder="Tell us your story, what's your music about?" className="resize-none pl-8 text-base" {...field} value={field.value ?? ""} disabled={isSubmitting || currentStep !== 4} rows={4}/></div></FormControl><FormDescription className="text-xs">Keep it short and sweet!</FormDescription><FormMessage /></FormItem> )} />
                         </div>
 
-                        {/* Step 5: Track Name */}
-                        <div className={cn("space-y-5", getAnimationClasses(5))} aria-hidden={currentStep !== 5}>
+                        <div className={cn("absolute inset-0 px-4 sm:px-6 space-y-5", getAnimationClasses(5))} aria-hidden={currentStep !== 5}>
                             <FormField control={form.control} name="trackName" render={({ field }) => ( <FormItem><FormLabel>Demo Track Name</FormLabel><FormControl><div className="relative"><Music className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input placeholder="What's this banger called?" {...field} disabled={isSubmitting || currentStep !== 5} className="pl-8 text-base" /></div></FormControl><FormMessage /></FormItem> )} />
                         </div>
 
-                        {/* Step 6: Track Upload */}
-                        <div className={cn("space-y-5", getAnimationClasses(6))} aria-hidden={currentStep !== 6}>
+                        <div className={cn("absolute inset-0 px-4 sm:px-6 space-y-5", getAnimationClasses(6))} aria-hidden={currentStep !== 6}>
                              <FormField control={form.control} name="demoFile" render={({ fieldState }) => (
                                 <FormItem>
                                     <FormLabel>Your Demo (MP3, max 50MB)</FormLabel>
@@ -343,62 +338,63 @@ export function SubmitDemoForm({ onSuccess, onCancel, className }: SubmitDemoFor
                             )} />
                         </div>
 
+
                         {/* Hidden submit for Enter key */}
-                        <button type="submit" disabled={isSubmitting} style={{ display: 'none' }} aria-hidden="true"></button>
+                        <button type="submit" onClick={(e) => { e.preventDefault(); handleNext(); }} disabled={isSubmitting} style={{ display: 'none' }} aria-hidden="true"></button>
                     </form>
                 </Form>
             </div>
 
-             {/* Footer with Action Buttons - Increased padding and icon sizes */}
-             <div className="flex justify-between items-center p-4 border-t border-border/30 mt-auto h-16"> {/* Increased height */}
-                 {/* Back Button Icon */}
+             {/* Footer with Action Buttons - Moved outside Form */}
+             <div className="flex justify-between items-center p-4 border-t border-border/30 mt-auto h-16">
+                 {/* Back Button */}
                  <Button
                      type="button"
                      variant="ghost"
-                     size="lg" // Use size="lg" for larger button area
+                     size="icon" // Using size="icon" for consistency
                      onClick={handlePrevious}
                      disabled={currentStep === 1 || isSubmitting}
                      className={cn(
-                         "h-12 w-12 text-muted-foreground hover:text-primary p-0", // Adjusted size and padding
+                         "h-10 w-10 text-muted-foreground hover:text-primary",
                          currentStep === 1 && "invisible" // Hide on first step
                      )}
                      aria-label="Previous Step"
                  >
-                     <ArrowLeft className="h-7 w-7" /> {/* Increased icon size */}
+                     <ArrowLeft className="h-5 w-5" /> {/* Standard icon size */}
                  </Button>
 
-                 {/* Cancel Button Icon */}
+                 {/* Cancel Button */}
                  <Button
                      type="button"
                      variant="ghost"
-                     size="lg" // Use size="lg"
+                     size="icon" // Using size="icon"
                      onClick={onCancel}
                      disabled={isSubmitting}
-                     className="h-12 w-12 text-destructive hover:bg-destructive/10 p-0" // Adjusted size and padding
+                     className="h-10 w-10 text-destructive hover:bg-destructive/10"
                      aria-label="Cancel Submission"
                  >
-                     <X className="h-7 w-7" /> {/* Increased icon size */}
+                     <X className="h-5 w-5" /> {/* Standard icon size */}
                  </Button>
 
-                 {/* Next/Submit Button Icon */}
+                 {/* Next/Submit Button */}
                  <Button
-                     type="button"
+                     type="button" // Changed to type="button"
                      variant="ghost"
-                     size="lg" // Use size="lg"
-                     onClick={handleNext}
-                     disabled={isSubmitting || (currentStep === DEMO_SUBMISSION_STEPS.length && !fileName)}
+                     size="icon" // Using size="icon"
+                     onClick={handleNext} // Call handleNext which validates and submits
+                     disabled={isSubmitting || (currentStep === DEMO_SUBMISSION_STEPS.length && !fileName)} // Check fileName on last step
                      className={cn(
-                         "h-12 w-12 text-primary hover:bg-primary/10 disabled:text-muted-foreground disabled:hover:bg-transparent p-0", // Adjusted size, padding, disabled state
+                         "h-10 w-10 text-primary hover:bg-primary/10 disabled:text-muted-foreground disabled:hover:bg-transparent",
                          isSubmitting && "animate-pulse"
                      )}
                      aria-label={currentStep === DEMO_SUBMISSION_STEPS.length ? "Send Demo" : "Next Step"}
                  >
                      {isSubmitting ? (
-                         <Loader2 className="h-7 w-7 animate-spin" /> // Increased icon size
+                         <Loader2 className="h-5 w-5 animate-spin" />
                      ) : currentStep === DEMO_SUBMISSION_STEPS.length ? (
-                         <Send className="h-7 w-7" /> // Increased icon size
+                         <Send className="h-5 w-5" />
                      ) : (
-                         <ArrowRight className="h-7 w-7" /> // Increased icon size
+                         <ArrowRight className="h-5 w-5" />
                      )}
                  </Button>
              </div>
@@ -407,4 +403,3 @@ export function SubmitDemoForm({ onSuccess, onCancel, className }: SubmitDemoFor
      </>
   );
 }
-
