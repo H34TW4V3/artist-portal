@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect, useRef } from "react"; // Add React import
@@ -24,8 +25,8 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"; // Import Avatar
-// Import getUserProfileByUid directly from user service (removed getUserProfileByEmail)
-import { getUserProfileByUid } from "@/services/user"; // Corrected import
+// Import getUserProfileByUid and getUserProfileByEmail directly from user service
+import { getUserProfileByUid, getUserProfileByEmail } from "@/services/user"; // Corrected import
 import type { ProfileFormValues } from "@/components/profile/profile-form"; // Import profile type
 // Import login and MFA functions from auth service, and new email link functions
 import {
@@ -889,3 +890,4 @@ export function LoginForm({ className }: { className?: string }) {
     </div>
   );
 }
+
