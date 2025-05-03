@@ -10,7 +10,6 @@ import { app } from '@/services/firebase-config'; // Import Firebase config
 // Added MailCheck, LogIn icons
 import { Loader2, ArrowLeft, ArrowRight, Mail, KeyRound, Phone, MessageSquare, MailCheck, LogIn } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation"; // Use next/navigation
-import { Howl } from 'howler'; // Import Howl for audio
 
 import { Button } from "@/components/ui/button";
 import {
@@ -25,8 +24,8 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"; // Import Avatar
-// Import getUserProfileByEmail from the correct location
-import { getUserProfileByEmail } from "@/services/user"; // Corrected import
+// Import getUserProfileByUid directly
+import { getUserProfileByUid } from "@/services/user"; // Corrected import
 import type { ProfileFormValues } from "@/components/profile/profile-form"; // Import profile type
 // Import login and MFA functions from auth service, and new email link functions
 import {
@@ -72,10 +71,9 @@ export function LoginForm({ className }: { className?: string }) {
   const [splashUserName, setSplashUserName] = useState<string | null>(null); // Name for splash
   // State to store fetched profile for display on password step
   const [fetchedProfile, setFetchedProfile] = useState<ProfileFormValues | null>(null);
-  const [isFetchingProfile, setIsFetchingProfile] = useState(false);
+  // REMOVED isFetchingProfile state as fetch is moved
+  // const [isFetchingProfile, setIsFetchingProfile] = useState(false);
   const [loginMethod, setLoginMethod] = useState<'password' | 'emailLink' | null>(null); // Track selected login method
-  // Removed isPasswordlessEnabled state
-  // const [isPasswordlessEnabled, setIsPasswordlessEnabled] = useState<boolean | null>(null);
   const [isProcessingEmailLink, setIsProcessingEmailLink] = useState(false); // State for when verifying email link
 
   // MFA related state
@@ -128,7 +126,21 @@ export function LoginForm({ className }: { className?: string }) {
             setSplashLoadingText("Verifying sign-in link...");
             setShowSplash(true);
             try {
-                await signInWithEmailLink(window.location.href);
+                const user = await signInWithEmailLink(window.location.href);
+                // Fetch profile after successful link sign-in
+                if (user.uid) {
+                     try {
+                        const profile = await getUserProfileByUid(user.uid);
+                        setFetchedProfile(profile);
+                        setSplashUserName(profile?.name || user.email?.split('@')[0] || 'User');
+                        setSplashUserImageUrl(profile?.imageUrl || user.photoURL || null);
+                     } catch (profileError) {
+                         console.error("Error fetching profile after email link sign-in:", profileError);
+                         // Use auth details as fallback
+                         setSplashUserName(user.email?.split('@')[0] || 'User');
+                         setSplashUserImageUrl(user.photoURL || null);
+                     }
+                }
                 // Success! Listener will handle state update and redirect
                 setSplashLoadingText("Sign-in successful!");
                 // Clear the URL to prevent accidental reuse (optional but recommended)
@@ -162,7 +174,8 @@ export function LoginForm({ className }: { className?: string }) {
       if (name) {
           return name.split(' ').map(n => n[0]).join('').toUpperCase() || 'U';
       }
-      return email?.charAt(0).toUpperCase() || 'U';
+       // Fallback logic: use email or default 'U'
+       return email?.charAt(0).toUpperCase() || 'U';
   };
 
 
@@ -217,28 +230,8 @@ export function LoginForm({ className }: { className?: string }) {
     return isValid;
   };
 
-  // Fetch profile when moving to password step
-  const fetchProfileForPasswordStep = async () => {
-      const email = form.getValues("artistId");
-      if (!email || !loginMethod || fetchedProfile) return; // Don't fetch if no email, method not chosen, or already fetched
-
-      setIsFetchingProfile(true);
-      try {
-          const profile = await getUserProfileByEmail(email);
-          setFetchedProfile(profile);
-           // Set splash user/image based on fetched profile for consistency
-           setSplashUserName(profile?.name || email.split('@')[0]);
-           setSplashUserImageUrl(profile?.imageUrl || null);
-      } catch (error) {
-          console.error("Error fetching profile for password screen:", error);
-          setFetchedProfile(null); // Allow proceeding without profile display if fetch fails
-          // Use email prefix if profile fetch fails
-           setSplashUserName(email.split('@')[0]);
-           setSplashUserImageUrl(null);
-      } finally {
-          setIsFetchingProfile(false);
-      }
-  };
+   // REMOVED fetchProfileForPasswordStep as it's no longer needed here.
+   // Profile will be fetched *after* successful authentication.
 
 
   // Handle "Next" button click
@@ -250,8 +243,7 @@ export function LoginForm({ className }: { className?: string }) {
          } else if (currentStep === 2) {
              // Based on loginMethod chosen in Step 2, go to Password (3) or Email Sent (5)
              if (loginMethod === 'password') {
-                 // Fetch profile *before* going to step 3
-                 await fetchProfileForPasswordStep();
+                 // No profile fetch here anymore
                  goToStep(3);
              }
              else if (loginMethod === 'emailLink') await handleSendEmailLink(); // Trigger sending link
@@ -301,9 +293,9 @@ export function LoginForm({ className }: { className?: string }) {
      }
      setIsSubmitting(true);
      setSplashLoadingText("Logging in...");
-     // Use fetched profile name/image if available, else email prefix
-     setSplashUserName(fetchedProfile?.name || values.artistId.split('@')[0]);
-     setSplashUserImageUrl(fetchedProfile?.imageUrl || null);
+     // Set initial splash state based on email
+     setSplashUserName(values.artistId.split('@')[0]);
+     setSplashUserImageUrl(null);
      setShowSplash(true);
 
      try {
@@ -314,7 +306,7 @@ export function LoginForm({ className }: { className?: string }) {
          console.log("MFA Required, hints:", loginResult.hints);
          setMfaResolver(loginResult.mfaResolver);
          setMfaHints(loginResult.hints);
-         setShowSplash(false);
+         setShowSplash(false); // Hide splash for MFA interaction
 
          // Attempt to automatically send SMS code
           const phoneHint = loginResult.hints?.find(hint => hint.factorId === PhoneMultiFactorGenerator.FACTOR_ID);
@@ -338,13 +330,26 @@ export function LoginForm({ className }: { className?: string }) {
                toast({ title: "MFA Setup Incomplete", description: "Cannot proceed with MFA automatically.", variant: "destructive" });
                setMfaResolver(null); setMfaHints([]); goToStep(3); // Go back to password step
           }
-          setIsSubmitting(false);
+          setIsSubmitting(false); // Reset submitting state for MFA step
 
        } else if (loginResult && 'uid' in loginResult) {
-          // Standard login successful
-          console.log("LoginForm: Login successful via service.");
-          setSplashLoadingText(`Welcome, ${fetchedProfile?.name || values.artistId.split('@')[0]}!`); // Use fetched name or email prefix
-          // AuthProvider listener handles redirect
+          // Standard login successful - Fetch profile AFTER login
+          console.log("LoginForm: Login successful via service. User UID:", loginResult.uid);
+          try {
+             const profile = await getUserProfileByUid(loginResult.uid);
+             setFetchedProfile(profile);
+             setSplashUserName(profile?.name || loginResult.email?.split('@')[0] || 'User');
+             setSplashUserImageUrl(profile?.imageUrl || loginResult.photoURL || null);
+             setSplashLoadingText(`Welcome, ${profile?.name || loginResult.email?.split('@')[0] || 'User'}!`);
+          } catch (profileError) {
+               console.error("Error fetching profile after login:", profileError);
+               // Use auth details as fallback for splash screen
+               setSplashUserName(loginResult.email?.split('@')[0] || 'User');
+               setSplashUserImageUrl(loginResult.photoURL || null);
+               setSplashLoadingText(`Welcome, ${loginResult.email?.split('@')[0] || 'User'}!`);
+          }
+          // AuthProvider listener handles redirect, splash remains until then.
+          // setIsSubmitting(false); // No need to set here, splash is showing
 
        } else {
             throw new Error("Unexpected login result received.");
@@ -352,10 +357,9 @@ export function LoginForm({ className }: { className?: string }) {
 
      } catch (error) {
        console.error("Login failed:", error);
-       setShowSplash(false);
+       setShowSplash(false); // Hide splash on error
        setIsSubmitting(false);
        // Stay on password step (3) on error
-       // We don't necessarily need goToStep(3) because it should already be there.
        toast({
          title: "Login Failed",
          description: error instanceof Error ? error.message : "An unknown error occurred.",
@@ -411,15 +415,28 @@ export function LoginForm({ className }: { className?: string }) {
       }
       setIsSubmitting(true);
       setSplashLoadingText("Verifying code...");
-       // Use fetched profile name/image if available, else email prefix
-       setSplashUserName(fetchedProfile?.name || form.getValues("artistId").split('@')[0]);
-       setSplashUserImageUrl(fetchedProfile?.imageUrl || null);
+      // Set initial splash state based on email, will update after MFA success
+      setSplashUserName(form.getValues("artistId").split('@')[0]);
+      setSplashUserImageUrl(null);
       setShowSplash(true);
 
       try {
           const user = await completeMfaSignIn(mfaResolver, verificationId, code);
-          console.log("MFA sign-in successful.");
-          setSplashLoadingText(`Welcome, ${fetchedProfile?.name || form.getValues("artistId").split('@')[0]}!`);
+          console.log("MFA sign-in successful. User UID:", user.uid);
+          // Fetch profile AFTER successful MFA sign-in
+          try {
+             const profile = await getUserProfileByUid(user.uid);
+             setFetchedProfile(profile);
+             setSplashUserName(profile?.name || user.email?.split('@')[0] || 'User');
+             setSplashUserImageUrl(profile?.imageUrl || user.photoURL || null);
+             setSplashLoadingText(`Welcome, ${profile?.name || user.email?.split('@')[0] || 'User'}!`);
+          } catch (profileError) {
+              console.error("Error fetching profile after MFA sign-in:", profileError);
+              // Use auth details as fallback
+              setSplashUserName(user.email?.split('@')[0] || 'User');
+              setSplashUserImageUrl(user.photoURL || null);
+              setSplashLoadingText(`Welcome, ${user.email?.split('@')[0] || 'User'}!`);
+          }
            // Redirect handled by listener
 
       } catch (error) {
@@ -523,16 +540,19 @@ export function LoginForm({ className }: { className?: string }) {
                       {currentStep === 3 && loginMethod === 'password' && ( // Show only if password method chosen
                           <>
                               <div className="flex flex-col items-center text-center p-6 border-b border-border/30">
+                                   {/* Display avatar based on email initially, will update after login */}
                                    <Avatar className="h-20 w-20 mb-4 border-4 border-primary/50">
-                                        <AvatarImage src={fetchedProfile?.imageUrl || undefined} alt={fetchedProfile?.name || form.getValues("artistId").split('@')[0]} />
+                                        {/* Image source is initially null before login */}
+                                        <AvatarImage src={splashUserImageUrl || undefined} alt={splashUserName || form.getValues("artistId").split('@')[0]} />
                                         <AvatarFallback className="text-3xl bg-muted text-muted-foreground">
-                                            {getInitials()}
+                                            {/* Initials based on email before login */}
+                                            {(form.getValues("artistId") || 'U')[0].toUpperCase()}
                                         </AvatarFallback>
                                     </Avatar>
                                     <h3 className="text-xl font-semibold tracking-tight text-foreground">
-                                         {isFetchingProfile ? 'Loading...' : (fetchedProfile?.name || form.getValues("artistId").split('@')[0])}
+                                         {/* Display email before login */}
+                                         {splashUserName || form.getValues("artistId").split('@')[0]}
                                     </h3>
-                                    {/* Removed the descriptive text */}
                               </div>
                               <div className="flex-grow p-6 space-y-4">
                                     <FormField control={form.control} name="password" render={({ field }) => ( <FormItem><FormLabel className="sr-only">Password</FormLabel><FormControl><div className="relative"><KeyRound className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input type="password" placeholder="Enter your password" autoComplete="current-password" {...field} disabled={isSubmitting} className="pl-8 text-base"/></div></FormControl><FormMessage /><div className="text-right"><Button type="button" variant="link" className="text-xs text-muted-foreground h-auto p-0" /* onClick={() => setIsForgotPasswordModalOpen(true)} */>Forgot Password?</Button></div></FormItem> )} />
@@ -596,13 +616,21 @@ export function LoginForm({ className }: { className?: string }) {
                  {/* Adjust total steps based on flow */}
                  {currentStep === 2 ? "Choose Method" : `Step ${currentStep} of ${loginMethod === 'emailLink' ? 2 : (mfaResolver ? 4 : 3)}`}
             </span>
-            <Button type="button" variant="ghost" size="icon" onClick={handleNext} disabled={isSubmitting || isFetchingProfile || (currentStep === 2 && !loginMethod) || (currentStep === 4 && (!form.watch("verificationCode") || form.watch("verificationCode")?.length !== 6))} className={cn("h-10 w-10", (isSubmitting || isFetchingProfile) && "animate-pulse")} aria-label={currentStep === 4 ? "Verify Code" : (currentStep === 3 ? "Login" : "Next Step")}>
-                {(isSubmitting || isFetchingProfile) ? (
-                <Loader2 className="h-5 w-5 animate-spin" />
-                ) : (
-                 (currentStep === 3 || currentStep === 4) ? <LogIn className="h-5 w-5 text-primary" /> : <ArrowRight className="ml-2 h-5 w-5" />
-                )}
-            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              onClick={handleNext}
+              disabled={isSubmitting || (currentStep === 2 && !loginMethod) || (currentStep === 4 && (!form.watch("verificationCode") || form.watch("verificationCode")?.length !== 6))}
+              className={cn("h-10 w-10", isSubmitting && "animate-pulse")} // Removed isFetchingProfile check
+              aria-label={currentStep === 4 ? "Verify Code" : (currentStep === 3 ? "Login" : "Next Step")}
+            >
+                 {isSubmitting ? ( // Removed isFetchingProfile check
+                 <Loader2 className="h-5 w-5 animate-spin" />
+                 ) : (
+                  (currentStep === 3 || currentStep === 4) ? <LogIn className="h-5 w-5 text-primary" /> : <ArrowRight className="h-5 w-5" /> // Corrected: ArrowRight icon usage
+                 )}
+             </Button>
         </div>
        )}
     </div>
