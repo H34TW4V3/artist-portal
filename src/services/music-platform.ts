@@ -245,6 +245,7 @@ import {
     // --- 4. Create Firestore Document ---
     const releasesRef = collection(db, "users", userId, "releases");
     try {
+        console.log("Attempting to add release document to Firestore:", newReleaseData);
         const docRef = await addDoc(releasesRef, {
             ...newReleaseData,
             createdAt: serverTimestamp(), // Add server timestamp
@@ -295,6 +296,7 @@ import {
           spotifyLink: data.spotifyLink || null, // Use provided link or null
       };
 
+      console.log("Attempting to add existing release document to Firestore:", releaseData); // Log data being saved
       const releasesRef = collection(db, "users", userId, "releases");
       try {
           const docRef = await addDoc(releasesRef, {
@@ -303,8 +305,10 @@ import {
           });
           console.log("Existing release document created in Firestore with ID:", docRef.id);
           return docRef.id;
-      } catch (firestoreError) {
+      } catch (firestoreError: any) { // Catch specific error type
           console.error("Firestore document creation failed for existing release:", firestoreError);
+          console.error("Firestore error code:", firestoreError.code); // Log specific error code
+          console.error("Firestore error message:", firestoreError.message);
           throw new Error("Failed to save existing release data.");
       }
   }
@@ -400,11 +404,14 @@ import {
        // delete dataToUpdate.status;
 
       // 5. Update Firestore Document
+      console.log("Attempting to update release document in Firestore:", releaseId, dataToUpdate);
       await updateDoc(releaseDocRef, dataToUpdate);
       console.log("Release updated successfully in Firestore:", releaseId);
 
-    } catch (error) {
+    } catch (error: any) { // Catch specific error type
       console.error("Error updating release:", error);
+      console.error("Firestore error code (update):", error.code);
+      console.error("Firestore error message (update):", error.message);
       throw new Error("Failed to update release.");
     }
   }
@@ -439,8 +446,10 @@ import {
           // In a real app, you might call a Cloud Function here instead of requestPlatformTakedown
           await requestPlatformTakedown(releaseId);
 
-      } catch (error) {
+      } catch (error: any) { // Catch specific error type
           console.error(`Error initiating takedown for release ${releaseId}:`, error);
+          console.error("Firestore error code (takedown):", error.code);
+          console.error("Firestore error message (takedown):", error.message);
           throw new Error("Failed to initiate takedown request.");
       }
   }
@@ -485,9 +494,12 @@ import {
       await deleteDoc(releaseDocRef);
       console.log("Release document deleted from Firestore:", releaseId);
 
-    } catch (error) {
+    } catch (error: any) { // Catch specific error type
         console.error("Error removing release:", error);
+        console.error("Firestore error code (remove):", error.code);
+        console.error("Firestore error message (remove):", error.message);
         throw new Error("Failed to remove release and associated files.");
     }
   }
+    
     
