@@ -24,8 +24,9 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"; // Import Avatar
-import { getUserProfileByEmail } from "@/services/user"; // Import function to get profile by email
-import type { ProfileFormValues } from "@/components/profile/profile-form"; // Import profile type
+// Removed profile fetching service from login form
+// import { getUserProfileByEmail } from "@/services/user";
+// import type { ProfileFormValues } from "@/components/profile/profile-form";
 // Import login and MFA functions from auth service, and new email link functions
 import {
     login,
@@ -51,11 +52,11 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 // Define steps - adjusted based on flow changes
 const STEPS = [
   { id: 1, name: "Artist ID", icon: Mail },
-  // Step 2 (Choose Method) is shown only if passwordless is NOT enabled
+  // Step 2 (Choose Method) is shown after email entry
   { id: 2, name: "Choose Method", icon: LogIn },
-  { id: 3, name: "Password", icon: KeyRound }, // Only shown if password method chosen OR passwordless disabled
+  { id: 3, name: "Password", icon: KeyRound }, // Only shown if password method chosen
   { id: 4, name: "Verify 2FA Code", icon: MessageSquare }, // MFA Step (Phone only)
-  { id: 5, name: "Check Your Email", icon: MailCheck }, // Email Link Sent Step (For passwordless or chosen email link)
+  { id: 5, name: "Check Your Email", icon: MailCheck }, // Email Link Sent Step (For chosen email link)
 ];
 
 // Define the component
@@ -68,9 +69,11 @@ export function LoginForm({ className }: { className?: string }) {
   const [splashLoadingText, setSplashLoadingText] = useState("Loading..."); // Text for splash
   const [splashUserImageUrl, setSplashUserImageUrl] = useState<string | null>(null); // Image for splash
   const [splashUserName, setSplashUserName] = useState<string | null>(null); // Name for splash
-  const [fetchedProfile, setFetchedProfile] = useState<ProfileFormValues | null>(null); // State to store fetched profile
+  // Removed state related to fetching profile during login
+  // const [fetchedProfile, setFetchedProfile] = useState<ProfileFormValues | null>(null);
   const [loginMethod, setLoginMethod] = useState<'password' | 'emailLink' | null>(null); // Track selected login method
-  const [isPasswordlessEnabled, setIsPasswordlessEnabled] = useState<boolean | null>(null); // Track if passwordless is enabled for the user
+  // Removed isPasswordlessEnabled state
+  // const [isPasswordlessEnabled, setIsPasswordlessEnabled] = useState<boolean | null>(null);
   const [isProcessingEmailLink, setIsProcessingEmailLink] = useState(false); // State for when verifying email link
 
   // MFA related state
@@ -150,9 +153,9 @@ export function LoginForm({ className }: { className?: string }) {
   }, []);
 
 
-  // Function to get initials
-  const getInitials = (name: string | undefined | null): string => {
-      return name?.split(' ').map(n => n[0]).join('').toUpperCase() || 'U';
+  // Function to get initials - Now uses email as primary source if profile not available yet
+  const getInitials = (email: string | undefined | null): string => {
+      return email?.charAt(0).toUpperCase() || 'U';
   };
 
 
@@ -211,33 +214,8 @@ export function LoginForm({ className }: { className?: string }) {
   const handleNext = async () => {
      if (await validateStep(currentStep)) {
          if (currentStep === 1) {
-             // Fetch profile after validating email
-             const email = form.getValues("artistId");
-             setIsSubmitting(true);
-             try {
-                 const profile = await getUserProfileByEmail(email);
-                 console.log("Profile fetched:", profile);
-                 setFetchedProfile(profile);
-                 setIsPasswordlessEnabled(profile?.emailLinkSignInEnabled ?? false); // Set passwordless state
-
-                 // Decide next step based on passwordless flag
-                 if (profile?.emailLinkSignInEnabled) {
-                     console.log("Passwordless enabled, sending email link...");
-                     await handleSendEmailLink(); // Automatically send link and go to step 5
-                 } else {
-                     console.log("Passwordless disabled, proceeding to choose method...");
-                     goToStep(2); // Go to "Choose Method" step
-                 }
-
-             } catch (error) {
-                 console.error("Error fetching profile by email:", error);
-                 // Assume passwordless is disabled if profile fetch fails
-                 setFetchedProfile(null);
-                 setIsPasswordlessEnabled(false);
-                 goToStep(2); // Proceed to choose method even on error
-             } finally {
-                 setIsSubmitting(false);
-             }
+             // After validating email, directly go to Choose Method step
+             goToStep(2);
          } else if (currentStep === 2) {
              // Based on loginMethod chosen in Step 2, go to Password (3) or Email Sent (5)
              if (loginMethod === 'password') goToStep(3);
@@ -265,14 +243,12 @@ export function LoginForm({ className }: { className?: string }) {
             setVerificationId(null);
             form.setValue("verificationCode", "");
             goToStep(3); // Go back to password step
-        } else if (currentStep === 3 || (currentStep === 5 && !isPasswordlessEnabled)) {
-            // Go back from Password or Email Sent step (if email sent was chosen, not forced)
+        } else if (currentStep === 3 || currentStep === 5) { // Updated logic
+            // Go back from Password or Email Sent step
             setLoginMethod(null); // Reset method choice
             goToStep(2); // Go back to Choose Method step
-        } else if (currentStep === 2 || (currentStep === 5 && isPasswordlessEnabled)) {
-            // Go back from Choose Method step OR from forced Email Sent step
-            setFetchedProfile(null); // Clear fetched profile
-            setIsPasswordlessEnabled(null); // Reset passwordless flag
+        } else if (currentStep === 2) {
+            // Go back from Choose Method step
             goToStep(1); // Go back to Artist ID step
         } else {
              goToStep(currentStep - 1); // Default previous step
@@ -289,8 +265,11 @@ export function LoginForm({ className }: { className?: string }) {
      }
      setIsSubmitting(true);
      setSplashLoadingText("Logging in...");
-     setSplashUserImageUrl(fetchedProfile?.imageUrl || null);
-     setSplashUserName(fetchedProfile?.name || values.artistId.split('@')[0]);
+     // Set splash details using email before profile is fetched by AuthProvider
+     const emailPrefix = values.artistId.split('@')[0];
+     setSplashUserName(emailPrefix);
+     // Use a default or placeholder image until profile is loaded
+     setSplashUserImageUrl(null); // Or a placeholder URL
      setShowSplash(true);
 
      try {
@@ -330,7 +309,7 @@ export function LoginForm({ className }: { className?: string }) {
        } else if (loginResult && 'uid' in loginResult) {
           // Standard login successful
           console.log("LoginForm: Login successful via service.");
-          setSplashLoadingText(`Welcome, ${fetchedProfile?.name || loginResult.email?.split('@')[0]}!`);
+          setSplashLoadingText(`Welcome, ${emailPrefix}!`); // Use email prefix for welcome message
           // AuthProvider listener handles redirect
 
        } else {
@@ -393,14 +372,16 @@ export function LoginForm({ className }: { className?: string }) {
       }
       setIsSubmitting(true);
       setSplashLoadingText("Verifying code...");
-      setSplashUserImageUrl(fetchedProfile?.imageUrl || null);
-      setSplashUserName(fetchedProfile?.name || form.getValues("artistId").split('@')[0]);
+       // Use email prefix for splash screen
+       const emailPrefix = form.getValues("artistId").split('@')[0];
+       setSplashUserName(emailPrefix);
+       setSplashUserImageUrl(null); // Placeholder image
       setShowSplash(true);
 
       try {
           const user = await completeMfaSignIn(mfaResolver, verificationId, code);
           console.log("MFA sign-in successful.");
-          setSplashLoadingText(`Welcome, ${fetchedProfile?.name || user.email?.split('@')[0]}!`);
+          setSplashLoadingText(`Welcome, ${emailPrefix}!`);
            // Redirect handled by listener
 
       } catch (error) {
@@ -463,9 +444,9 @@ export function LoginForm({ className }: { className?: string }) {
                      </div>
                 </div>
 
-                {/* Step 2: Choose Method (Only if passwordless NOT enabled) */}
+                {/* Step 2: Choose Method */}
                 <div className={cn("space-y-4 h-full flex flex-col items-center", getAnimationClasses(2))} aria-hidden={currentStep !== 2}>
-                   {currentStep === 2 && isPasswordlessEnabled === false && ( // Conditionally render
+                   {currentStep === 2 && ( // Conditionally render
                        <>
                            <div className="flex flex-col items-center text-center p-6 border-b border-border/30 w-full">
                                <LogIn className="h-16 w-16 mb-4 text-primary" />
@@ -499,19 +480,22 @@ export function LoginForm({ className }: { className?: string }) {
                 </div>
 
 
-                {/* Step 3: Password (Only if password method chosen OR passwordless disabled and proceeding) */}
+                {/* Step 3: Password */}
                  <div className={cn("space-y-4 h-full flex flex-col", getAnimationClasses(3))} aria-hidden={currentStep !== 3}>
                       {currentStep === 3 && loginMethod === 'password' && ( // Show only if password method chosen
                           <>
                               <div className="flex flex-col items-center text-center p-6 border-b border-border/30">
-                                    <Avatar className="h-20 w-20 mb-4 border-4 border-primary/50">
-                                        <AvatarImage src={fetchedProfile?.imageUrl || undefined} alt={fetchedProfile?.name || ''} />
+                                   {/* Use email for Avatar fallback before profile is loaded */}
+                                   <Avatar className="h-20 w-20 mb-4 border-4 border-primary/50">
+                                        {/* Keep AvatarImage attempt, it might load from cache */}
+                                        {/* <AvatarImage src={fetchedProfile?.imageUrl || undefined} alt={form.getValues("artistId").split('@')[0]} /> */}
                                         <AvatarFallback className="text-3xl bg-muted text-muted-foreground">
-                                            {getInitials(fetchedProfile?.name)}
+                                            {getInitials(form.getValues("artistId"))}
                                         </AvatarFallback>
                                     </Avatar>
                                     <h3 className="text-xl font-semibold tracking-tight text-foreground">
-                                        {fetchedProfile?.name || form.getValues("artistId").split('@')[0]}
+                                         {/* Display email prefix before profile loads */}
+                                         {form.getValues("artistId").split('@')[0]}
                                     </h3>
                               </div>
                               <div className="flex-grow p-6 space-y-4">
@@ -540,7 +524,7 @@ export function LoginForm({ className }: { className?: string }) {
                      )}
                   </div>
 
-                {/* Step 5: Email Link Sent Confirmation (Passwordless OR Chosen Email Link) */}
+                {/* Step 5: Email Link Sent Confirmation */}
                 <div className={cn("space-y-4 h-full flex flex-col items-center justify-center text-center", getAnimationClasses(5))} aria-hidden={currentStep !== 5}>
                     {currentStep === 5 && ( // Conditionally render the content for step 5
                         <>
@@ -573,8 +557,8 @@ export function LoginForm({ className }: { className?: string }) {
                 <ArrowLeft className="h-5 w-5" />
             </Button>
             <span className="text-xs text-muted-foreground">
-                {/* Adjust step count display based on flow */}
-                Step {currentStep} of {isPasswordlessEnabled ? 3 : (mfaResolver ? 4 : 3)} {/* Rough estimate, can refine */}
+                 {/* Simple step count */}
+                Step {currentStep} of {STEPS.length - (loginMethod === 'emailLink' ? 1 : 0)} {/* Adjust total based on flow */}
             </span>
             <Button type="button" variant="ghost" size="icon" onClick={handleNext} disabled={isSubmitting || (currentStep === 2 && !loginMethod) || (currentStep === 4 && (!form.watch("verificationCode") || form.watch("verificationCode")?.length !== 6))} className={cn("h-10 w-10", isSubmitting && "animate-pulse")} aria-label={currentStep === 4 ? "Verify Code" : (currentStep === 3 ? "Login" : "Next Step")}>
                 {isSubmitting ? (
@@ -588,4 +572,3 @@ export function LoginForm({ className }: { className?: string }) {
     </div>
   );
 }
-
