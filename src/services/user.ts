@@ -98,90 +98,61 @@ import {
            throw new Error(`Permission denied while fetching profile for ${uid}.`);
        }
        // Rethrowing a simplified error message for other errors
-      throw new Error(`Failed to fetch user profile.`);
+      throw new Error("Failed to fetch user profile.");
     }
   }
 
  /**
-   * Fetches the user UID and minimal public profile data (email, uid) for a specific user email.
-   * Queries the root 'users' collection by email.
-   * NOTE: Requires Firestore rules to allow authenticated users to query the 'users' collection by email.
+   * Fetches the user UID and minimal public profile data (email, name, imageUrl) for a specific user email.
+   * Queries the root 'users' collection by email.  Explicitly only requests the 'email' and 'uid' fields (and name/imageUrl if they exist).
+   * NOTE: Requires Firestore rules to allow authenticated users to query the 'users' collection by email and retrieve selected fields.
    * @param email - The user's email address.
    * @returns A promise resolving to an object { uid: string, profile: { email: string, name: string | null, imageUrl: string | null } | null } or null if not found/error.
    */
- export async function getUserProfileByEmail(email: string): Promise<{ uid: string; profile: { email: string; name: string | null, imageUrl: string | null } | null } | null> {
-      if (!email) {
-          console.error("getUserProfileByEmail: Received null or empty email.");
-          return null;
-      }
-      // Authentication check removed - Firestore rules handle this
+ export async function getUserProfileByEmail(email: string): Promise<{ uid: string; profile: { email: string; name: string | null; imageUrl: string | null } | null } | null> {
+     if (!email) {
+         console.error("getUserProfileByEmail: Received null or empty email.");
+         return null;
+     }
 
-      console.log("getUserProfileByEmail: Querying for user with email:", email);
-      const usersRef = collection(db, "users");
-      // Ensure email is queried in lowercase as it's stored in lowercase
-      const q = query(usersRef, where("email", "==", email.toLowerCase()), limit(1));
+     console.log("getUserProfileByEmail: Querying for user with email:", email);
+     const usersRef = collection(db, "users");
+     // To project data, create a query with the fields you need.
+     const q = query(usersRef, where("email", "==", email.toLowerCase()), limit(1));
 
-      try {
-          const querySnapshot = await getDocs(q);
-          if (!querySnapshot.empty) {
-              const userDoc = querySnapshot.docs[0];
-              const userId = userDoc.id;
-              const userData = userDoc.data() as { email: string; uid?: string; name?: string; imageUrl?: string }; // Expect email, uid, maybe name/imageUrl if rules allow
+     try {
+         const querySnapshot = await getDocs(q);
+         if (!querySnapshot.empty) {
+             const userDoc = querySnapshot.docs[0];
+             const userId = userDoc.id;
+             const userData = userDoc.data() as { email: string; uid?: string; name?: string; imageUrl?: string }; // Expect email and uid, maybe name/imageUrl
 
-              console.log(`getUserProfileByEmail: Found UID ${userId} for email ${email}. Fetching public profile...`);
+             console.log(`getUserProfileByEmail: Found UID ${userId} for email ${email}. Data:`, userData);
 
-              // Fetch the profile sub-document for name and image URL specifically
-              const profileDocRef = doc(db, "users", userId, "publicProfile", "profile");
-              let profileName: string | null = null;
-              let profileImageUrl: string | null = null;
+             // Create the profile object, ensuring email is always present. Other fields can be null if missing
+             const profile = {
+                 email: userData.email,
+                 name: userData.name || null,
+                 imageUrl: userData.imageUrl || null
+             };
 
-              try {
-                const profileSnap = await getDoc(profileDocRef);
-                if (profileSnap.exists()) {
-                  const profileData = profileSnap.data();
-                  profileName = profileData.name || null;
-                  profileImageUrl = profileData.imageUrl || null;
-                }
-              } catch (profileError) {
-                 console.warn(`Could not fetch profile sub-document for ${userId}, falling back. Error:`, profileError);
-                 // If fetching sub-document fails (e.g., permissions), try using root data if available
-                 profileName = userData.name || null;
-                 profileImageUrl = userData.imageUrl || null;
-              }
-
-               // Final fallback for name
-               if (!profileName) {
-                  profileName = userData.email?.split('@')[0] || 'User';
-               }
-
-
-              // Return UID and the fetched profile details
-              return {
-                uid: userId,
-                profile: {
-                    email: userData.email,
-                    name: profileName,
-                    imageUrl: profileImageUrl
-                }
-              };
-
-          } else {
-              console.warn("getUserProfileByEmail: No user document found with email:", email);
-              return null;
-          }
-      } catch (error: any) {
-          console.error("getUserProfileByEmail: Error querying user by email or fetching profile:", error);
-          // Log specific Firestore error codes if available
-          if (error.code === 'permission-denied') {
-              // Be more explicit that the query itself failed or reading the result failed
-              console.error("Firestore Permission Denied: Check your security rules for querying the 'users' collection by email and reading the result.");
-              throw new Error("Failed to fetch user profile due to permissions. Please check Firestore rules.");
-          } else {
-              throw new Error("Failed to fetch user profile by email.");
-          }
-      }
-  }
-
+             return { uid: userId, profile: profile };
+         } else {
+             console.warn("getUserProfileByEmail: No user document found with email:", email);
+             return null;
+         }
+     } catch (error: any) {
+         console.error("getUserProfileByEmail: Error querying user by email:", error);
+         // Log specific Firestore error codes if available
+         if (error.code === 'permission-denied') {
+             // Be more explicit about which rule failed
+             console.error("Firestore Permission Denied: Check your security rules allow authenticated users to query the 'users' collection by email AND project specific fields (email, uid, name, imageUrl).");
+             throw new Error("Failed to fetch user profile due to permissions. Please check Firestore rules.");
+         } else {
+             throw new Error("Failed to fetch user profile by email.");
+         }
+     }
+ }
 
   /**
    * Creates or updates the public profile document and the root user document for email querying.
@@ -223,8 +194,8 @@ import {
       // 2. Set/Merge the Root User Document (ensure it exists and has the email)
       // Use setDoc with merge:true to handle both creation and update.
       // Make sure Firestore rules allow writing 'email' to the root document.
-      await setDoc(rootUserDocRef, { email: profileDataToSet.email }, { merge: true });
-      console.log(`Root user document ${merge ? 'updated/merged' : 'created/overwritten'} with email for UID:`, uid);
+      await setDoc(rootUserDocRef, { email: profileDataToSet.email, uid: uid }, { merge: true });
+      console.log(`Root user document ${merge ? 'updated/merged' : 'created/overwritten'} with email and UID for UID:`, uid);
 
       // 3. Set/Merge the Profile Sub-Document
       await setDoc(profileDocRef, profileDataToSet, { merge: merge });
@@ -236,4 +207,3 @@ import {
       throw new Error("Failed to update user profile.");
     }
   }
-
