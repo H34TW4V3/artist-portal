@@ -24,7 +24,7 @@ import { useToast } from "@/hooks/use-toast";
 import { ForgotPasswordModal } from "./forgot-password-modal";
 import { useAuth } from "@/context/auth-context";
 import { cn } from "@/lib/utils";
-import { getUserProfileByEmail } from "@/services/user";
+import { getUserProfileByEmail, getUserProfileByUid } from "@/services/user";
 import type { ProfileFormValues } from "@/components/profile/profile-form";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SplashScreen } from '@/components/common/splash-screen';
@@ -50,7 +50,9 @@ const loginSchema = emailSchema.merge(passwordSchema);
 type LoginFormValues = z.infer<typeof loginSchema>;
 
 interface LoginFormProps {
-    onLoginComplete: () => void;
+    // Remove onLoginComplete as redirection is handled by AuthProvider
+    // onLoginComplete: () => void;
+    className?: string; // Add className prop
 }
 
 
@@ -84,7 +86,7 @@ const LoginIconStep1 = () => (
 );
 
 
-export function LoginForm({ onLoginComplete }: LoginFormProps) {
+export function LoginForm({ className }: LoginFormProps) {
   const { login, loading: authLoading } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
@@ -94,7 +96,7 @@ export function LoginForm({ onLoginComplete }: LoginFormProps) {
   const [enteredEmail, setEnteredEmail] = useState("");
   const [profileData, setProfileData] = useState<ProfileFormValues | null>(null);
   const [isFetchingProfile, setIsFetchingProfile] = useState(false);
-  const [showSplash, setShowSplash] = useState(false);
+  const [showSplash, setShowSplash] = useState(false); // State to control internal splash screen
   const [isSubmitting, setIsSubmitting] = useState(false);
 
 
@@ -193,10 +195,7 @@ export function LoginForm({ onLoginComplete }: LoginFormProps) {
       await login(values.artistId, values.password); // Use the validated values
        // Login success is handled by AuthProvider and onAuthStateChanged listener
        console.log("LoginForm: Login initiated, waiting for auth state change...");
-        // Set a timer to call onLoginComplete after splash duration
-       setTimeout(() => {
-           onLoginComplete(); // Call completion handler after splash duration
-       }, 5000); // Match splash screen duration (5 seconds)
+       // Redirection will happen via AuthProvider state change & middleware
 
     } catch (error) {
       setShowSplash(false); // Hide splash on error
@@ -220,7 +219,11 @@ export function LoginForm({ onLoginComplete }: LoginFormProps) {
           });
       }
     } finally {
-        // Don't set isSubmitting false here, splash screen handles the visual state
+        // Don't set isSubmitting false here if splash remains visible on success
+        // Set it to false only on error path where splash is hidden
+        if (!showSplash) { // If splash was hidden due to error
+            setIsSubmitting(false);
+        }
     }
   }
 
@@ -229,17 +232,19 @@ export function LoginForm({ onLoginComplete }: LoginFormProps) {
   const artistNameStep2 = profileData?.name || enteredEmail?.split('@')[0] || "User";
   const displayImageUrlStep2 = profileData?.imageUrl || null;
 
-    // If showing splash screen, render it
+    // If showing splash screen, render it *inside* the form container
     if (showSplash) {
        return (
-           <SplashScreen
-               // Pass profile data if available, otherwise fallback
-               userImageUrl={displayImageUrlStep2}
-               userName={artistNameStep2}
-               loadingText={`Welcome ${artistNameStep2}`} // Use profile name in welcome message
-               duration={5000} // Duration in ms
-               className="p-6" // Add padding for card context
-           />
+           <div className={cn("flex flex-col items-center justify-center min-h-[300px]", className)}>
+               <SplashScreen
+                   // Pass profile data if available, otherwise fallback
+                   userImageUrl={displayImageUrlStep2}
+                   userName={artistNameStep2}
+                   loadingText={`Welcome ${artistNameStep2}! Logging you in...`} // Use profile name in welcome message
+                   duration={0} // No automatic timeout needed, controlled by login process
+                   className="p-6" // Add padding for card context
+               />
+           </div>
        );
     }
 
@@ -250,7 +255,7 @@ export function LoginForm({ onLoginComplete }: LoginFormProps) {
           {/* Use relative container for step animations - Adjusted min-height */}
           {/* Added key to force re-render on step change for reliable animations */}
           {/* Ensure text color is white (foreground in dark mode) */}
-          <div className="relative overflow-hidden min-h-[300px] text-foreground" key={currentStep}>
+          <div className={cn("relative overflow-hidden min-h-[300px] text-foreground", className)} key={currentStep}>
 
              {/* Step 1 Header (Only shown on step 1) */}
               <div className={cn(currentStep !== 1 && "hidden")}>

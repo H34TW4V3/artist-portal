@@ -29,7 +29,7 @@ export default function LoginPage() {
     const [isDemoFlowActive, setIsDemoFlowActive] = useState(false);
     // Removed splash user info states, LoginForm manages splash content
 
-    const redirectTimerRef = useRef<NodeJS.Timeout | null>(null); // Ref for redirect timer
+    // Removed redirectTimerRef as redirection is now handled by AuthProvider/middleware
 
 
     useEffect(() => {
@@ -37,26 +37,10 @@ export default function LoginPage() {
         if (!loading && user) {
             router.replace('/');
         }
-         // Cleanup timer on unmount or if user/loading changes before timer fires
-         return () => {
-             if (redirectTimerRef.current) {
-                 clearTimeout(redirectTimerRef.current);
-             }
-         };
+         // Cleanup logic no longer needed here
     }, [user, loading, router]);
 
-    // Handler for when LoginForm signals completion (after splash finishes internally)
-    const handleLoginCompletion = () => {
-         // Start redirect timer ONLY after LoginForm indicates completion
-         console.log("Login flow complete, starting redirect timer...");
-         if (redirectTimerRef.current) {
-             clearTimeout(redirectTimerRef.current); // Clear existing timer just in case
-         }
-         redirectTimerRef.current = setTimeout(() => {
-             console.log("Redirecting to home page...");
-             router.replace('/'); // Redirect to home page
-         }, 500); // Add a small buffer after splash animation ends (LoginForm handles 5s)
-    };
+    // Removed handleLoginCompletion as it's no longer needed
 
 
     const handleDemoSubmitClick = () => {
@@ -110,8 +94,8 @@ export default function LoginPage() {
                 <div className={cn(
                     "flex-1 rounded-xl border border-border/30 shadow-xl overflow-hidden bg-card/20 dark:bg-card/10 flex flex-col",
                  )}>
-                    {/* Pass handleLoginCompletion callback */}
-                    <LoginForm onLoginComplete={handleLoginCompletion} />
+                    {/* LoginForm no longer needs onLoginComplete */}
+                    <LoginForm className="flex-grow" />
                 </div>
 
                  {/* Vertical Separator - Force white text */}
