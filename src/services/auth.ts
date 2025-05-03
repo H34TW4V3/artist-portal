@@ -106,19 +106,16 @@ export function initializeRecaptchaVerifier(containerId: string): RecaptchaVerif
         throw new Error(`reCAPTCHA container with ID "${containerId}" not found.`);
     }
 
-    // Attempt to reuse the global instance if it exists and wasn't cleared
-    // if (globalRecaptchaVerifier) {
-    //     console.log("Reusing existing global reCAPTCHA verifier.");
-    //     // Optional: Could try to re-render if needed, but often reuse works.
-    //     // Be cautious with this, might cause issues if the context changed.
-    //     return globalRecaptchaVerifier;
-    // }
+    // Clear any previous content in the container *before* initializing
+    // This helps if the component remounted and left old elements
+    try {
+        container.innerHTML = '';
+    } catch (e) {
+        console.warn("Could not clear container before initializing reCAPTCHA", e);
+    }
+
 
     try {
-        // Clear any previous content in the container *before* initializing
-        // This helps if the component remounted and left old elements
-        container.innerHTML = '';
-
         console.log(`Creating new RecaptchaVerifier for container: ${containerId}`);
         const verifier = new RecaptchaVerifier(auth, container, { // Pass the element directly
             'size': 'invisible',
@@ -127,16 +124,15 @@ export function initializeRecaptchaVerifier(containerId: string): RecaptchaVerif
                 // reCAPTCHA solved, allow signInWithPhoneNumber.
             },
             'expired-callback': () => {
-                 console.warn(`reCAPTCHA expired for ${containerId}. Resetting...`);
+                 console.warn(`reCAPTCHA expired for ${containerId}. Resetting required if action pending.`);
                  // Response expired. Ask user to solve reCAPTCHA again.
-                 // Consider clearing and re-initializing or prompting user.
-                 verifier.render().catch(renderError => {
-                     console.error(`Error re-rendering expired reCAPTCHA for ${containerId}:`, renderError);
-                 });
+                 // The component logic should handle prompting the user or re-initializing.
+                 // We don't automatically re-render here.
             },
             'error-callback': (error: any) => {
+                 // Log the error, but don't try to re-initialize automatically here.
+                 // The component using the verifier should handle this failure state.
                  console.error(`reCAPTCHA error for ${containerId}:`, error);
-                 // Handle error (e.g., network issue)
             }
         });
 
@@ -161,6 +157,10 @@ export function initializeRecaptchaVerifier(containerId: string): RecaptchaVerif
 
     } catch (error) {
         console.error(`Failed to initialize RecaptchaVerifier for ${containerId}:`, error);
+        // Check if it's the specific argument error
+        if ((error as AuthError)?.code === 'auth/argument-error') {
+             console.error("Firebase Auth Argument Error - Ensure 'auth' instance and containerId/element are valid.");
+        }
         throw new Error("Could not initialize security check.");
     }
 }
