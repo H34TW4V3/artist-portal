@@ -36,8 +36,9 @@ import {
       if (docSnap.exists()) {
         console.log("getUserProfileByUid: Profile data found for UID:", uid);
         // Cast data, ensuring it fits ProfileFormValues structure
-        const data = docSnap.data() as ProfileFormValues;
-        // Provide defaults for any potentially missing optional fields from older schemas
+        const data = docSnap.data() as Partial<ProfileFormValues>; // Use Partial initially
+
+        // Provide defaults and ensure all fields exist
         const completeProfile: ProfileFormValues = {
             name: data.name || "User",
             email: data.email || "unknown", // Use Firestore email first
@@ -48,18 +49,24 @@ import {
             emailLinkSignInEnabled: data.emailLinkSignInEnabled || false,
         };
 
-         // Fallback logic for name and imageUrl if Firestore is missing them but Auth has them
-         if (!completeProfile.name || !completeProfile.imageUrl) {
-             const auth = getAuth(app);
-             const currentUser = auth.currentUser;
-             if (currentUser?.uid === uid) { // Only fallback if fetching own profile
-                if (!completeProfile.name) {
-                    completeProfile.name = currentUser.displayName || currentUser.email?.split('@')[0] || "User";
-                }
-                if (!completeProfile.imageUrl) {
-                    completeProfile.imageUrl = currentUser.photoURL || null;
-                }
-             }
+         // Fallback logic for name, email, and imageUrl if Firestore is missing them but Auth has them
+         const auth = getAuth(app);
+         const currentUser = auth.currentUser;
+         if (currentUser?.uid === uid) { // Only fallback if fetching own profile
+            if (!data.name && currentUser.displayName) {
+                completeProfile.name = currentUser.displayName;
+            }
+            // Only fallback email if Firestore email is missing or 'unknown'
+            if ((!data.email || data.email === "unknown") && currentUser.email) {
+                 completeProfile.email = currentUser.email;
+            }
+            if (!data.imageUrl && currentUser.photoURL) {
+                completeProfile.imageUrl = currentUser.photoURL;
+            }
+         }
+         // Final fallback if name is still missing
+         if (!completeProfile.name) {
+            completeProfile.name = completeProfile.email?.split('@')[0] || 'User';
          }
 
 
@@ -129,6 +136,9 @@ import {
               // Now fetch the profile data from the subcollection
               const profileData = await getUserProfileByUid(userId); // Reuse the existing function
 
+              // Ensure the profile data (if found) includes the UID for consistency,
+              // though getUserProfileByUid doesn't return it directly.
+              // We already have the UID here, so just return it alongside the fetched profile.
               return { uid: userId, profile: profileData };
 
           } else {
@@ -168,9 +178,16 @@ import {
 
     try {
       // 1. Prepare Profile Data (ensure all fields, lowercase email)
+      // Ensure data.email is defined before lowercasing
+      const emailToSave = (data.email || '').toLowerCase();
+      if (!emailToSave) {
+           console.warn("setPublicProfile: Attempting to save profile with empty email for UID:", uid);
+           // Depending on requirements, you might throw an error here or allow it
+      }
+
       const profileDataToSet: ProfileFormValues = {
          name: data.name,
-         email: data.email.toLowerCase(), // Store email in lowercase
+         email: emailToSave, // Use the potentially empty but lowercased email
          bio: data.bio ?? null,
          phoneNumber: data.phoneNumber ?? null,
          imageUrl: data.imageUrl ?? null,
