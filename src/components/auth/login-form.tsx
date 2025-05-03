@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect, useRef } from "react"; // Add React import
@@ -23,8 +24,8 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"; // Import Avatar
-// Import getUserProfileByUid and getUserProfileByEmail directly from user service
-import { getUserProfileByUid, getUserProfileByEmail } from "@/services/user"; // Corrected import
+// Import getUserProfileByUid directly from user service (removed getUserProfileByEmail)
+import { getUserProfileByUid } from "@/services/user"; // Corrected import
 import type { ProfileFormValues } from "@/components/profile/profile-form"; // Import profile type
 // Import login and MFA functions from auth service, and new email link functions
 import {
@@ -71,9 +72,9 @@ export function LoginForm({ className }: { className?: string }) {
   const [splashLoadingText, setSplashLoadingText] = useState("Logging in..."); // Text for splash
   const [splashUserImageUrl, setSplashUserImageUrl] = useState<string | null>(null); // Image for splash
   const [splashUserName, setSplashUserName] = useState<string | null>(null); // Name for splash
-  // State to store fetched profile for display on password step
-  const [fetchedProfile, setFetchedProfile] = useState<ProfileFormValues | null>(null);
-  const [fetchedUid, setFetchedUid] = useState<string | null>(null); // Store UID when fetching by email
+  // Removed state related to fetching profile before password step
+  // const [fetchedProfile, setFetchedProfile] = useState<ProfileFormValues | null>(null);
+  // const [fetchedUid, setFetchedUid] = useState<string | null>(null);
   const [loginMethod, setLoginMethod] = useState<'password' | 'emailLink' | null>(null); // Track selected login method
   const [isProcessingEmailLink, setIsProcessingEmailLink] = useState(false); // State for when verifying email link
   const [unverifiedUser, setUnverifiedUser] = useState<any | null>(null); // Store user object if verification needed
@@ -134,8 +135,7 @@ export function LoginForm({ className }: { className?: string }) {
                      try {
                         // Use UID to fetch profile
                         const profile = await getUserProfileByUid(user.uid);
-                        setFetchedProfile(profile); // Store the profile data
-                        setFetchedUid(user.uid); // Store the UID
+                        // Removed setting fetchedProfile and fetchedUid states
                         setSplashUserName(profile?.name || user.email?.split('@')[0] || 'User');
                         setSplashUserImageUrl(profile?.imageUrl || user.photoURL || null);
                      } catch (profileError) {
@@ -143,7 +143,7 @@ export function LoginForm({ className }: { className?: string }) {
                          // Use auth details as fallback
                          setSplashUserName(user.email?.split('@')[0] || 'User');
                          setSplashUserImageUrl(user.photoURL || null);
-                         setFetchedUid(user.uid); // Still store UID
+                         // Removed setting fetchedUid state
                      }
                 }
                 // Success! Listener will handle state update and redirect
@@ -172,15 +172,11 @@ export function LoginForm({ className }: { className?: string }) {
   }, []);
 
 
-  // Function to get initials - uses fetched profile name or email prefix
+  // Function to get initials - uses email prefix
   const getInitials = (): string => {
-      const name = fetchedProfile?.name;
       const email = form.getValues("artistId");
-      if (name) {
-          return name.split(' ').map(n => n[0]).join('').toUpperCase() || 'U';
-      }
-       // Fallback logic: use email or default 'U'
-       return email?.charAt(0).toUpperCase() || 'U';
+      // Use email or default 'U'
+      return email?.charAt(0).toUpperCase() || 'U';
   };
 
 
@@ -244,7 +240,8 @@ export function LoginForm({ className }: { className?: string }) {
          } else if (currentStep === 2) {
              // Based on loginMethod chosen in Step 2, go to Password (3) or Email Sent (5)
              if (loginMethod === 'password') {
-                await fetchProfileForPasswordStep(); // Fetch profile before going to password step
+                 // Removed fetchProfileForPasswordStep call
+                 goToStep(3); // Proceed directly to password step
              }
              else if (loginMethod === 'emailLink') await handleSendEmailLink(); // Trigger sending link
              else toast({ title: "Choose Method", description: "Please select a sign-in method.", variant: "destructive" });
@@ -276,8 +273,7 @@ export function LoginForm({ className }: { className?: string }) {
         } else if (currentStep === 3 || currentStep === 5) { // Updated logic
             // Go back from Password or Email Sent step
             setLoginMethod(null); // Reset method choice
-            setFetchedProfile(null); // Clear fetched profile when going back from password step
-            setFetchedUid(null); // Clear fetched UID
+            // Removed clearing fetchedProfile and fetchedUid states
             goToStep(2); // Go back to Choose Method step
         } else if (currentStep === 2) {
             // Go back from Choose Method step
@@ -288,53 +284,8 @@ export function LoginForm({ className }: { className?: string }) {
     }
   };
 
-  // Function to fetch user profile by email before password step
-  const fetchProfileForPasswordStep = async () => {
-     const email = form.getValues("artistId");
-     if (!email) {
-         toast({ title: "Missing Email", description: "Please enter your email first.", variant: "destructive" });
-         goToStep(1); // Go back if email missing
-         return;
-     }
-      setIsSubmitting(true); // Show loading indicator
-     try {
-         // Query Firestore to get the user document by email
-         const userInfo = await getUserProfileByEmail(email); // Use the service function
+  // Removed fetchProfileForPasswordStep function
 
-         if (userInfo && userInfo.uid) {
-             setFetchedUid(userInfo.uid); // Store the fetched UID
-             console.log("User UID fetched by email:", userInfo.uid);
-
-             // Now use the fetched UID to get the profile sub-document
-             const profileInfo = await getUserProfileByUid(userInfo.uid);
-             if (profileInfo) {
-                 setFetchedProfile(profileInfo);
-                 console.log("User profile fetched by UID:", profileInfo);
-             } else {
-                 setFetchedProfile(null);
-                 console.warn("No detailed profile sub-document found for UID", userInfo.uid, "using fallback display.");
-             }
-             goToStep(3); // Proceed to password step
-         } else {
-             console.warn("No user found with email:", email);
-             // Handle case where user document doesn't exist (though email might be registered)
-             // Proceed to password step anyway, login might still work if auth record exists
-             setFetchedProfile(null);
-             setFetchedUid(null); // Ensure UID is null
-             goToStep(3);
-         }
-
-     } catch (error) {
-         console.error("Error fetching user info before password step:", error);
-         // Do not show error toast here, proceed to password step anyway
-         // User might exist even if profile fetch failed (e.g., permission issue temporarily)
-         setFetchedProfile(null); // Ensure profile state is null
-         setFetchedUid(null); // Ensure UID is null
-         goToStep(3);
-     } finally {
-         setIsSubmitting(false);
-     }
-  }
 
    // Main form submission handler (for email/password login)
    async function onSubmit(values: LoginFormValues) {
@@ -345,9 +296,10 @@ export function LoginForm({ className }: { className?: string }) {
      }
      setIsSubmitting(true);
      setSplashLoadingText("Logging in...");
-     // Use profile name/image if fetched, otherwise fallback
-     setSplashUserName(fetchedProfile?.name || values.artistId.split('@')[0]);
-     setSplashUserImageUrl(fetchedProfile?.imageUrl || null);
+     // Use email for splash screen initially
+     const emailPrefix = values.artistId.split('@')[0];
+     setSplashUserName(emailPrefix);
+     setSplashUserImageUrl(null); // No reliable image URL before login
      // Show splash screen immediately when login starts
      setShowSplash(true);
 
@@ -410,7 +362,7 @@ export function LoginForm({ className }: { className?: string }) {
 
           // --- Email Verified - Proceed with Splash ---
           console.log("LoginForm: Login successful via service. User UID:", user.uid);
-           // Fetch profile again to ensure latest data for splash
+           // Fetch profile AFTER successful login to ensure latest data for splash
            try {
               const profile = await getUserProfileByUid(user.uid);
               setSplashUserName(profile?.name || user.email?.split('@')[0] || 'User');
@@ -421,9 +373,9 @@ export function LoginForm({ className }: { className?: string }) {
                setSplashUserName(user.email?.split('@')[0] || 'User');
                setSplashUserImageUrl(user.photoURL || null);
            }
-          setSplashLoadingText(`Welcome, ${splashUserName}!`); // Update splash text
-          // Splash remains visible, AuthProvider listener handles redirect.
-          // setIsSubmitting(false); // No need to set here, splash is showing
+           setSplashLoadingText(`Welcome, ${splashUserName}!`); // Update splash text
+           // Splash remains visible, AuthProvider listener handles redirect.
+           // setIsSubmitting(false); // No need to set here, splash is showing
 
        } else {
             throw new Error("Unexpected login result received.");
@@ -550,7 +502,7 @@ export function LoginForm({ className }: { className?: string }) {
       try {
           const user = await completeMfaSignIn(mfaResolver, verificationId, code);
           console.log("MFA sign-in successful. User UID:", user.uid);
-          // Fetch profile for splash display
+          // Fetch profile AFTER successful MFA login
            try {
                const profile = await getUserProfileByUid(user.uid);
                setSplashUserName(profile?.name || user.email?.split('@')[0] || 'User');
@@ -666,15 +618,15 @@ export function LoginForm({ className }: { className?: string }) {
                       {currentStep === 3 && loginMethod === 'password' && ( // Show only if password method chosen
                           <>
                               <div className="flex flex-col items-center text-center p-6 border-b border-border/30">
-                                   {/* Display avatar and name */}
+                                   {/* Display avatar and name using email */}
                                    <Avatar className="h-20 w-20 mb-4 border-4 border-primary/50">
-                                       <AvatarImage src={fetchedProfile?.imageUrl || undefined} alt={fetchedProfile?.name || 'User'} />
+                                       {/* Fallback Avatar as image is not fetched */}
                                        <AvatarFallback className="text-3xl bg-muted text-muted-foreground">
                                            {getInitials()}
                                        </AvatarFallback>
                                    </Avatar>
                                    <h3 className="text-xl font-semibold tracking-tight text-foreground">
-                                       {fetchedProfile?.name || form.getValues("artistId").split('@')[0]}
+                                       {form.getValues("artistId").split('@')[0]} {/* Show email prefix */}
                                    </h3>
                               </div>
                               <div className="flex-grow p-6 space-y-4">

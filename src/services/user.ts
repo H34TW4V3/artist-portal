@@ -1,3 +1,4 @@
+
 import {
     getFirestore,
     doc,
@@ -114,12 +115,12 @@ import {
           console.error("getUserProfileByEmail: Received null or empty email.");
           return null;
       }
-      // Ensure user is authenticated before querying
-      const auth = getAuth(app);
-      if (!auth.currentUser) {
-          console.error("getUserProfileByEmail: Authentication required to query users by email.");
-          return null; // Return null if not authenticated
-      }
+      // Authentication check removed - Firestore rules handle this
+      // const auth = getAuth(app);
+      // if (!auth.currentUser) {
+      //     console.error("getUserProfileByEmail: Authentication required to query users by email.");
+      //     return null; // Return null if not authenticated
+      // }
 
       console.log("getUserProfileByEmail: Querying for user with email:", email);
       const usersRef = collection(db, "users");
@@ -136,9 +137,7 @@ import {
               // Now fetch the profile data from the subcollection
               const profileData = await getUserProfileByUid(userId); // Reuse the existing function
 
-              // Ensure the profile data (if found) includes the UID for consistency,
-              // though getUserProfileByUid doesn't return it directly.
-              // We already have the UID here, so just return it alongside the fetched profile.
+              // Return both UID and profile data (or null if profile sub-doc doesn't exist or fetch failed)
               return { uid: userId, profile: profileData };
 
           } else {
@@ -149,7 +148,7 @@ import {
           console.error("getUserProfileByEmail: Error querying user by email or fetching profile:", error);
           // Log specific Firestore error codes if available
           if (error.code === 'permission-denied') {
-              console.error("Firestore Permission Denied: Check your security rules for reading the 'users' collection based on email and/or the profile subcollection.");
+              console.error("Firestore Permission Denied: Check your security rules for reading the 'users' collection based on email.");
               throw new Error("Failed to fetch user profile due to permissions. Please check Firestore rules.");
           } else {
               throw new Error("Failed to fetch user profile by email.");
@@ -210,4 +209,3 @@ import {
       throw new Error("Failed to update user profile.");
     }
   }
-  
