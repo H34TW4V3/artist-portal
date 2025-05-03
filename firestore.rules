@@ -2,54 +2,34 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Root user document: Allow authenticated read access to email & uid. Only owner can write.
     match /users/{userId} {
-      // Allow authenticated users to read email and uid fields.
-      // Adjusted 'get' to allow authenticated reads. 'list' remains false.
-      allow get: if request.auth != null;
-      allow list: if false; // Prevent listing all users
-      // Ensure read only allows accessing 'email' and 'uid' if those fields exist.
-      // This rule might be overly restrictive if you need other root fields later.
-      // A simpler approach might be to allow full read if authenticated: allow read: if request.auth != null;
-      allow read: if request.auth != null && (
-                      (!('email' in resource.data) && !('uid' in resource.data)) || // Allow read if fields don't exist
-                      resource.data.keys().hasOnly(['email', 'uid']) ||
-                      resource.data.keys().hasAll(['email', 'uid'])
-                    );
+      allow read: if request.auth != null && isSafeRead();
 
-      // Only the authenticated user matching the userId can create/update/delete their root doc.
-      allow write: if request.auth != null && request.auth.uid == userId;
-
-      // Releases subcollection: Grant full read/write access to the owner.
-      match /releases/{releaseId} {
-        // Allow the user whose ID matches the parent document ID to read/write.
-        allow read, write: if request.auth != null && request.auth.uid == userId;
+      function isSafeRead() {
+        // Restrict which fields can be accessed. Allow reading 'email', 'name', 'imageUrl'.
+        // Also allow access if the document doesn't exist (for checks) or if no data keys are read.
+        return request.resource == null || resource == null || resource.data.keys().hasOnly(['email', 'name', 'imageUrl']);
       }
 
-      // Events subcollection: Grant full read/write access to the owner.
-      match /events/{eventId} {
-        // Allow the user whose ID matches the parent document ID to read/write.
-        allow read, write: if request.auth != null && request.auth.uid == userId;
-      }
+      // Allow authenticated users to create their own document
+      allow create: if request.auth != null && request.auth.uid == userId;
+      // Allow authenticated users to update only their own document
+      allow update: if request.auth != null && request.auth.uid == userId;
+       // Allow authenticated users to delete only their own document (optional, often restricted)
+      allow delete: if request.auth != null && request.auth.uid == userId;
+       // Disallow listing all users
+       allow list: if false;
 
-      // Profile subcollection: Grant full read/write access to the owner.
-      match /publicProfile/{profileDocId} {
-         // Allow the user whose ID matches the parent document ID to read/write.
-         // Also allow any authenticated user to read (if needed for viewing other profiles). Adjust as necessary.
-        allow read: if request.auth != null; // Or keep as request.auth.uid == userId if only owner can read
-        allow write: if request.auth != null && request.auth.uid == userId;
-      }
-
-      // Allow access to any other subcollections under the user's document ONLY for the owner.
-      match /{subcollection}/{document=**} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
-      }
     }
 
-    // Deny all other access by default.
-    // This rule is generally good practice but redundant if the above rules cover all intended paths.
-    // match /{path=**}/documents/{document} {
-    //   allow read, write: if false;
-    // }
+    // Allow user full access to everything under their user subcollections
+    match /users/{userId}/{subcollection}/{docId=**} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+     // Deny everything else by default
+     match /{path=**} {
+       allow read, write: if false;
+     }
   }
 }
