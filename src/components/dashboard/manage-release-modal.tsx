@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
@@ -134,6 +133,9 @@ export function ManageReleaseModal({ isOpen, onClose, releaseData, onSuccess, on
          setArtworkPreviewUrl(null); // Clear preview on open
          setIsTakedownConfirmOpen(false); // Ensure confirm dialog is closed on reopen
          setIsTakedownSubmitting(false); // Reset takedown loading state
+         if (artworkInputRef.current) { // Clear file input visually
+             artworkInputRef.current.value = "";
+         }
      } else if (!isOpen) {
           // Optionally reset form on close after a delay
            setTimeout(() => {
@@ -145,6 +147,9 @@ export function ManageReleaseModal({ isOpen, onClose, releaseData, onSuccess, on
                 setArtworkPreviewUrl(null);
                 setIsTakedownConfirmOpen(false);
                 setIsTakedownSubmitting(false);
+                 if (artworkInputRef.current) { // Clear file input visually
+                     artworkInputRef.current.value = "";
+                 }
            }, 150);
      }
      setIsSubmitting(false); // Reset submitting state
@@ -214,6 +219,7 @@ export function ManageReleaseModal({ isOpen, onClose, releaseData, onSuccess, on
         title: "Release Updated",
         description: `"${values.title}" has been updated successfully.`,
         variant: "default",
+        duration: 2000, // Short duration
       });
       onSuccess(); // Call success callback
       onClose();   // Close modal
@@ -244,6 +250,7 @@ export function ManageReleaseModal({ isOpen, onClose, releaseData, onSuccess, on
               title: "Takedown Requested",
               description: `Request to takedown "${releaseData.title}" submitted. This may take some time to reflect on platforms.`,
               variant: "default",
+              duration: 4000, // Longer duration for info
           });
           setIsTakedownConfirmOpen(false); // Close confirmation dialog
           onClose(); // Close the main manage modal
@@ -264,8 +271,10 @@ export function ManageReleaseModal({ isOpen, onClose, releaseData, onSuccess, on
 
   // Determine image source: preview > current > placeholder
   const displayArtworkSrc = artworkPreviewUrl || currentArtworkUrl || placeholderArtwork;
-  const formIsDirty = form.formState.isDirty;
+  // Check if form is dirty (includes artwork file change) and valid
+  const formIsDirty = form.formState.isDirty || !!form.watch('artworkFile');
   const formIsValid = form.formState.isValid;
+
 
   if (!releaseData) return null; // Don't render if no release data
 
@@ -517,8 +526,9 @@ export function ManageReleaseModal({ isOpen, onClose, releaseData, onSuccess, on
                     </DialogClose>
                     <Button
                         type="submit"
-                        disabled={isSubmitting || isTakedownSubmitting || !formIsDirty || !formIsValid} // Disable if no changes or invalid or takedown in progress
-                        className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-md"
+                        // Disable if submitting, takedown in progress, form hasn't changed, OR form is invalid
+                         disabled={isSubmitting || isTakedownSubmitting || !formIsDirty || !formIsValid}
+                        className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-md disabled:shadow-none disabled:bg-muted disabled:text-muted-foreground"
                     >
                         {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                         <Save className="mr-2 h-4 w-4" />

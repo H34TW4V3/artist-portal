@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react"; // Added useRef
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -59,9 +59,9 @@ const STEPS = [
 const uploadSchema = z.object({
   releaseName: z.string().min(2, "Release name must be at least 2 characters.").max(100, "Name must be 100 characters or less."),
   releaseDate: z.date({ required_error: "A release date is required." }),
-  releaseZip: z.instanceof(File).refine(file => file.size > 0, 'Release ZIP file is required.')
-                           .refine(file => file.size <= 500 * 1024 * 1024, 'ZIP file must be 500MB or less.')
-                           .refine(file => file.type === "application/zip" || file.type === "application/x-zip-compressed", 'File must be a ZIP archive.'),
+  releaseZip: z.instanceof(File).refine(file => file?.size > 0, 'Release ZIP file is required.')
+                           .refine(file => file?.size <= 500 * 1024 * 1024, 'ZIP file must be 500MB or less.')
+                           .refine(file => file?.type === "application/zip" || file.type === "application/x-zip-compressed", 'File must be a ZIP archive.'),
 });
 
 type UploadFormValues = z.infer<typeof uploadSchema>;
@@ -80,6 +80,7 @@ export function UploadReleaseModal({ isOpen, onClose, onSuccess }: UploadRelease
   const [confirmedReleaseName, setConfirmedReleaseName] = useState<string>("");
   const [currentStep, setCurrentStep] = useState(1);
   const [previousStep, setPreviousStep] = useState(1); // For animation direction
+  const fileInputRef = useRef<HTMLInputElement>(null); // Add ref for file input
 
   const form = useForm<UploadFormValues>({
     resolver: zodResolver(uploadSchema),
@@ -128,6 +129,9 @@ export function UploadReleaseModal({ isOpen, onClose, onSuccess }: UploadRelease
                 setConfirmedReleaseName("");
                 setCurrentStep(1); // Reset to first step
                 setPreviousStep(1);
+                 if (fileInputRef.current) { // Clear file input visually
+                     fileInputRef.current.value = "";
+                 }
            }, 150);
            return () => clearTimeout(timer);
        } else {
@@ -137,6 +141,9 @@ export function UploadReleaseModal({ isOpen, onClose, onSuccess }: UploadRelease
            setIsSubmitting(false);
            setCurrentStep(1);
            setPreviousStep(1);
+            if (fileInputRef.current) { // Clear file input visually
+                fileInputRef.current.value = "";
+            }
        }
    // eslint-disable-next-line react-hooks/exhaustive-deps
    }, [isOpen]);
@@ -155,9 +162,9 @@ export function UploadReleaseModal({ isOpen, onClose, onSuccess }: UploadRelease
   const clearFile = () => {
       form.setValue("releaseZip", undefined, { shouldValidate: true, shouldDirty: true });
       setZipFileName(null);
-      const inputElement = document.getElementById("releaseZip") as HTMLInputElement | null;
-      if (inputElement) {
-        inputElement.value = "";
+      // Clear the file input visually using the ref
+      if (fileInputRef.current) {
+          fileInputRef.current.value = "";
       }
   }
 
@@ -172,9 +179,13 @@ export function UploadReleaseModal({ isOpen, onClose, onSuccess }: UploadRelease
 
      const isValid = await form.trigger(fieldsToValidate);
      if (!isValid) {
+          // Get specific error message
+          const errors = form.formState.errors;
+          const firstErrorField = fieldsToValidate.find(field => errors[field]);
+          const errorMessage = firstErrorField ? errors[firstErrorField]?.message : "Please fix the errors before proceeding.";
           toast({
                 title: "Hold Up!",
-                description: "Please fix the errors before proceeding.",
+                description: String(errorMessage), // Ensure message is a string
                 variant: "destructive",
                 duration: 2000 });
      }
@@ -247,7 +258,7 @@ export function UploadReleaseModal({ isOpen, onClose, onSuccess }: UploadRelease
         setShowConfirmationDialog(false);
         // Display success toast AFTER confirmation dialog is closed
         toast({
-            title: "Upload Successful!",
+            title: "Upload Submitted!",
             description: `Your release "${confirmedReleaseName}" is being processed.`,
             variant: "default", // Use default variant for success
             duration: 3000,
@@ -256,6 +267,11 @@ export function UploadReleaseModal({ isOpen, onClose, onSuccess }: UploadRelease
         onClose();
         // Resetting happens in useEffect
   }
+
+  // Determine if the final action button should be disabled
+  // It's disabled if submitting OR if on the last step and the form isn't valid for that last step.
+  const isFinalButtonDisabled = isSubmitting || (currentStep === STEPS.length && !form.formState.isValid && !zipFileName);
+
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -398,7 +414,16 @@ export function UploadReleaseModal({ isOpen, onClose, onSuccess }: UploadRelease
                                   <div className="flex text-sm text-muted-foreground justify-center">
                                     <label htmlFor="releaseZip" className="relative cursor-pointer rounded-md bg-background px-2 py-1 font-medium text-primary hover:text-primary/90 focus-within:outline-none focus-within:ring-2 focus-within:ring-accent focus-within:ring-offset-2">
                                       <span>Select ZIP file</span>
-                                      <input id="releaseZip" name="releaseZip" type="file" className="sr-only" accept=".zip,application/zip,application/x-zip-compressed" onChange={handleFileChange} disabled={isSubmitting} />
+                                       <input
+                                           id="releaseZip"
+                                           name="releaseZip"
+                                           type="file"
+                                           className="sr-only"
+                                           accept=".zip,application/zip,application/x-zip-compressed"
+                                           onChange={handleFileChange}
+                                           ref={fileInputRef} // Assign ref
+                                           disabled={isSubmitting}
+                                       />
                                     </label>
                                     {/* <p className="pl-1">or drag and drop</p> */}
                                   </div>
@@ -440,7 +465,8 @@ export function UploadReleaseModal({ isOpen, onClose, onSuccess }: UploadRelease
           <Button
              type="button" // Change to type="button" and handle submit via onClick
              onClick={handleNext} // Use handleNext which includes validation
-             disabled={isSubmitting || (currentStep === 2 && !zipFileName)} // Basic check for file on last step
+             // Disable if submitting OR if on the last step and form isn't valid for that step (check zipFileName explicitly)
+              disabled={isSubmitting || (currentStep === STEPS.length && (!form.formState.isValid || !zipFileName))}
              className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-md disabled:shadow-none disabled:bg-muted disabled:text-muted-foreground"
           >
              {isSubmitting ? (

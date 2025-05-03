@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
@@ -89,6 +88,9 @@ export function AddExistingReleaseModal({ isOpen, onClose, onSuccess }: AddExist
              spotifyLink: "",
          });
          setArtworkPreviewUrl(null);
+          if (artworkInputRef.current) { // Clear file input visually
+             artworkInputRef.current.value = "";
+          }
      } else {
           // Small delay before resetting on close to avoid flicker if reopening quickly
           setTimeout(() => {
@@ -101,6 +103,9 @@ export function AddExistingReleaseModal({ isOpen, onClose, onSuccess }: AddExist
                 spotifyLink: "",
             });
              setArtworkPreviewUrl(null);
+              if (artworkInputRef.current) { // Clear file input visually
+                  artworkInputRef.current.value = "";
+              }
           }, 150);
      }
      setIsSubmitting(false);
@@ -180,6 +185,7 @@ export function AddExistingReleaseModal({ isOpen, onClose, onSuccess }: AddExist
         title: "Release Added",
         description: `"${values.title}" has been added successfully.`,
         variant: "default",
+        duration: 2000, // Short duration for success
       });
       onSuccess(); // Call success callback (which should trigger a refetch in the parent)
       onClose();   // Close modal
@@ -416,8 +422,9 @@ export function AddExistingReleaseModal({ isOpen, onClose, onSuccess }: AddExist
                     </DialogClose>
                     <Button
                         type="submit"
+                        // Disable if submitting OR if form is not valid (checks all fields according to schema)
                         disabled={isSubmitting || !form.formState.isValid}
-                        className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-md"
+                        className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-md disabled:shadow-none disabled:bg-muted disabled:text-muted-foreground"
                     >
                         {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                         {isSubmitting ? 'Adding...' : 'Add Release'}
@@ -431,6 +438,3 @@ export function AddExistingReleaseModal({ isOpen, onClose, onSuccess }: AddExist
     </Dialog>
   );
 }
-
-
-    
