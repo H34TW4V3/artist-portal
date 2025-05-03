@@ -11,6 +11,7 @@ import {
     limit,
     getDocs
   } from "firebase/firestore";
+  import { getAuth } from "firebase/auth"; // Import getAuth
   import { app, db } from './firebase-config'; // Import initialized db
   import type { ProfileFormValues } from "@/components/profile/profile-form"; // Import profile type
 
@@ -41,17 +42,48 @@ import {
         // Provide defaults for any potentially missing optional fields from older schemas
         const completeProfile: ProfileFormValues = {
             name: data.name || "User",
-            email: data.email || "unknown",
+            email: data.email || "unknown", // Use Firestore email first
             bio: data.bio || null,
             phoneNumber: data.phoneNumber || null,
-            imageUrl: data.imageUrl || null,
+            imageUrl: data.imageUrl || null, // Use Firestore image URL first
             hasCompletedTutorial: data.hasCompletedTutorial || false,
-            emailLinkSignInEnabled: data.emailLinkSignInEnabled || false, // Default to false if missing
+            emailLinkSignInEnabled: data.emailLinkSignInEnabled || false,
         };
+
+         // Fallback logic for name and imageUrl if Firestore is missing them but Auth has them
+         if (!completeProfile.name || !completeProfile.imageUrl) {
+             const auth = getAuth(app);
+             const currentUser = auth.currentUser;
+             if (currentUser?.uid === uid) { // Only fallback if fetching own profile
+                if (!completeProfile.name) {
+                    completeProfile.name = currentUser.displayName || currentUser.email?.split('@')[0] || "User";
+                }
+                if (!completeProfile.imageUrl) {
+                    completeProfile.imageUrl = currentUser.photoURL || null;
+                }
+             }
+         }
+
+
         return completeProfile;
       } else {
         // Profile sub-document might not exist even if the user document does.
         console.warn("getUserProfileByUid: No public profile document found at path:", profileDocRef.path);
+        // If no profile doc, try falling back to Auth user data if fetching own profile
+         const auth = getAuth(app);
+         const currentUser = auth.currentUser;
+         if (currentUser?.uid === uid) {
+             console.log("getUserProfileByUid: Falling back to Auth data for current user.");
+             return {
+                 name: currentUser.displayName || currentUser.email?.split('@')[0] || "User",
+                 email: currentUser.email || "unknown",
+                 bio: null,
+                 phoneNumber: null,
+                 imageUrl: currentUser.photoURL || null,
+                 hasCompletedTutorial: false, // Assume false if no profile doc
+                 emailLinkSignInEnabled: false, // Assume false
+             };
+         }
         return null;
       }
     } catch (error) {
@@ -111,9 +143,15 @@ import {
         console.warn("getUserProfileByEmail: No user document found with email:", email);
         return null;
       }
-    } catch (error) {
+    } catch (error: any) { // Catch specific Firestore errors if possible
       console.error("getUserProfileByEmail: Error querying user by email:", error);
-      throw new Error("Failed to query user profile by email.");
+       // Log specific Firestore error codes if available
+       if (error.code === 'permission-denied') {
+           console.error("Firestore Permission Denied: Check your security rules for reading the 'users' collection based on email.");
+           throw new Error("Failed to fetch user profile due to permissions. Please check Firestore rules.");
+       } else {
+           throw new Error("Failed to fetch user profile by email.");
+       }
     }
   }
 
@@ -140,15 +178,25 @@ import {
       // Ensure all potentially optional fields are included, even if null/false
       const dataToSet: ProfileFormValues = {
          name: data.name,
-         email: data.email,
+         email: data.email, // Store the email in the profile subcollection as well
          bio: data.bio ?? null,
          phoneNumber: data.phoneNumber ?? null,
          imageUrl: data.imageUrl ?? null,
          hasCompletedTutorial: data.hasCompletedTutorial ?? false,
-         emailLinkSignInEnabled: data.emailLinkSignInEnabled ?? false, // Ensure this is included
+         emailLinkSignInEnabled: data.emailLinkSignInEnabled ?? false,
       };
       await setDoc(profileDocRef, dataToSet, { merge: merge });
       console.log(`Public profile ${merge ? 'updated/merged' : 'created/overwritten'} successfully for UID:`, uid);
+
+      // Also update the email field in the root user document for querying, if it has changed
+       // Be cautious with rules allowing this write. Rule `allow write: if request.auth != null && request.auth.uid == userId;` on /users/{userId} should cover this.
+       const rootUserDocRef = doc(db, "users", uid);
+       const rootDocSnap = await getDoc(rootUserDocRef);
+       if (!rootDocSnap.exists() || rootDocSnap.data()?.email !== data.email.toLowerCase()) {
+           await setDoc(rootUserDocRef, { email: data.email.toLowerCase() }, { merge: true });
+           console.log(`Root user document email field updated for UID: ${uid}`);
+       }
+
     } catch (error) {
       console.error("setPublicProfile: Error setting public profile:", error);
       throw new Error("Failed to update user profile.");
