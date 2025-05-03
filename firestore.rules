@@ -1,0 +1,16 @@
+
+    match /users/{userId} {
+      // Allow authenticated users to read individual user documents if needed
+      // (Note: Reading the full document might still fail depending on other rules,
+      // but the query requires list permission)
+      allow get: if request.auth != null;
+
+      // *** ADD THIS RULE ***
+      // Allow authenticated users to query the collection (needed for email lookup)
+      allow list: if request.auth != null;
+
+      // Allow only the owner to write their user document
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    
