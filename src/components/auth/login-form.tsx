@@ -148,6 +148,8 @@ export function LoginForm({ className }: LoginFormProps) {
 
   // Handle "Next" button click
   const handleNext = async () => {
+    // Clear previous errors when navigating
+    form.clearErrors();
     if (await validateStep(currentStep)) {
       if (currentStep === 1) {
             const email = form.getValues("artistId");
@@ -180,6 +182,8 @@ export function LoginForm({ className }: LoginFormProps) {
 
   // Handle "Previous" button click
   const handlePrevious = () => {
+    // Clear previous errors when navigating
+    form.clearErrors();
     if (currentStep > 1) {
        setProfileData(null); // Clear profile data when going back
        setIsFetchingProfile(false);
@@ -200,23 +204,46 @@ export function LoginForm({ className }: LoginFormProps) {
     } catch (error) {
       setShowSplash(false); // Hide splash on error
       console.error("Login failed:", error);
-      // If login fails due to wrong password, stay on password step
-      if (error instanceof Error && (error.message.includes("password") || error.message.includes("credential"))) { // Check for password or general credential error
-        goToStep(2); // Ensure user stays on password step
-        form.setError("password", { type: "manual", message: "Incorrect password." });
-      } else if (error instanceof Error && (error.message.includes("Artist ID") || error.message.includes("email") || error.message.includes("Invalid") || error.message.includes("user-not-found"))) { // Catch invalid user errors
-          // If error related to email/user not found, go back to step 1
-          goToStep(1);
-          form.setError("artistId", { type: "manual", message: "Artist ID not found or invalid." });
-          setProfileData(null); // Clear profile data if user not found
+
+      // Check specific error messages or codes from the login service
+      if (error instanceof Error) {
+           // These messages match the ones thrown by the service
+           if (error.message.includes("Invalid Artist ID or password.")) {
+                // Determine if it was likely the ID or the password based on the step
+                // Firebase often returns a generic 'invalid-credential' for both not found and wrong password
+                // So, a simpler approach: If it fails on step 2, assume password. If it somehow fails earlier, assume ID.
+                 if (currentStep === 2) {
+                    form.setError("password", { type: "manual", message: "Incorrect password." });
+                    goToStep(2); // Stay on password step
+                 } else {
+                    form.setError("artistId", { type: "manual", message: "Artist ID not found or invalid." });
+                    goToStep(1); // Go back to email step
+                    setProfileData(null); // Clear profile data
+                 }
+           } else if (error.message.includes("Access temporarily disabled")) {
+               // Handle "too many requests" error more specifically if desired
+               form.setError("artistId", { type: "manual", message: error.message });
+               goToStep(1); // Go back to email step for general account issues
+           } else if (error.message.includes("Network error")) {
+               toast({ title: "Network Error", description: error.message, variant: "destructive", duration: 2000 });
+               // Stay on current step
+           } else {
+               // Generic error display for unexpected issues
+               toast({
+                   title: "Login Failed",
+                   description: error.message,
+                   variant: "destructive",
+                   duration: 2000
+               });
+               // Decide where to go based on current step, maybe back to step 1
+               goToStep(1);
+               setProfileData(null);
+           }
       } else {
-         // Generic error display
-          toast({
-            title: "Login Failed",
-            description: error instanceof Error ? error.message : "An unexpected error occurred.",
-            variant: "destructive",
-            duration: 2000
-          });
+           // Non-Error object thrown
+           toast({ title: "Login Failed", description: "An unexpected error occurred.", variant: "destructive", duration: 2000 });
+           goToStep(1);
+           setProfileData(null);
       }
     } finally {
         // Don't set isSubmitting false here if splash remains visible on success
@@ -297,9 +324,11 @@ export function LoginForm({ className }: LoginFormProps) {
                             disabled={authLoading || isFetchingProfile || isSubmitting}
                             autoComplete="email"
                             className="bg-background/50 dark:bg-background/30 border-input focus:ring-accent text-foreground placeholder:text-muted-foreground" // Ensure text/placeholder colors
+                            aria-invalid={!!form.formState.errors.artistId} // Indicate invalid field for accessibility
                             />
                         </FormControl>
-                        <FormMessage className="text-destructive-foreground dark:text-destructive" /> {/* Adjust message color if needed */}
+                        {/* Ensure FormMessage is rendered to show field-specific errors */}
+                        <FormMessage className="text-destructive-foreground dark:text-destructive" />
                         </FormItem>
                     )}
                     />
@@ -348,9 +377,11 @@ export function LoginForm({ className }: LoginFormProps) {
                                   disabled={authLoading || isFetchingProfile || isSubmitting}
                                   autoComplete="current-password"
                                   className="bg-background/50 dark:bg-background/30 border-input focus:ring-accent w-full text-foreground placeholder:text-muted-foreground" // Ensure text/placeholder colors
+                                   aria-invalid={!!form.formState.errors.password} // Indicate invalid field
                                 />
                               </FormControl>
-                              <FormMessage className="text-destructive-foreground dark:text-destructive" /> {/* Adjust message color */}
+                              {/* Ensure FormMessage is rendered */}
+                              <FormMessage className="text-destructive-foreground dark:text-destructive" />
                             </FormItem>
                           )}
                         />
@@ -385,7 +416,12 @@ export function LoginForm({ className }: LoginFormProps) {
                     <Button
                         type="button" // Changed to button, handle logic in onClick
                         onClick={handleNext} // Use handleNext for validation + step change/submit
-                        disabled={authLoading || isFetchingProfile || isSubmitting || (currentStep === 1 && !form.watch('artistId')) || (currentStep === 2 && !form.watch('password'))}
+                        // Disable if loading OR (step 1 and no email) OR (step 2 and no password)
+                        disabled={
+                             authLoading || isFetchingProfile || isSubmitting ||
+                             (currentStep === 1 && !form.watch('artistId')) ||
+                             (currentStep === 2 && !form.watch('password'))
+                        }
                         className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-md disabled:shadow-none disabled:bg-muted disabled:text-muted-foreground"
                     >
                         {(authLoading || isFetchingProfile) && currentStep === 1 ? (
@@ -413,3 +449,6 @@ export function LoginForm({ className }: LoginFormProps) {
     </>
   );
 }
+
+
+    
