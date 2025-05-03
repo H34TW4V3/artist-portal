@@ -3,8 +3,6 @@
 
 import { useState, useEffect } from "react";
 import { getAuth } from "firebase/auth";
-// Removed direct Firestore imports, relying on service functions
-// import { getFirestore, doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage"; // Import storage functions
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -26,6 +24,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogClose } from "@/components/ui/dialog"; // Import Dialog components
 import { PasswordUpdateForm } from "@/components/profile/password-update-form"; // Import Password Update Form
+// Updated type import to include emailLinkSignInEnabled
 import { ProfileForm, type ProfileFormValues } from "@/components/profile/profile-form"; // Import Profile Form and its type
 import { useToast } from "@/hooks/use-toast";
 import { LogOut, UserCog, KeyRound, Loader2 } from "lucide-react";
@@ -35,6 +34,7 @@ import { useRouter } from "next/navigation"; // Import useRouter from next/navig
 
 // --- Zod Schema for User Profile Data (Matches ProfileForm) ---
 // This schema is primarily used by the ProfileForm, keep it consistent
+// Updated schema to include emailLinkSignInEnabled
 const profileSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters.").max(50, "Name must be 50 characters or less."),
   email: z.string().email("Invalid email address."),
@@ -45,6 +45,7 @@ const profileSchema = z.object({
        }),
   imageUrl: z.string().url("Invalid URL.").optional().nullable(),
   hasCompletedTutorial: z.boolean().optional().default(false),
+  emailLinkSignInEnabled: z.boolean().optional().default(false), // Added field
 });
 
 // Define the component as a default export
@@ -78,7 +79,17 @@ export default function UserProfile() {
         const fetchedProfile = await getUserProfileByUid(user.uid); // Correct function call
 
         if (fetchedProfile) {
-            setProfileData(fetchedProfile);
+            // Ensure all fields from schema are present, using defaults if necessary
+             const completeProfile: ProfileFormValues = {
+                name: fetchedProfile.name || user.displayName || "User",
+                email: fetchedProfile.email || user.email || "",
+                bio: fetchedProfile.bio || null,
+                phoneNumber: fetchedProfile.phoneNumber || null,
+                imageUrl: fetchedProfile.imageUrl || user.photoURL || null,
+                hasCompletedTutorial: fetchedProfile.hasCompletedTutorial || false,
+                emailLinkSignInEnabled: fetchedProfile.emailLinkSignInEnabled || false,
+            };
+            setProfileData(completeProfile);
         } else {
           // No public profile document exists yet, create one with defaults
           console.log("No public profile found for user, creating default...");
@@ -89,6 +100,7 @@ export default function UserProfile() {
             bio: null,
             phoneNumber: null,
             hasCompletedTutorial: false, // Initialize tutorial flag to false
+            emailLinkSignInEnabled: false, // Default email link pref
           };
           // Use the setPublicProfile service to create the doc in the subcollection
           await setPublicProfile(user.uid, defaultData, false); // Correct function call, merge=false
@@ -109,6 +121,7 @@ export default function UserProfile() {
             bio: null,
             phoneNumber: null,
             hasCompletedTutorial: false,
+            emailLinkSignInEnabled: false, // Default email link pref
         });
       } finally {
         setIsProfileLoading(false); // Finish loading profile data
@@ -153,7 +166,7 @@ export default function UserProfile() {
 
           // 2. Prepare data for Firestore update
           const dataToSave: ProfileFormValues = {
-              ...data, // Include updated name, bio, phone
+              ...data, // Include updated name, bio, phone, emailLinkSignInEnabled
               email: user.email || data.email, // Ensure email is correct
               imageUrl: newImageUrl, // Use the potentially new image URL
               hasCompletedTutorial: profileData?.hasCompletedTutorial || false, // Preserve existing tutorial status

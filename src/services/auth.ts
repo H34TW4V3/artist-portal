@@ -17,6 +17,11 @@ import {
     PhoneMultiFactorGenerator,
     multiFactor,
     getMultiFactorResolver, // Import this helper
+    // Import Email Link functions
+    sendSignInLinkToEmail as firebaseSendSignInLinkToEmail,
+    isSignInWithEmailLink as firebaseIsSignInWithEmailLink,
+    signInWithEmailLink as firebaseSignInWithEmailLink,
+    ActionCodeSettings,
 } from "firebase/auth";
 import { app } from './firebase-config'; // Import your Firebase config
 import Cookies from 'js-cookie'; // Import js-cookie
@@ -26,6 +31,7 @@ const auth = getAuth(app);
 
 // --- Constants ---
 const ID_TOKEN_COOKIE_NAME = 'firebaseIdToken'; // Cookie name for storing the token
+const EMAIL_FOR_SIGN_IN_KEY = 'emailForSignIn'; // localStorage key for email link sign-in
 
 // --- Helper Functions ---
 
@@ -72,7 +78,7 @@ export const onAuthStateChange = (callback: (user: User | null) => void): (() =>
 
 // --- Service Functions ---
 
-// Function to initialize reCAPTCHA
+// Function to initialize reCAPTCHA (used for phone MFA, potentially other actions)
 export function initializeRecaptchaVerifier(containerId: string): RecaptchaVerifier {
     // Ensure auth is initialized
     if (!auth) throw new Error("Firebase auth not initialized");
@@ -95,7 +101,7 @@ export function initializeRecaptchaVerifier(containerId: string): RecaptchaVerif
 }
 
 
-// Modify login function to handle MFA requirement
+// Login with Email and Password - Handles MFA requirement
 export async function login(email: string, password: string): Promise<User | { mfaResolver: any, hints: any[] }> { // Return type updated
     try {
         const userCredential = await signInWithEmailAndPassword(auth, email, password);
@@ -125,7 +131,7 @@ export async function login(email: string, password: string): Promise<User | { m
     }
 }
 
- // Function to send SMS verification code
+ // Send SMS Verification Code for MFA
  export async function sendMfaVerificationCode(mfaResolver: any, phoneInfoOptions: any, recaptchaVerifier: RecaptchaVerifier): Promise<string> {
     try {
         const phoneAuthProvider = new PhoneAuthProvider(auth);
@@ -138,17 +144,15 @@ export async function login(email: string, password: string): Promise<User | { m
     }
  }
 
- // Function to complete MFA sign-in
+ // Complete MFA Sign-in with SMS Code
  export async function completeMfaSignIn(mfaResolver: any, verificationId: string, verificationCode: string): Promise<User> {
     try {
         const phoneAuthCredential = PhoneAuthProvider.credential(verificationId, verificationCode);
         const multiFactorAssertion = PhoneMultiFactorGenerator.assertion(phoneAuthCredential);
         const userCredential = await mfaResolver.resolveSignIn(multiFactorAssertion);
 
-        // Get and set ID token cookie after successful MFA login - Listener should handle this now
-        // const idToken = await getIdToken(userCredential.user);
-        // setTokenCookie(idToken);
-        console.log("Firebase Service: MFA sign-in successful."); // Listener will set cookie
+        // Token setting is handled by the listener on successful sign-in
+        console.log("Firebase Service: MFA sign-in successful.");
 
         return userCredential.user;
     } catch (error) {
@@ -159,6 +163,90 @@ export async function login(email: string, password: string): Promise<User | { m
              throw new Error("Verification code has expired.");
          }
         throw new Error("Failed to verify code.");
+    }
+ }
+
+ // --- Email Link Sign-in Functions ---
+
+ /**
+  * Sends a sign-in link to the user's email.
+  * @param email The email address to send the link to.
+  * @param redirectUrl The URL the user should be redirected to after clicking the link.
+  */
+ export async function sendSignInLinkToEmail(email: string, redirectUrl: string): Promise<void> {
+    const actionCodeSettings: ActionCodeSettings = {
+        // URL you want to redirect back to. The domain (www.example.com) for this
+        // URL must be authorized domain list in the Firebase Console.
+        url: redirectUrl,
+        // This must be true.
+        handleCodeInApp: true,
+        // Optional iOS/Android settings can be added here
+    };
+
+    try {
+        await firebaseSendSignInLinkToEmail(auth, email, actionCodeSettings);
+        // The link was successfully sent. Inform the user.
+        // Save the email locally so you don't need to ask the user for it again
+        // if they open the link on the same device.
+        window.localStorage.setItem(EMAIL_FOR_SIGN_IN_KEY, email);
+        console.log("Firebase Service: Sign-in link sent to:", email);
+    } catch (error) {
+        const authError = error as AuthError;
+        console.error("Firebase Service: Error sending sign-in link:", authError.code, authError.message);
+         if (authError.code === 'auth/invalid-email') {
+             throw new Error("Please enter a valid email address.");
+         }
+        throw new Error("Could not send sign-in link. Please try again.");
+    }
+ }
+
+ /**
+  * Checks if the current URL is a Firebase email sign-in link.
+  * @param url The current window URL.
+  * @returns True if it's a sign-in link, false otherwise.
+  */
+ export function isSignInWithEmailLink(url: string): boolean {
+    return firebaseIsSignInWithEmailLink(auth, url);
+ }
+
+ /**
+  * Signs the user in using the email link.
+  * @param url The full URL the user clicked.
+  * @returns A promise resolving to the signed-in User object.
+  * @throws Error if sign-in fails or email is missing.
+  */
+ export async function signInWithEmailLink(url: string): Promise<User> {
+    // Confirm the link is authentic.
+    if (!firebaseIsSignInWithEmailLink(auth, url)) {
+        throw new Error("Invalid sign-in link.");
+    }
+
+    // Get the email from localStorage if available.
+    let email = window.localStorage.getItem(EMAIL_FOR_SIGN_IN_KEY);
+    if (!email) {
+      // User opened the link on a different device. To prevent session fixation
+      // attacks, ask the user to provide the email again. For simplicity here,
+      // we'll throw an error, but a real app should prompt the user.
+      // email = window.prompt('Please provide your email for confirmation');
+      // if (!email) {
+        throw new Error("Email confirmation required. Please try signing in again on the original device or enter your email when prompted.");
+      // }
+    }
+
+    try {
+        const userCredential = await firebaseSignInWithEmailLink(auth, email, url);
+        // Clear the email from storage.
+        window.localStorage.removeItem(EMAIL_FOR_SIGN_IN_KEY);
+        // Token setting is handled by the listener on successful sign-in
+        console.log("Firebase Service: Sign-in with email link successful.");
+        return userCredential.user;
+    } catch (error) {
+        const authError = error as AuthError;
+        console.error("Firebase Service: Error signing in with email link:", authError.code, authError.message);
+        if (authError.code === 'auth/invalid-action-code') {
+            throw new Error("Sign-in link is invalid or has expired. Please request a new one.");
+        }
+        throw new Error("Could not sign in using the provided link.");
     }
  }
 

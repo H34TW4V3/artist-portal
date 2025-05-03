@@ -5,7 +5,7 @@ import { useState, useEffect, useRef } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
-import { Loader2, Upload, AlertCircle } from "lucide-react";
+import { Loader2, Upload, AlertCircle, Mail } from "lucide-react"; // Added Mail icon
 import Image from "next/image";
 
 import { Button } from "@/components/ui/button";
@@ -24,9 +24,11 @@ import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Switch } from "@/components/ui/switch"; // Import Switch
 import { cn } from "@/lib/utils";
 
 // Define the schema for profile data, including new fields
+// Add emailLinkSignInEnabled field
 const profileSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters.").max(50, "Name must be 50 characters or less."),
   email: z.string().email("Invalid email address."), // Email usually comes from auth, but keep for display/form structure
@@ -37,6 +39,7 @@ const profileSchema = z.object({
        }),
   imageUrl: z.string().url("Invalid URL.").optional().nullable(), // Store URL, upload handled separately
   hasCompletedTutorial: z.boolean().optional().default(false), // Add tutorial flag to schema
+  emailLinkSignInEnabled: z.boolean().optional().default(false), // Added email link preference
 });
 
 export type ProfileFormValues = z.infer<typeof profileSchema>;
@@ -71,7 +74,8 @@ export function ProfileForm({ initialData, updateFunction, onSuccess, onCancel, 
             bio: "",
             phoneNumber: "",
             imageUrl: "",
-            hasCompletedTutorial: false, // Ensure default in form
+            hasCompletedTutorial: false,
+            emailLinkSignInEnabled: false, // Default email link pref
         },
         mode: "onChange",
     });
@@ -79,7 +83,18 @@ export function ProfileForm({ initialData, updateFunction, onSuccess, onCancel, 
     // Reset form state if initialData changes (e.g., fetched by parent)
     useEffect(() => {
         if (initialData) {
-            form.reset(initialData);
+            // Merge initial data with defaults to ensure all fields are present
+             const mergedDefaults = {
+                name: "",
+                email: "",
+                bio: null,
+                phoneNumber: null,
+                imageUrl: null,
+                hasCompletedTutorial: false,
+                emailLinkSignInEnabled: false,
+                ...initialData,
+            };
+            form.reset(mergedDefaults);
             setCurrentImageUrl(initialData.imageUrl ?? undefined);
             setFormInitialName(initialData.name);
             // Reset upload state when new initial data comes in
@@ -145,7 +160,8 @@ export function ProfileForm({ initialData, updateFunction, onSuccess, onCancel, 
             setCurrentImageUrl(updatedData.imageUrl ?? undefined);
             setSelectedImageFile(undefined);
             setImagePreviewUrl(null);
-            form.reset(updatedData, { keepValues: false, keepDirty: false, keepDefaultValues: false }); // Reset with new data
+             // Ensure form resets with *all* fields from updatedData, including new ones
+            form.reset(updatedData, { keepValues: false, keepDirty: false, keepDefaultValues: false });
             onSuccess?.(updatedData); // Call the parent's success callback
 
         } catch (error) {
@@ -163,12 +179,8 @@ export function ProfileForm({ initialData, updateFunction, onSuccess, onCancel, 
     const formIsDirty = form.formState.isDirty || !!selectedImageFile;
     const formIsValid = form.formState.isValid;
 
-    // Removed the loading skeleton render, parent component handles this
-
-
     return (
         <Form {...form}>
-             {/* Adjusted padding/spacing for modal context */}
             <form onSubmit={form.handleSubmit(onSubmit)} className={cn("space-y-4 px-2 py-4 sm:px-6", className)}>
 
                 {/* Profile Picture Section */}
@@ -176,7 +188,6 @@ export function ProfileForm({ initialData, updateFunction, onSuccess, onCancel, 
                     <FormLabel>Profile Picture</FormLabel>
                     <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
                         <Avatar className="h-20 w-20 sm:h-24 sm:w-24 cursor-pointer border-2 border-primary/30 hover:border-primary/60 transition-colors" onClick={handleAvatarClick}>
-                           {/* Show preview if available, otherwise current image */}
                            <AvatarImage src={imagePreviewUrl || currentImageUrl} alt={formInitialName} />
                             <AvatarFallback className="text-2xl sm:text-3xl bg-muted text-muted-foreground">
                                 {formInitialName?.split(' ').map(n => n[0]).join('').toUpperCase()}
@@ -187,23 +198,11 @@ export function ProfileForm({ initialData, updateFunction, onSuccess, onCancel, 
                                 <Upload className="mr-2 h-4 w-4" /> Change Picture
                             </Button>
                             <FormControl>
-                                {/* Hidden file input */}
-                                <Input
-                                    type="file"
-                                    ref={fileInputRef}
-                                    accept="image/*"
-                                    onChange={handleFileChange}
-                                    className="hidden"
-                                    disabled={isSubmitting}
-                                />
+                                <Input type="file" ref={fileInputRef} accept="image/*" onChange={handleFileChange} className="hidden" disabled={isSubmitting} />
                             </FormControl>
                             <FormDescription className="text-xs">Click avatar or button to upload (JPG, PNG, GIF, max 5MB).</FormDescription>
-                             {/* We don't need a form field for the URL itself as it's managed by upload */}
-                             {/* But you might want a message area if the schema validates URL */}
-                             {/* <FormMessage /> */}
                         </div>
                     </div>
-                     {/* Reduced margin top */}
                     <Alert variant="default" className="mt-3 bg-accent/10 border-accent/30 text-accent-foreground [&>svg]:text-accent">
                         <AlertCircle className="h-4 w-4" />
                         <AlertTitle className="font-medium text-accent text-sm">Platform Sync Notice</AlertTitle>
@@ -214,92 +213,48 @@ export function ProfileForm({ initialData, updateFunction, onSuccess, onCancel, 
                 </FormItem>
 
                 {/* Artist Name */}
-                <FormField
-                    control={form.control}
-                    name="name"
-                    render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Artist Name</FormLabel> {/* Changed label here */}
-                            <FormControl>
-                                <Input placeholder="Your artist or band name" {...field} disabled={isSubmitting} />
-                            </FormControl>
-                            <FormMessage />
-                        </FormItem>
-                    )}
-                />
-                {/* Email (Read-only as it comes from Auth) */}
-                <FormField
-                    control={form.control}
-                    name="email"
-                    render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Account Email</FormLabel>
-                            <FormControl>
-                                {/* Make email input read-only */}
-                                <Input type="email" placeholder="your.email@example.com" {...field} disabled={true} readOnly className="bg-muted/50 cursor-not-allowed"/>
-                            </FormControl>
-                            <FormDescription className="text-xs">
-                                Email associated with your login account (cannot be changed here).
-                            </FormDescription>
-                            <FormMessage />
-                        </FormItem>
-                    )}
-                />
+                <FormField control={form.control} name="name" render={({ field }) => ( <FormItem><FormLabel>Artist Name</FormLabel><FormControl><Input placeholder="Your artist or band name" {...field} disabled={isSubmitting} /></FormControl><FormMessage /></FormItem> )} />
+
+                {/* Email (Read-only) */}
+                <FormField control={form.control} name="email" render={({ field }) => ( <FormItem><FormLabel>Account Email</FormLabel><FormControl><Input type="email" placeholder="your.email@example.com" {...field} disabled={true} readOnly className="bg-muted/50 cursor-not-allowed"/></FormControl><FormDescription className="text-xs">Email associated with your login account (cannot be changed here).</FormDescription><FormMessage /></FormItem> )} />
+
                 {/* Phone Number */}
-                <FormField
-                    control={form.control}
-                    name="phoneNumber"
-                    render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Phone Number (Optional)</FormLabel>
-                            <FormControl>
-                                {/* Ensure value is handled correctly for optional/nullable field */}
-                                <Input type="tel" placeholder="e.g., +1 555-123-4567" {...field} value={field.value ?? ""} disabled={isSubmitting} />
-                            </FormControl>
-                            <FormDescription className="text-xs">
-                                Used for urgent communication or verification if needed.
-                            </FormDescription>
-                            <FormMessage />
-                        </FormItem>
-                    )}
-                />
+                <FormField control={form.control} name="phoneNumber" render={({ field }) => ( <FormItem><FormLabel>Phone Number (Optional)</FormLabel><FormControl><Input type="tel" placeholder="e.g., +1 555-123-4567" {...field} value={field.value ?? ""} disabled={isSubmitting} /></FormControl><FormDescription className="text-xs">Used for urgent communication or verification if needed.</FormDescription><FormMessage /></FormItem> )} />
+
                 {/* Bio */}
-                <FormField
+                <FormField control={form.control} name="bio" render={({ field }) => ( <FormItem><FormLabel>Bio</FormLabel><FormControl><Textarea placeholder="Tell us a little bit about yourself or your music..." className="resize-y min-h-[80px] sm:min-h-[100px]" {...field} value={field.value ?? ""} disabled={isSubmitting} /></FormControl><FormDescription className="text-xs">A short bio (optional, max 300 characters).</FormDescription><FormMessage /></FormItem> )} />
+
+                 {/* Email Link Sign-in Preference */}
+                 <FormField
                     control={form.control}
-                    name="bio"
+                    name="emailLinkSignInEnabled"
                     render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Bio</FormLabel>
+                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm bg-background/50 dark:bg-background/30">
+                            <div className="space-y-0.5">
+                                <FormLabel className="flex items-center gap-2">
+                                     <Mail className="h-4 w-4" /> Enable Email Link Sign-In
+                                </FormLabel>
+                                <FormDescription className="text-xs">
+                                    Receive a secure link to sign in instead of using a password.
+                                </FormDescription>
+                            </div>
                             <FormControl>
-                                <Textarea
-                                    placeholder="Tell us a little bit about yourself or your music..."
-                                    className="resize-y min-h-[80px] sm:min-h-[100px]"
-                                    {...field}
-                                    // Ensure value is handled correctly for optional/nullable field
-                                    value={field.value ?? ""}
+                                <Switch
+                                    checked={field.value}
+                                    onCheckedChange={field.onChange}
                                     disabled={isSubmitting}
+                                    aria-readonly // Prevent accidental changes via keyboard?
                                 />
                             </FormControl>
-                            <FormDescription className="text-xs">
-                                A short bio (optional, max 300 characters).
-                            </FormDescription>
                             <FormMessage />
                         </FormItem>
                     )}
-                />
+                 />
 
                  {/* Form Actions (Save/Cancel) */}
                 <div className="flex justify-end gap-2 pt-4">
-                     {onCancel && ( // Conditionally render Cancel button
-                         <Button type="button" variant="outline" onClick={onCancel} disabled={isSubmitting}>
-                             Cancel
-                         </Button>
-                     )}
-                    <Button
-                        type="submit"
-                        disabled={isSubmitting || !formIsDirty || !formIsValid} // Disable if no changes or invalid
-                        className="min-w-[80px]" // Ensure minimum width
-                    >
+                     {onCancel && ( <Button type="button" variant="outline" onClick={onCancel} disabled={isSubmitting}>Cancel</Button> )}
+                    <Button type="submit" disabled={isSubmitting || !formIsDirty || !formIsValid} className="min-w-[80px]">
                         {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                         {isSubmitting ? 'Saving...' : 'Save Changes'}
                     </Button>
@@ -308,4 +263,3 @@ export function ProfileForm({ initialData, updateFunction, onSuccess, onCancel, 
         </Form>
     );
 }
-

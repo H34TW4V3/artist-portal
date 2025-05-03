@@ -13,6 +13,7 @@ import {
     getDocs
   } from "firebase/firestore";
   import { app, db } from './firebase-config'; // Import initialized db
+  // Updated import path
   import type { ProfileFormValues } from "@/components/profile/profile-form"; // Import profile type
 
   /**
@@ -35,11 +36,19 @@ import {
       const docSnap = await getDoc(profileDocRef);
       if (docSnap.exists()) {
         console.log("getUserProfileByUid: Profile data found for UID:", uid);
-        // Cast data, assuming structure matches ProfileFormValues
+        // Cast data, ensuring it fits ProfileFormValues structure
         const data = docSnap.data() as ProfileFormValues;
-        // Potentially handle Timestamp conversion if needed, though ProfileFormValues seems basic for now
-        // Example: if (data.createdAt && data.createdAt instanceof Timestamp) data.createdAt = data.createdAt.toDate();
-        return data;
+        // Provide defaults for any potentially missing optional fields from older schemas
+        const completeProfile: ProfileFormValues = {
+            name: data.name || "User",
+            email: data.email || "unknown",
+            bio: data.bio || null,
+            phoneNumber: data.phoneNumber || null,
+            imageUrl: data.imageUrl || null,
+            hasCompletedTutorial: data.hasCompletedTutorial || false,
+            emailLinkSignInEnabled: data.emailLinkSignInEnabled || false, // Default to false if missing
+        };
+        return completeProfile;
       } else {
         console.warn("getUserProfileByUid: No public profile document found at path:", profileDocRef.path);
         return null;
@@ -47,7 +56,7 @@ import {
     } catch (error) {
       console.error(`getUserProfileByUid: Error fetching user profile for UID ${uid}:`, error);
       // Rethrowing the error to be caught by the calling component
-      throw new Error(`Failed to fetch user profile for UID ${uid}.`);
+      throw new Error(`Failed to fetch user profile.`); // Simplified error message
     }
   }
 
@@ -101,7 +110,7 @@ import {
    * Creates or updates the public profile document for a user.
    * Uses the 'users/{userId}/publicProfile/profile' path.
    * @param uid - The user ID.
-   * @param data - The profile data to set or merge.
+   * @param data - The profile data to set or merge. Includes all fields from ProfileFormValues.
    * @param merge - Whether to merge the data with existing document (true) or overwrite (false). Default is true.
    * @returns A promise resolving when the operation is complete.
    */
@@ -114,7 +123,17 @@ import {
     const profileDocRef = doc(db, "users", uid, "publicProfile", "profile");
     try {
       // Use setDoc with merge option to either create or update
-      await setDoc(profileDocRef, data, { merge: merge });
+      // Ensure all potentially optional fields are included, even if null/false
+      const dataToSet: ProfileFormValues = {
+         name: data.name,
+         email: data.email,
+         bio: data.bio ?? null,
+         phoneNumber: data.phoneNumber ?? null,
+         imageUrl: data.imageUrl ?? null,
+         hasCompletedTutorial: data.hasCompletedTutorial ?? false,
+         emailLinkSignInEnabled: data.emailLinkSignInEnabled ?? false, // Ensure this is included
+      };
+      await setDoc(profileDocRef, dataToSet, { merge: merge });
       console.log(`Public profile ${merge ? 'updated/merged' : 'created/overwritten'} successfully for UID:`, uid);
     } catch (error) {
       console.error("setPublicProfile: Error setting public profile:", error);
