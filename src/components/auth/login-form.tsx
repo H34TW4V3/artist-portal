@@ -1,14 +1,13 @@
-
 "use client";
 
 import React, { useState, useEffect, useRef } from "react"; // Add React import
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
-import { getAuth, type RecaptchaVerifier, PhoneMultiFactorGenerator } from "firebase/auth"; // Import getAuth, PhoneMultiFactorGenerator
+import { getAuth, type RecaptchaVerifier, PhoneMultiFactorGenerator, reload } from "firebase/auth"; // Import reload
 import { app } from '@/services/firebase-config'; // Import Firebase config
-// Added MailCheck, LogIn icons
-import { Loader2, ArrowLeft, ArrowRight, Mail, KeyRound, Phone, MessageSquare, MailCheck, LogIn } from "lucide-react";
+// Added MailCheck, LogIn, RefreshCcw icons
+import { Loader2, ArrowLeft, ArrowRight, Mail, KeyRound, Phone, MessageSquare, MailCheck, LogIn, RefreshCcw, AlertCircle } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation"; // Use next/navigation
 
 import { Button } from "@/components/ui/button";
@@ -36,8 +35,10 @@ import {
     sendSignInLinkToEmail, // Import new service function
     isSignInWithEmailLink,
     signInWithEmailLink,
+    sendVerificationEmail, // Import sendVerificationEmail
 } from '@/services/auth';
 import { SplashScreen } from '@/components/common/splash-screen'; // Import SplashScreen
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"; // Import Alert
 
 
 // Schema updated to make password optional if using email link
@@ -57,6 +58,7 @@ const STEPS = [
   { id: 3, name: "Password", icon: KeyRound }, // Only shown if password method chosen
   { id: 4, name: "Verify 2FA Code", icon: MessageSquare }, // MFA Step (Phone only)
   { id: 5, name: "Check Your Email", icon: MailCheck }, // Email Link Sent Step (For chosen email link)
+  { id: 6, name: "Verify Your Email", icon: MailCheck }, // Email Verification Step (For unverified email after password login)
 ];
 
 // Define the component
@@ -74,6 +76,7 @@ export function LoginForm({ className }: { className?: string }) {
   const [fetchedUid, setFetchedUid] = useState<string | null>(null); // Store UID when fetching by email
   const [loginMethod, setLoginMethod] = useState<'password' | 'emailLink' | null>(null); // Track selected login method
   const [isProcessingEmailLink, setIsProcessingEmailLink] = useState(false); // State for when verifying email link
+  const [unverifiedUser, setUnverifiedUser] = useState<any | null>(null); // Store user object if verification needed
 
   // MFA related state
   const [mfaResolver, setMfaResolver] = useState<any>(null);
@@ -216,7 +219,7 @@ export function LoginForm({ className }: { className?: string }) {
     if (step === 1) fieldsToValidate = ["artistId"];
     else if (step === 3 && loginMethod === 'password') fieldsToValidate = ["password"]; // Only validate password if chosen
     else if (step === 4) fieldsToValidate = ["verificationCode"]; // MFA step
-    // Step 2 (Choose Method) and 5 (Email Sent) don't need form validation
+    // Step 2 (Choose Method), 5 (Email Sent), 6 (Verify Email) don't need form validation
 
      // Skip validation if no fields required for this step
      if (fieldsToValidate.length === 0) return true;
@@ -241,9 +244,7 @@ export function LoginForm({ className }: { className?: string }) {
          } else if (currentStep === 2) {
              // Based on loginMethod chosen in Step 2, go to Password (3) or Email Sent (5)
              if (loginMethod === 'password') {
-                 // Fetching profile by email before password step is problematic due to rules.
-                 // Profile info will be available after successful login via listener.
-                 goToStep(3);
+                await fetchProfileForPasswordStep(); // Fetch profile before going to password step
              }
              else if (loginMethod === 'emailLink') await handleSendEmailLink(); // Trigger sending link
              else toast({ title: "Choose Method", description: "Please select a sign-in method.", variant: "destructive" });
@@ -253,10 +254,10 @@ export function LoginForm({ className }: { className?: string }) {
          } else if (currentStep === 4) { // MFA step
              await handleVerifyMfaCode();
          }
-         // No action needed for step 5 (Email Sent) - user clicks link in email
+         // Step 5 (Email Sent) has no "Next", user interacts with email link
+         // Step 6 (Verify Email) handles "Check Verification" logic separately
      }
    };
-
 
   // Handle "Previous" button click
   const handlePrevious = () => {
@@ -269,6 +270,9 @@ export function LoginForm({ className }: { className?: string }) {
             setVerificationId(null);
             form.setValue("verificationCode", "");
             goToStep(3); // Go back to password step
+        } else if (currentStep === 6) { // Going back from Email Verification step
+             setUnverifiedUser(null); // Clear the unverified user state
+             goToStep(3); // Go back to password step
         } else if (currentStep === 3 || currentStep === 5) { // Updated logic
             // Go back from Password or Email Sent step
             setLoginMethod(null); // Reset method choice
@@ -284,6 +288,37 @@ export function LoginForm({ className }: { className?: string }) {
     }
   };
 
+  // Function to fetch user profile by email before password step
+  const fetchProfileForPasswordStep = async () => {
+     const email = form.getValues("artistId");
+     if (!email) {
+         toast({ title: "Missing Email", description: "Please enter your email first.", variant: "destructive" });
+         goToStep(1); // Go back if email missing
+         return;
+     }
+      setIsSubmitting(true); // Show loading indicator
+     try {
+         // Use the UID fetched via email query to get the profile data
+         const profileInfo = await getUserProfileByUid(fetchedUid || ''); // Use fetchedUid
+
+         if (profileInfo) {
+            setFetchedProfile(profileInfo);
+         } else {
+             setFetchedProfile(null); // Handle case where profile sub-doc might not exist yet
+             console.warn("No detailed profile found for", email, "using fallback display.");
+         }
+         goToStep(3); // Proceed to password step
+     } catch (error) {
+         console.error("Error fetching profile before password step:", error);
+         // Do not show error toast here, proceed to password step anyway
+         // User might exist even if profile fetch failed (e.g., permission issue temporarily)
+         setFetchedProfile(null); // Ensure profile state is null
+         goToStep(3);
+     } finally {
+         setIsSubmitting(false);
+     }
+  }
+
    // Main form submission handler (for email/password login)
    async function onSubmit(values: LoginFormValues) {
      // Ensure password exists for password login attempt
@@ -293,10 +328,10 @@ export function LoginForm({ className }: { className?: string }) {
      }
      setIsSubmitting(true);
      setSplashLoadingText("Logging in...");
-     // Use email for splash initially, profile fetched later
-     setSplashUserName(values.artistId.split('@')[0]);
-     setSplashUserImageUrl(null);
-     setShowSplash(true);
+     // Use profile name/image if fetched, otherwise fallback
+     setSplashUserName(fetchedProfile?.name || values.artistId.split('@')[0]);
+     setSplashUserImageUrl(fetchedProfile?.imageUrl || null);
+     // Don't show full splash immediately, handle based on login result
 
      try {
        // Use non-null assertion for password since we checked it above
@@ -307,7 +342,7 @@ export function LoginForm({ className }: { className?: string }) {
          console.log("MFA Required, hints:", loginResult.hints);
          setMfaResolver(loginResult.mfaResolver);
          setMfaHints(loginResult.hints);
-         setShowSplash(false); // Hide splash for MFA interaction
+         // setShowSplash(false); // Don't show splash for MFA
 
          // Attempt to automatically send SMS code
           const phoneHint = loginResult.hints?.find(hint => hint.factorId === PhoneMultiFactorGenerator.FACTOR_ID);
@@ -334,19 +369,39 @@ export function LoginForm({ className }: { className?: string }) {
           setIsSubmitting(false); // Reset submitting state for MFA step
 
        } else if (loginResult && 'uid' in loginResult) {
-          // Standard login successful - Fetch profile for splash display
-          console.log("LoginForm: Login successful via service. User UID:", loginResult.uid);
+          // Standard login successful
+          const user = loginResult;
+
+           // --- Check Email Verification ---
+           if (!user.emailVerified) {
+               console.log("Login successful, but email not verified. Sending verification email...");
+               setUnverifiedUser(user); // Store user object
+               try {
+                   await sendVerificationEmail();
+                   toast({ title: "Verification Required", description: `A verification link has been sent to ${user.email}. Please check your inbox and click the link.`, duration: 7000 });
+               } catch (verificationError) {
+                    toast({ title: "Verification Error", description: "Could not send verification email. Please try resending.", variant: "destructive" });
+               }
+               goToStep(6); // Go to email verification step
+               setIsSubmitting(false); // Allow interaction on verification step
+               return; // Stop further processing until verified
+           }
+
+          // --- Email Verified - Proceed with Splash ---
+          console.log("LoginForm: Login successful via service. User UID:", user.uid);
+           // Fetch profile again to ensure latest data for splash
            try {
-              const profile = await getUserProfileByUid(loginResult.uid);
-              setSplashUserName(profile?.name || loginResult.email?.split('@')[0] || 'User');
-              setSplashUserImageUrl(profile?.imageUrl || loginResult.photoURL || null);
+              const profile = await getUserProfileByUid(user.uid);
+              setSplashUserName(profile?.name || user.email?.split('@')[0] || 'User');
+              setSplashUserImageUrl(profile?.imageUrl || user.photoURL || null);
            } catch (profileError) {
                console.error("Error fetching profile after successful login:", profileError);
                // Use auth details as fallback
-               setSplashUserName(loginResult.email?.split('@')[0] || 'User');
-               setSplashUserImageUrl(loginResult.photoURL || null);
+               setSplashUserName(user.email?.split('@')[0] || 'User');
+               setSplashUserImageUrl(user.photoURL || null);
            }
           setSplashLoadingText(`Welcome!`);
+          setShowSplash(true); // Show splash screen now
           // AuthProvider listener handles redirect, splash remains until then.
           // setIsSubmitting(false); // No need to set here, splash is showing
 
@@ -366,6 +421,51 @@ export function LoginForm({ className }: { className?: string }) {
        });
      }
    }
+
+   // --- Handler for checking email verification status ---
+   const handleCheckVerification = async () => {
+       if (!unverifiedUser) return;
+       setIsSubmitting(true); // Show loading
+       try {
+           await reload(unverifiedUser); // Reload user data from Firebase
+           if (unverifiedUser.emailVerified) {
+               // Verification successful! Proceed with splash/redirect
+               toast({ title: "Email Verified!", variant: "default" });
+                // Fetch profile again for splash
+                try {
+                    const profile = await getUserProfileByUid(unverifiedUser.uid);
+                    setSplashUserName(profile?.name || unverifiedUser.email?.split('@')[0] || 'User');
+                    setSplashUserImageUrl(profile?.imageUrl || unverifiedUser.photoURL || null);
+                } catch (profileError) {
+                    setSplashUserName(unverifiedUser.email?.split('@')[0] || 'User');
+                    setSplashUserImageUrl(unverifiedUser.photoURL || null);
+                }
+               setSplashLoadingText(`Welcome!`);
+               setShowSplash(true);
+           } else {
+               toast({ title: "Still Waiting", description: "Email not verified yet. Please check your inbox and click the link.", variant: "default" });
+           }
+       } catch (error) {
+            toast({ title: "Verification Check Failed", description: "Could not check verification status. Please try again.", variant: "destructive" });
+       } finally {
+           setIsSubmitting(false);
+       }
+   };
+
+   // --- Handler for resending verification email ---
+   const handleResendVerification = async () => {
+       if (!unverifiedUser) return;
+        setIsSubmitting(true);
+        try {
+            await sendVerificationEmail();
+            toast({ title: "Verification Email Resent", description: `Check ${unverifiedUser.email} for the link.`, duration: 5000 });
+        } catch (error: any) {
+            toast({ title: "Resend Failed", description: error.message || "Could not resend verification email.", variant: "destructive" });
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
 
    // --- Handler for sending email link ---
    const handleSendEmailLink = async () => {
@@ -446,12 +546,13 @@ export function LoginForm({ className }: { className?: string }) {
   // Show Splash Screen if needed (during login/MFA submission or link processing)
   if (showSplash || isProcessingEmailLink) {
       return (
+         // Show splash centered within the card area
          <div className={cn("flex flex-col h-full items-center justify-center", className)}>
              <SplashScreen
                  loadingText={splashLoadingText}
                  userImageUrl={splashUserImageUrl}
                  userName={splashUserName}
-                 className="bg-transparent border-none shadow-none"
+                 className="bg-transparent border-none shadow-none p-0" // Remove card styling from splash itself
              />
          </div>
       );
@@ -535,17 +636,16 @@ export function LoginForm({ className }: { className?: string }) {
                       {currentStep === 3 && loginMethod === 'password' && ( // Show only if password method chosen
                           <>
                               <div className="flex flex-col items-center text-center p-6 border-b border-border/30">
-                                   {/* Display avatar - will show initials based on email until profile fetched post-login */}
+                                   {/* Display avatar and name */}
                                    <Avatar className="h-20 w-20 mb-4 border-4 border-primary/50">
-                                        {/* Removed direct image src - relies on fallback initially */}
-                                        <AvatarFallback className="text-3xl bg-muted text-muted-foreground">
-                                            {form.getValues("artistId")?.charAt(0).toUpperCase() || 'U'}
-                                        </AvatarFallback>
-                                    </Avatar>
-                                    <h3 className="text-xl font-semibold tracking-tight text-foreground">
-                                         {/* Display email prefix initially */}
-                                         {form.getValues("artistId").split('@')[0]}
-                                    </h3>
+                                       <AvatarImage src={fetchedProfile?.imageUrl || undefined} alt={fetchedProfile?.name || 'User'} />
+                                       <AvatarFallback className="text-3xl bg-muted text-muted-foreground">
+                                           {getInitials()}
+                                       </AvatarFallback>
+                                   </Avatar>
+                                   <h3 className="text-xl font-semibold tracking-tight text-foreground">
+                                       {fetchedProfile?.name || form.getValues("artistId").split('@')[0]}
+                                   </h3>
                               </div>
                               <div className="flex-grow p-6 space-y-4">
                                     <FormField control={form.control} name="password" render={({ field }) => ( <FormItem><FormLabel className="sr-only">Password</FormLabel><FormControl><div className="relative"><KeyRound className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input type="password" placeholder="Enter your password" autoComplete="current-password" {...field} disabled={isSubmitting} className="pl-8 text-base"/></div></FormControl><FormMessage /><div className="text-right"><Button type="button" variant="link" className="text-xs text-muted-foreground h-auto p-0" /* onClick={() => setIsForgotPasswordModalOpen(true)} */>Forgot Password?</Button></div></FormItem> )} />
@@ -568,7 +668,6 @@ export function LoginForm({ className }: { className?: string }) {
                               <div className="flex-grow p-6 space-y-4">
                                     <FormField control={form.control} name="verificationCode" render={({ field }) => ( <FormItem><FormLabel>Verification Code</FormLabel><FormControl><Input type="text" placeholder="6-digit code" inputMode="numeric" pattern="[0-9]*" maxLength={6} {...field} disabled={isSubmitting} className="text-center tracking-[0.5em] text-base"/> </FormControl><FormMessage /></FormItem> )} />
                               </div>
-                              {/* Removed option to resend via email here, as MFA is phone-based */}
                          </>
                      )}
                   </div>
@@ -587,6 +686,43 @@ export function LoginForm({ className }: { className?: string }) {
                      )}
                 </div>
 
+                 {/* Step 6: Verify Email Address */}
+                 <div className={cn("space-y-4 h-full flex flex-col items-center justify-center text-center", getAnimationClasses(6))} aria-hidden={currentStep !== 6}>
+                     {currentStep === 6 && unverifiedUser && (
+                         <>
+                             <MailCheck className="h-20 w-20 mb-6 text-primary" />
+                             <h3 className="text-xl font-semibold tracking-tight text-foreground">Verify Your Email</h3>
+                             <Alert variant="info" className="text-left max-w-xs mx-auto">
+                                 <AlertCircle className="h-4 w-4" />
+                                 <AlertTitle>Action Required</AlertTitle>
+                                 <AlertDescription className="text-xs">
+                                     A verification link was sent to <span className="font-medium">{unverifiedUser.email}</span>.
+                                     Please click the link in the email, then click "Check Verification" below.
+                                 </AlertDescription>
+                             </Alert>
+                              <Button
+                                 type="button"
+                                 onClick={handleCheckVerification}
+                                 disabled={isSubmitting}
+                                 className="mt-4"
+                             >
+                                 {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                 Check Verification
+                             </Button>
+                             <Button
+                                 type="button"
+                                 variant="link"
+                                 onClick={handleResendVerification}
+                                 disabled={isSubmitting}
+                                 className="text-xs text-muted-foreground h-auto p-0 mt-2"
+                             >
+                                 {isSubmitting && <Loader2 className="mr-1 h-3 w-3 animate-spin" />}
+                                 Resend Verification Email
+                             </Button>
+                         </>
+                     )}
+                 </div>
+
 
                 {/* reCAPTCHA Container */}
                  <div id={`recaptcha-container-${Date.now()}`} ref={recaptchaContainerRef} className="my-4 h-0 overflow-hidden"></div>
@@ -599,16 +735,12 @@ export function LoginForm({ className }: { className?: string }) {
       </Form>
 
       {/* Footer with navigation */}
-       {/* Hide footer on email sent confirmation step */}
-       {currentStep !== 5 && (
+       {/* Hide footer on email sent confirmation step and verification step */}
+       {currentStep !== 5 && currentStep !== 6 && (
         <div className="flex justify-between items-center mt-auto p-4 h-16 border-t border-border/30">
             <Button type="button" variant="ghost" size="icon" onClick={handlePrevious} disabled={currentStep === 1 || isSubmitting} className={cn("h-10 w-10", currentStep === 1 && "invisible")} aria-label="Previous Step">
                 <ArrowLeft className="h-5 w-5" />
             </Button>
-             {/* Hide step text indicator */}
-            {/* <span className="text-xs text-muted-foreground">
-                 {currentStep === 2 ? "Choose Method" : `Step ${currentStep} of ${loginMethod === 'emailLink' ? 2 : (mfaResolver ? 4 : 3)}`}
-            </span> */}
             <Button
               type="button"
               variant="ghost"
