@@ -1,169 +1,213 @@
 
+// Import necessary Firebase modules
 import {
-  getAuth,
-  signInWithEmailAndPassword,
-  signOut,
-  sendPasswordResetEmail as fbSendPasswordResetEmail,
-  updatePassword as fbUpdatePassword,
-  type Auth,
-  type AuthError,
-  type User,
-  onAuthStateChanged, // Import onAuthStateChanged
-  getIdToken,       // Import getIdToken
+    getAuth,
+    signInWithEmailAndPassword,
+    signOut,
+    onIdTokenChanged,
+    getIdToken,
+    type User,
+    type AuthError,
+    sendPasswordResetEmail as firebaseSendPasswordResetEmail,
+    updatePassword as firebaseUpdatePassword,
+    // Import necessary MFA functions
+    RecaptchaVerifier,
+    signInWithPhoneNumber,
+    PhoneAuthProvider,
+    PhoneMultiFactorGenerator,
+    multiFactor,
+    getMultiFactorResolver, // Import this helper
 } from "firebase/auth";
-import { app } from './firebase-config'; // Import the initialized Firebase app
+import { app } from './firebase-config'; // Import your Firebase config
 import Cookies from 'js-cookie'; // Import js-cookie
 
-// Get the Auth instance using the initialized app
-const auth: Auth = getAuth(app);
-const ID_TOKEN_COOKIE_NAME = 'firebaseIdToken'; // Define cookie name
+// Initialize Firebase Auth
+const auth = getAuth(app);
 
-/**
- * Logs in a user with email and password, stores the ID token in a cookie.
- * @param email - The user's email address.
- * @param password - The user's password.
- * @returns A Promise resolving to the logged-in User object.
- * @throws An error if login fails.
- */
-export async function login(email: string, password: string): Promise<User> {
-  try {
-    const userCredential = await signInWithEmailAndPassword(auth, email, password);
-    console.log("Firebase Service: Login successful for:", userCredential.user.email);
+// --- Constants ---
+const ID_TOKEN_COOKIE_NAME = 'firebaseIdToken'; // Cookie name for storing the token
 
-    // Get the ID token
-    const idToken = await getIdToken(userCredential.user);
+// --- Helper Functions ---
 
-    // Store the ID token in a cookie
-    Cookies.set(ID_TOKEN_COOKIE_NAME, idToken, {
-        expires: 1, // Expires in 1 day (adjust as needed)
-        secure: process.env.NODE_ENV === 'production', // Use secure cookies in production
-        sameSite: 'strict' // Recommended for security
+// Set token cookie
+const setTokenCookie = (token: string) => {
+  Cookies.set(ID_TOKEN_COOKIE_NAME, token, {
+    expires: 1, // Expires in 1 day
+    secure: process.env.NODE_ENV === 'production', // Only send over HTTPS in production
+    sameSite: 'strict', // Protection against CSRF
+  });
+  console.log("Firebase Service: ID token cookie set.");
+};
+
+// Remove token cookie
+const removeTokenCookie = () => {
+  Cookies.remove(ID_TOKEN_COOKIE_NAME);
+  console.log("Firebase Service: ID token cookie removed.");
+};
+
+// --- Authentication State Listener ---
+
+// Updated listener that also manages the cookie
+export const onAuthStateChange = (callback: (user: User | null) => void): (() => void) => {
+    return onIdTokenChanged(auth, async (user) => {
+        if (user) {
+            console.log("Firebase Service: User detected by listener.");
+            try {
+                const idToken = await getIdToken(user, /* forceRefresh */ true); // Force refresh to get latest token
+                setTokenCookie(idToken);
+            } catch (error) {
+                 console.error("Firebase Service: Error getting ID token:", error);
+                 // Handle error appropriately, maybe sign the user out or clear the cookie
+                 removeTokenCookie();
+                 user = null; // Treat as signed out if token fetching fails
+            }
+        } else {
+            console.log("Firebase Service: No user detected by listener.");
+            removeTokenCookie();
+        }
+        callback(user); // Notify the application of the auth state change
     });
-    console.log("Firebase Service: ID token stored in cookie.");
+};
 
-    return userCredential.user;
-  } catch (error) {
-    const authError = error as AuthError;
-    console.error("Firebase Service: Login error:", authError.code, authError.message);
-    // Clear cookie on login failure? Maybe not, depends on the error type.
-    // Provide more specific error messages based on common codes
-    if (authError.code === 'auth/invalid-credential' || authError.code === 'auth/user-not-found' || authError.code === 'auth/wrong-password' || authError.code === 'auth/invalid-login-credentials') { // Added auth/invalid-login-credentials
-        throw new Error("Invalid Artist ID or password."); // Keep using generic message for security
-    } else if (authError.code === 'auth/too-many-requests') {
-         throw new Error("Access temporarily disabled due to too many failed login attempts. Please try again later or reset your password.");
-    } else if (authError.code === 'auth/network-request-failed') {
-        throw new Error("Network error. Please check your connection and try again.");
+
+// --- Service Functions ---
+
+// Function to initialize reCAPTCHA
+export function initializeRecaptchaVerifier(containerId: string): RecaptchaVerifier {
+    // Ensure auth is initialized
+    if (!auth) throw new Error("Firebase auth not initialized");
+    // Ensure this runs client-side
+    if (typeof window === 'undefined') throw new Error("reCAPTCHA must be initialized client-side");
+
+    // IMPORTANT: Add your reCAPTCHA site key from Firebase Console
+    // You might need to handle widget cleanup if the component unmounts
+    return new RecaptchaVerifier(auth, containerId, {
+        'size': 'invisible', // Or 'normal'
+        'callback': (response: any) => {
+            // reCAPTCHA solved, allow phone number submission.
+            console.log("reCAPTCHA verified");
+        },
+        'expired-callback': () => {
+            // Response expired. Ask user to solve reCAPTCHA again.
+             console.warn("reCAPTCHA expired");
+        }
+    });
+}
+
+
+// Modify login function to handle MFA requirement
+export async function login(email: string, password: string): Promise<User | { mfaResolver: any, hints: any[] }> { // Return type updated
+    try {
+        const userCredential = await signInWithEmailAndPassword(auth, email, password);
+        // Standard login successful, token is handled by the listener
+        console.log("Firebase Service: Standard login successful.");
+        return userCredential.user;
+    } catch (error) {
+        const authError = error as AuthError;
+        if (authError.code === 'auth/multi-factor-auth-required') {
+            console.log("Firebase Service: MFA required.");
+            // Get the resolver and hints from the error
+            const resolver = getMultiFactorResolver(auth, authError);
+            const hints = resolver.hints; // Hints contain info about enrolled factors (like phone number)
+            // Return necessary info to the UI to handle MFA
+            return { mfaResolver: resolver, hints: hints };
+        }
+
+        console.error("Firebase Service: Login error:", authError.code, authError.message);
+         // Provide more specific error messages based on common codes
+         if (authError.code === 'auth/invalid-credential' || authError.code === 'auth/user-not-found' || authError.code === 'auth/wrong-password' || authError.code === 'auth/invalid-login-credentials') {
+              throw new Error("Invalid Artist ID or password."); // Keep using generic message for security
+         } else if (authError.code === 'auth/api-key-not-valid.-please-pass-a-valid-api-key.') {
+            throw new Error("Authentication service is not configured correctly. Please contact support.");
+         }
+         // Fallback for other errors
+         throw new Error("Login failed. Please try again.");
     }
-    // Default error for other cases
-    throw new Error("Login failed. Please try again.");
-  }
 }
 
-/**
- * Logs out the current user and removes the ID token cookie.
- * @returns A Promise resolving when logout is complete.
- * @throws An error if logout fails.
- */
+ // Function to send SMS verification code
+ export async function sendMfaVerificationCode(mfaResolver: any, phoneInfoOptions: any, recaptchaVerifier: RecaptchaVerifier): Promise<string> {
+    try {
+        const phoneAuthProvider = new PhoneAuthProvider(auth);
+        const verificationId = await phoneAuthProvider.verifyPhoneNumber(phoneInfoOptions, recaptchaVerifier);
+        console.log("Firebase Service: MFA verification code sent, ID:", verificationId);
+        return verificationId;
+    } catch (error) {
+        console.error("Firebase Service: Error sending MFA code:", error);
+        throw new Error("Failed to send verification code.");
+    }
+ }
+
+ // Function to complete MFA sign-in
+ export async function completeMfaSignIn(mfaResolver: any, verificationId: string, verificationCode: string): Promise<User> {
+    try {
+        const phoneAuthCredential = PhoneAuthProvider.credential(verificationId, verificationCode);
+        const multiFactorAssertion = PhoneMultiFactorGenerator.assertion(phoneAuthCredential);
+        const userCredential = await mfaResolver.resolveSignIn(multiFactorAssertion);
+
+        // Get and set ID token cookie after successful MFA login - Listener should handle this now
+        // const idToken = await getIdToken(userCredential.user);
+        // setTokenCookie(idToken);
+        console.log("Firebase Service: MFA sign-in successful."); // Listener will set cookie
+
+        return userCredential.user;
+    } catch (error) {
+        console.error("Firebase Service: Error verifying MFA code:", error);
+         if ((error as AuthError).code === 'auth/invalid-verification-code') {
+            throw new Error("Invalid verification code.");
+         } else if ((error as AuthError).code === 'auth/code-expired') {
+             throw new Error("Verification code has expired.");
+         }
+        throw new Error("Failed to verify code.");
+    }
+ }
+
+
+// Logout function
 export async function logout(): Promise<void> {
-  try {
-    await signOut(auth);
-    // Remove the ID token cookie on logout
-    Cookies.remove(ID_TOKEN_COOKIE_NAME);
-    console.log("Firebase Service: Logout successful and ID token cookie removed.");
-  } catch (error) {
-    const authError = error as AuthError;
-    console.error("Firebase Service: Logout error:", authError.code, authError.message);
-    throw new Error("Logout failed. Please try again.");
-  }
+    try {
+        await signOut(auth);
+        removeTokenCookie(); // Ensure cookie is removed immediately
+        console.log("Firebase Service: User signed out successfully.");
+    } catch (error) {
+        console.error("Firebase Service: Logout error:", error);
+        throw new Error("Logout failed. Please try again.");
+    }
 }
 
-/**
- * Sends a password reset email to the specified email address.
- * @param email - The user's email address.
- * @returns A Promise resolving when the email is sent.
- * @throws An error if sending the email fails.
- */
+// Send Password Reset Email
 export async function sendPasswordResetEmail(email: string): Promise<void> {
     try {
-        await fbSendPasswordResetEmail(auth, email);
+        await firebaseSendPasswordResetEmail(auth, email);
         console.log("Firebase Service: Password reset email sent to:", email);
     } catch (error) {
         const authError = error as AuthError;
-        console.error("Firebase Service: Password reset error:", authError.code, authError.message);
+        console.error("Firebase Service: Error sending password reset email:", authError.code, authError.message);
          if (authError.code === 'auth/user-not-found' || authError.code === 'auth/invalid-email') {
-            throw new Error("Could not send reset email. Please check the email address.");
-        } else if (authError.code === 'auth/too-many-requests') {
-            throw new Error("Too many requests. Please try again later.");
-        }
-        throw new Error("Failed to send password reset email. Please try again.");
+            // Don't reveal if email exists for security
+             throw new Error("If an account exists for this email, a password reset link has been sent.");
+         }
+        throw new Error("Could not send password reset email. Please try again.");
     }
 }
 
-/**
- * Updates the current user's password. Requires recent login or re-authentication.
- * @param newPassword - The new password for the user.
- * @returns A Promise resolving when the password update is complete.
- * @throws An error if the update fails (e.g., weak password, requires recent login).
- */
+// Update User Password
 export async function updateUserPassword(newPassword: string): Promise<void> {
     const user = auth.currentUser;
     if (!user) {
-        throw new Error("No user is currently logged in.");
+        throw new Error("No authenticated user found.");
     }
-
     try {
-        await fbUpdatePassword(user, newPassword);
-        console.log("Firebase Service: Password updated successfully for user:", user.email);
-        // Consider forcing token refresh after password change if needed
-        // const newToken = await getIdToken(user, true); // Force refresh
-        // Cookies.set(ID_TOKEN_COOKIE_NAME, newToken, { ... });
+        await firebaseUpdatePassword(user, newPassword);
+        console.log("Firebase Service: Password updated successfully for user:", user.uid);
     } catch (error) {
         const authError = error as AuthError;
-        console.error("Firebase Service: Password update error:", authError.code, authError.message);
-        if (authError.code === 'auth/weak-password') {
-            throw new Error("Password is too weak. Please choose a stronger password.");
-        } else if (authError.code === 'auth/requires-recent-login') {
-             throw new Error("This action requires recent login. Please log out and log back in before updating your password.");
+        console.error("Firebase Service: Error updating password:", authError.code, authError.message);
+        if (authError.code === 'auth/requires-recent-login') {
+            throw new Error("This operation is sensitive and requires recent authentication. Please log out and log back in before changing your password.");
+        } else if (authError.code === 'auth/weak-password') {
+             throw new Error("Password is too weak. Please choose a stronger password.");
         }
-        throw new Error("Failed to update password. Please try again.");
+        throw new Error("Could not update password. Please try again.");
     }
 }
-
-
-/**
- * Subscribes to the authentication state changes.
- * Handles token refresh and cookie updates automatically.
- * @param callback - A function to be called whenever the auth state changes.
- *                   It receives the User object (or null if logged out).
- * @returns An unsubscribe function to detach the listener.
- */
-export function onAuthStateChange(callback: (user: User | null) => void) {
-  return onAuthStateChanged(auth, async (user) => {
-    if (user) {
-      // User is signed in, get/refresh token and update cookie
-      try {
-        const idToken = await getIdToken(user, true); // Force refresh if needed
-        Cookies.set(ID_TOKEN_COOKIE_NAME, idToken, {
-            expires: 1,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'strict'
-        });
-        console.log("onAuthStateChange: User signed in, token refreshed/set in cookie.");
-      } catch (error) {
-          console.error("onAuthStateChange: Error refreshing token:", error);
-          // Handle token refresh error (e.g., log user out)
-          await logout(); // Attempt to logout if token refresh fails
-          callback(null); // Notify listener of logout
-          return;
-      }
-    } else {
-      // User is signed out, remove the cookie
-      Cookies.remove(ID_TOKEN_COOKIE_NAME);
-      console.log("onAuthStateChange: User signed out, token cookie removed.");
-    }
-    callback(user); // Notify the listener about the auth state change
-  });
-}
-
-// Export the auth instance if needed elsewhere, though usually interacting via functions is preferred.
-export { auth };
