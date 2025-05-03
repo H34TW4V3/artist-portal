@@ -263,14 +263,17 @@ import {
   /**
    * Adds data for an existing release (not uploaded via ZIP) to Firestore.
    * Determines artist name from auth/profile if not provided.
-   * Does not include zipUrl. Artwork URL is optional. Status is 'existing'.
-   * @param data - The release data including title, date, tracks, spotifyLink. artist is optional.
+   * Does not include zipUrl. Artwork URL is optional (expects URL string if provided, NO UPLOAD). Status is 'existing'.
+   * @param data - The release data including title, date, tracks, spotifyLink, artworkUrl (optional URL). artist is optional.
    * @returns The ID of the newly created Firestore document.
    * @throws Error if authentication fails or Firestore operation fails.
    */
   export async function addExistingRelease(data: ExistingReleaseData): Promise<string> {
       const userId = getCurrentUserId();
       if (!userId) throw new Error("Authentication required. Please log in.");
+
+      // REMOVED Artwork Upload Logic - This function should not upload files.
+      // The artworkUrl in `data` should be a URL string if provided.
 
       // Fetch artist name from Firestore profile if not provided in data
       let artistName = data.artist;
@@ -285,7 +288,7 @@ import {
           title: data.title,
           artist: artistName, // Use determined artist name
           releaseDate: formatDateToString(data.releaseDate), // Standardize date format
-          artworkUrl: data.artworkUrl || null, // Use provided URL or null
+          artworkUrl: data.artworkUrl || null, // Use provided URL string or null
           userId: userId,
           status: 'existing', // Mark as existing release
           tracks: data.tracks || [], // Use provided tracks or empty array
@@ -487,6 +490,4 @@ import {
         throw new Error("Failed to remove release and associated files.");
     }
   }
-
-
     
