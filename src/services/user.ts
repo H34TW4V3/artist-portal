@@ -1,3 +1,4 @@
+
 import {
   getFirestore,
   collection,
@@ -102,62 +103,71 @@ export async function getUserProfileByUid(uid: string): Promise<ProfileFormValue
 }
 
 
-/**
- * Fetches minimal public profile data (email, name, imageUrl, UID) for a user by email.
- * Queries the top-level 'users' collection. Requires rules allowing this query.
- * Assumes the querying user is authenticated.
- */
-export async function getUserProfileByEmail(email: string): Promise<{ uid: string; profile: { email: string; name: string | null; imageUrl: string | null } } | null> {
-  const auth = getAuth(app);
-  const currentUser = auth.currentUser;
-
-  // Enforce authentication check at the beginning of the function
-  if (!currentUser) {
-    console.error("getUserProfileByEmail: Authentication required to query users by email.");
-    throw new Error("Authentication required to perform this action.");
-  }
-
-  if (!email) {
-    console.error("getUserProfileByEmail: Received null or empty email.");
-    return null;
-  }
-
-  const usersRef = collection(db, "users");
-  // Ensure email is queried in lowercase to match potential storage format
-  const q = query(usersRef, where("email", "==", email.toLowerCase()), limit(1));
-
-  try {
-    const querySnapshot = await getDocs(q);
-    if (!querySnapshot.empty) {
-      const userDoc = querySnapshot.docs[0];
-      const userId = userDoc.id;
-      // Read only the fields explicitly allowed by the rules
-      const userData = userDoc.data();
-
-      const profileData = {
-        email: userData.email || "unknown", // Should exist due to query
-        name: userData.name || null,       // Might be null if not set
-        imageUrl: userData.imageUrl || null, // Might be null if not set
-      };
-
-      console.log(`getUserProfileByEmail: Found UID ${userId} for email ${email}. Profile Data:`, profileData);
-      return { uid: userId, profile: profileData }; // Return found data
-
-    } else {
-      console.warn("getUserProfileByEmail: No user document found with email:", email);
-      return null; // Explicitly return null if not found
-    }
-  } catch (error: any) {
-    console.error("getUserProfileByEmail: Error querying user by email:", error);
-    if (error.code === 'permission-denied') {
-      // Be more specific about which rule failed (querying or reading the result)
-      console.error("Firestore Permission Denied: Check your security rules allow authenticated users to query the 'users' collection by email AND read the required fields (email, name, imageUrl).");
-      throw new Error("Permission denied while fetching user profile by email."); // Keep error user-friendly
-    } else {
-      throw new Error("Failed to fetch user profile by email.");
-    }
-  }
-}
+// REMOVED getUserProfileByEmail function entirely as it requires potentially insecure rules
+// /**
+//  * Fetches minimal public profile data (email, name, imageUrl, UID) for a user by email.
+//  * Queries the top-level 'users' collection. Requires rules allowing this query.
+//  * Assumes the querying user is authenticated.
+//  */
+// export async function getUserProfileByEmail(email: string): Promise<{ uid: string; profile: { email: string; name: string | null; imageUrl: string | null } } | null> {
+//   const auth = getAuth(app);
+//   const currentUser = auth.currentUser;
+//
+//   // Enforce authentication check at the beginning of the function
+//   if (!currentUser) {
+//     console.error("getUserProfileByEmail: Authentication required to query users by email.");
+//     throw new Error("Authentication required to perform this action.");
+//   }
+//
+//   if (!email) {
+//     console.error("getUserProfileByEmail: Received null or empty email.");
+//     return null;
+//   }
+//
+//   const usersRef = collection(db, "users");
+//   // Ensure email is queried in lowercase to match potential storage format
+//   const q = query(usersRef, where("email", "==", email.toLowerCase()), limit(1));
+//
+//   try {
+//     const querySnapshot = await getDocs(q);
+//     if (!querySnapshot.empty) {
+//       const userDoc = querySnapshot.docs[0];
+//       const userId = userDoc.id;
+//       // Read only the fields explicitly allowed by the rules
+//       const userData = userDoc.data();
+//
+//       // Fetch the profile sub-document for more details
+//       const profileDocRef = doc(db, "users", userId, "publicProfile", "profile");
+//       const profileSnap = await getDoc(profileDocRef);
+//       const profileData = profileSnap.exists()
+//           ? profileSnap.data() as Partial<ProfileFormValues>
+//           : {};
+//
+//
+//       const finalProfile = {
+//         email: userData.email || profileData.email || "unknown", // Prioritize root email if rules allow, then profile, then unknown
+//         name: profileData.name || userData.name || null, // Prioritize profile name, then root name
+//         imageUrl: profileData.imageUrl || userData.imageUrl || null, // Prioritize profile image, then root image
+//       };
+//
+//       console.log(`getUserProfileByEmail: Found UID ${userId} for email ${email}. Profile Data:`, finalProfile);
+//       return { uid: userId, profile: finalProfile }; // Return found data
+//
+//     } else {
+//       console.warn("getUserProfileByEmail: No user document found with email:", email);
+//       return null; // Explicitly return null if not found
+//     }
+//   } catch (error: any) {
+//     console.error("getUserProfileByEmail: Error querying user by email:", error);
+//     if (error.code === 'permission-denied') {
+//       // More specific error message related to the query rules
+//       console.error("Firestore Permission Denied: Check your security rules allow authenticated users to query the 'users' collection by email AND read the required fields (email, name, imageUrl).");
+//       throw new Error("Permission denied while fetching user profile by email.");
+//     } else {
+//       throw new Error("Failed to fetch user profile by email.");
+//     }
+//   }
+// }
 
 
 /**
@@ -195,8 +205,16 @@ export async function setPublicProfile(uid: string, data: ProfileFormValues, mer
     // 1. Update the root user document with email and uid (using merge to avoid overwriting other fields)
     // This is useful for querying by email at the root level if rules allow.
     // Ensure the 'uid' field is only set if the document might be created, merge usually handles this.
-    await setDoc(rootUserDocRef, { email: emailToSave, uid: uid }, { merge: true });
-    console.log(`Root user document updated/merged for UID: ${uid} with email: ${emailToSave}`);
+    // Note: This might fail if rules disallow writing email/uid directly to the root by the user.
+    // Consider using a Cloud Function for this part if needed for security.
+    try {
+      await setDoc(rootUserDocRef, { email: emailToSave, uid: uid }, { merge: true });
+      console.log(`Root user document updated/merged for UID: ${uid} with email: ${emailToSave}`);
+    } catch (rootDocError) {
+       console.warn(`Could not update root user document for UID ${uid} (might be restricted by rules):`, rootDocError);
+       // Continue with profile update even if root doc fails
+    }
+
 
     // 2. Update the publicProfile sub-document
     await setDoc(profileDocRef, profileDataToSet, { merge: merge });
@@ -207,3 +225,4 @@ export async function setPublicProfile(uid: string, data: ProfileFormValues, mer
     throw new Error("Failed to update user profile.");
   }
 }
+

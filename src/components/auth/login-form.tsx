@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect, useRef } from "react"; // Add React import
@@ -24,8 +25,8 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"; // Import Avatar
-// Import getUserProfileByUid and getUserProfileByEmail directly from user service
-import { getUserProfileByUid, getUserProfileByEmail } from "@/services/user"; // Corrected import
+// Import getUserProfileByUid directly from user service (getUserProfileByEmail is removed)
+import { getUserProfileByUid } from "@/services/user"; // Corrected import
 import type { ProfileFormValues } from "@/components/profile/profile-form"; // Import profile type
 // Import login and MFA functions from auth service, and new email link functions
 import {
@@ -73,9 +74,10 @@ export function LoginForm({ className }: { className?: string }) {
   const [splashLoadingText, setSplashLoadingText] = useState("Logging in..."); // Text for splash
   const [splashUserImageUrl, setSplashUserImageUrl] = useState<string | null>(null); // Image for splash
   const [splashUserName, setSplashUserName] = useState<string | null>(null); // Name for splash
-  // Changed fetchedProfile to hold minimal data needed for Step 3
-  const [fetchedProfileDisplayData, setFetchedProfileDisplayData] = useState<{ name: string | null, imageUrl: string | null } | null>(null);
-  const [fetchedUid, setFetchedUid] = useState<string | null>(null);
+  // Removed fetchedProfileDisplayData as pre-fetching is removed
+  // const [fetchedProfileDisplayData, setFetchedProfileDisplayData] = useState<{ name: string | null, imageUrl: string | null } | null>(null);
+  // Removed fetchedUid as it was only needed for pre-fetching
+  // const [fetchedUid, setFetchedUid] = useState<string | null>(null);
   const [loginMethod, setLoginMethod] = useState<'password' | 'emailLink' | null>(null); // Track selected login method
   const [isProcessingEmailLink, setIsProcessingEmailLink] = useState(false); // State for when verifying email link
   const [unverifiedUser, setUnverifiedUser] = useState<any | null>(null); // Store user object if verification needed
@@ -148,8 +150,7 @@ export function LoginForm({ className }: { className?: string }) {
                      try {
                         // Use UID to fetch full profile for splash display
                         const profile = await getUserProfileByUid(user.uid);
-                        setFetchedProfileDisplayData(profile); // Store fetched profile display data
-                        setFetchedUid(user.uid);    // Store UID
+                        // Removed setting fetchedProfileDisplayData and fetchedUid
                         setSplashUserName(profile?.name || user.email?.split('@')[0] || 'User');
                         setSplashUserImageUrl(profile?.imageUrl || user.photoURL || null);
                      } catch (profileError) {
@@ -157,8 +158,7 @@ export function LoginForm({ className }: { className?: string }) {
                          // Use auth details as fallback
                          setSplashUserName(user.email?.split('@')[0] || 'User');
                          setSplashUserImageUrl(user.photoURL || null);
-                         setFetchedUid(user.uid); // Still store UID
-                         setFetchedProfileDisplayData({ name: user.email?.split('@')[0] || 'User', imageUrl: user.photoURL || null });
+                         // Removed setting fetchedUid
                      }
                 }
                 // Success! Listener will handle state update and redirect
@@ -189,10 +189,7 @@ export function LoginForm({ className }: { className?: string }) {
 
   // Function to get initials for avatar fallback
   const getInitials = (): string => {
-      const name = fetchedProfileDisplayData?.name;
-      if (name) {
-          return name.split(' ').map(n => n[0]).join('').toUpperCase();
-      }
+      // Removed fetchedProfileDisplayData reference
       const email = form.getValues("artistId");
       return email?.charAt(0).toUpperCase() || 'U';
   };
@@ -249,45 +246,7 @@ export function LoginForm({ className }: { className?: string }) {
     return isValid;
   };
 
-   // Function to fetch user profile display data *before* proceeding to password step
-   const fetchProfileForPasswordStep = async () => {
-       const email = form.getValues("artistId");
-       if (!email) {
-           toast({ title: "Missing Email", description: "Please enter your email first.", variant: "destructive" });
-           goToStep(1); // Go back if email missing
-           return false;
-       }
-       setIsSubmitting(true); // Show loading indicator
-       setSplashLoadingText("Checking profile...");
-       // No splash screen here, just loading state on buttons maybe
-       // setShowSplash(true);
-
-       try {
-           // Fetch UID and minimal profile using the updated service function
-           const userQueryResult = await getUserProfileByEmail(email); // Fetch from user service
-
-           if (!userQueryResult || !userQueryResult.uid || !userQueryResult.profile) {
-                throw new Error("User profile not found or inaccessible."); // Or a more specific error based on rules
-           }
-
-           setFetchedProfileDisplayData(userQueryResult.profile); // Store name and image URL
-           setFetchedUid(userQueryResult.uid); // Store UID
-           console.log("fetchProfileForPasswordStep: Fetched profile display data:", userQueryResult.profile);
-
-           setIsSubmitting(false);
-           return true; // Profile data fetched successfully
-       } catch (error) {
-           console.error("Error fetching profile before password step:", error);
-           setIsSubmitting(false);
-           toast({
-               title: "Profile Check Failed",
-                // Use error message if available, otherwise generic
-               description: error instanceof Error ? error.message : "Could not verify profile information.",
-               variant: "destructive",
-           });
-           return false; // Indicate failure
-       }
-   };
+   // REMOVED fetchProfileForPasswordStep function
 
 
   // Handle "Next" button click
@@ -297,8 +256,8 @@ export function LoginForm({ className }: { className?: string }) {
              goToStep(2); // To Choose Method
          } else if (currentStep === 2) {
              if (loginMethod === 'password') {
-                  const profileFetched = await fetchProfileForPasswordStep();
-                  if (profileFetched) goToStep(3); // To Password
+                  // REMOVED call to fetchProfileForPasswordStep()
+                  goToStep(3); // Go directly to Password step
              }
              else if (loginMethod === 'emailLink') await handleSendEmailLink(); // Sends link, goes to step 6
              else toast({ title: "Choose Method", description: "Please select a sign-in method.", variant: "destructive" });
@@ -332,8 +291,7 @@ export function LoginForm({ className }: { className?: string }) {
         } else if (currentStep === 3 || currentStep === 6) { // Updated logic (step 5 -> 6)
             // Go back from Password or Email Sent step
             setLoginMethod(null); // Reset method choice
-            setFetchedProfileDisplayData(null); // Clear profile data fetched for step 3
-            setFetchedUid(null);     // Clear UID
+            // REMOVED clearing fetchedProfileDisplayData and fetchedUid
             goToStep(2); // Go back to Choose Method step
         } else if (currentStep === 2) {
             // Go back from Choose Method step
@@ -353,9 +311,9 @@ export function LoginForm({ className }: { className?: string }) {
      }
      setIsSubmitting(true);
      setSplashLoadingText("Logging in...");
-      // Use fetched profile display data for splash screen if available
-      setSplashUserName(fetchedProfileDisplayData?.name || values.artistId.split('@')[0]);
-      setSplashUserImageUrl(fetchedProfileDisplayData?.imageUrl || null);
+      // Use email for splash initially, profile details will be fetched later
+      setSplashUserName(values.artistId.split('@')[0]);
+      setSplashUserImageUrl(null);
       setShowSplash(true); // Show splash screen
 
      try {
@@ -393,8 +351,8 @@ export function LoginForm({ className }: { className?: string }) {
 
           // --- Email Verified - Proceed with Splash ---
           console.log("LoginForm: Login successful via service. User UID:", user.uid);
-           // Update splash text with fetched name if available
-           setSplashLoadingText(`Welcome, ${fetchedProfileDisplayData?.name || user.email?.split('@')[0]}!`);
+           // Show generic welcome, name/image will be fetched on home page
+           setSplashLoadingText(`Welcome!`);
            // Splash remains visible, AuthProvider listener handles redirect.
            // setIsSubmitting(false); // No need to set here, splash is showing
 
@@ -505,9 +463,9 @@ export function LoginForm({ className }: { className?: string }) {
                // Verification successful! Proceed with splash/redirect
                setUnverifiedUser(null); // Clear state
                toast({ title: "Email Verified!", variant: "default" });
-                // Use fetched profile display data for splash if available
-                setSplashUserName(fetchedProfileDisplayData?.name || refreshedUser.email?.split('@')[0] || 'User');
-                setSplashUserImageUrl(fetchedProfileDisplayData?.imageUrl || refreshedUser.photoURL || null);
+                // Show generic welcome
+                setSplashUserName(refreshedUser.email?.split('@')[0] || 'User');
+                setSplashUserImageUrl(refreshedUser.photoURL || null);
                setSplashLoadingText(`Welcome, ${splashUserName}!`);
                // Splash stays visible, listener will redirect
            } else {
@@ -587,9 +545,9 @@ export function LoginForm({ className }: { className?: string }) {
       }
       setIsSubmitting(true);
       setSplashLoadingText("Verifying code...");
-       // Use fetched profile display data for splash if available
-       setSplashUserName(fetchedProfileDisplayData?.name || 'User');
-       setSplashUserImageUrl(fetchedProfileDisplayData?.imageUrl || null);
+       // Show generic splash info
+       setSplashUserName(getAuth(app).currentUser?.email?.split('@')[0] || 'User');
+       setSplashUserImageUrl(getAuth(app).currentUser?.photoURL || null);
       setShowSplash(true);
 
       try {
@@ -697,18 +655,12 @@ export function LoginForm({ className }: { className?: string }) {
 
                 {/* Step 3: Password */}
                  <div className={cn("space-y-4 h-full flex flex-col", getAnimationClasses(3))} aria-hidden={currentStep !== 3}>
-                      {currentStep === 3 && loginMethod === 'password' && fetchedProfileDisplayData && ( // Show only if password method chosen AND profile fetched
+                      {currentStep === 3 && loginMethod === 'password' && ( // Show only if password method chosen
                           <>
                               <div className="flex flex-col items-center text-center p-6 border-b border-border/30">
-                                   {/* Display avatar and name using fetchedProfileDisplayData */}
-                                   <Avatar className="h-20 w-20 mb-4 border-4 border-primary/50">
-                                       <AvatarImage src={fetchedProfileDisplayData.imageUrl || undefined} alt={fetchedProfileDisplayData.name || ''} />
-                                       <AvatarFallback className="text-3xl bg-muted text-muted-foreground">
-                                           {getInitials()}
-                                       </AvatarFallback>
-                                   </Avatar>
+                                   {/* Removed Avatar and Name display */}
                                    <h3 className="text-xl font-semibold tracking-tight text-foreground">
-                                       {fetchedProfileDisplayData.name || 'Artist'} {/* Show profile name */}
+                                       Enter Password
                                    </h3>
                               </div>
                               <div className="flex-grow p-6 space-y-4">
@@ -716,8 +668,8 @@ export function LoginForm({ className }: { className?: string }) {
                               </div>
                          </>
                       )}
-                       {/* Optional: Show a loader or message if profile is being fetched */}
-                        {currentStep === 3 && loginMethod === 'password' && !fetchedProfileDisplayData && isSubmitting && (
+                       {/* Optional: Loader while submitting */}
+                        {currentStep === 3 && isSubmitting && (
                             <div className="flex justify-center items-center h-full">
                                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
                             </div>
@@ -882,4 +834,3 @@ export function LoginForm({ className }: { className?: string }) {
     </div>
   );
 }
-
