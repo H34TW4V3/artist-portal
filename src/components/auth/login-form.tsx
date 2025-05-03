@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect, useRef } from "react"; // Add React import
@@ -8,7 +7,8 @@ import * as z from "zod";
 import { getAuth, type RecaptchaVerifier, PhoneMultiFactorGenerator, reload } from "firebase/auth"; // Import reload
 import { app } from '@/services/firebase-config'; // Import Firebase config
 // Added MailCheck, LogIn, RefreshCcw icons
-import { Loader2, ArrowLeft, ArrowRight, Mail, KeyRound, Phone, MessageSquare, MailCheck, LogIn, RefreshCcw, AlertCircle } from "lucide-react";
+// Added ListChecks for Choose Method step
+import { Loader2, ArrowLeft, ArrowRight, Mail, KeyRound, Phone, MessageSquare, MailCheck, LogIn, RefreshCcw, AlertCircle, ListChecks } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation"; // Use next/navigation
 
 import { Button } from "@/components/ui/button";
@@ -51,15 +51,15 @@ const loginSchema = z.object({
 
 type LoginFormValues = z.infer<typeof loginSchema>;
 
-// Define steps - adjusted based on flow changes
+// Define steps - Adjusted based on flow changes (Added step 4, renumbered others)
 const STEPS = [
   { id: 1, name: "Artist ID", icon: Mail },
-  // Step 2 (Choose Method) is shown after email entry
   { id: 2, name: "Choose Method", icon: LogIn },
   { id: 3, name: "Password", icon: KeyRound }, // Only shown if password method chosen
-  { id: 4, name: "Verify 2FA Code", icon: MessageSquare }, // MFA Step (Phone only)
-  { id: 5, name: "Check Your Email", icon: MailCheck }, // Email Link Sent Step (For chosen email link)
-  { id: 6, name: "Verify Your Email", icon: MailCheck }, // Email Verification Step (For unverified email after password login)
+  { id: 4, name: "Choose Verification", icon: ListChecks }, // New Step: Choose MFA method if required
+  { id: 5, name: "Verify 2FA Code", icon: MessageSquare }, // MFA Step (Phone only) - Now Step 5
+  { id: 6, name: "Check Your Email", icon: MailCheck }, // Email Link Sent Step - Now Step 6
+  { id: 7, name: "Verify Your Email", icon: MailCheck }, // Email Verification Step - Now Step 7
 ];
 
 // Define the component
@@ -228,8 +228,8 @@ export function LoginForm({ className }: { className?: string }) {
     let fieldsToValidate: (keyof LoginFormValues)[] = [];
     if (step === 1) fieldsToValidate = ["artistId"];
     else if (step === 3 && loginMethod === 'password') fieldsToValidate = ["password"]; // Only validate password if chosen
-    else if (step === 4) fieldsToValidate = ["verificationCode"]; // MFA step
-    // Step 2 (Choose Method), 5 (Email Sent), 6 (Verify Email) don't need form validation
+    else if (step === 5) fieldsToValidate = ["verificationCode"]; // MFA code entry step
+    // Steps 2 (Choose Method), 4 (Choose Verification), 6 (Email Sent), 7 (Verify Email) don't need form validation
 
      // Skip validation if no fields required for this step
      if (fieldsToValidate.length === 0) return true;
@@ -255,21 +255,27 @@ export function LoginForm({ className }: { className?: string }) {
        }
        setIsSubmitting(true); // Show loading indicator
        setSplashLoadingText("Checking profile...");
-       setShowSplash(true); // Use splash screen during fetch
+       // No splash screen here, just loading state on buttons maybe
+       // setShowSplash(true);
 
        try {
-           // Fetch profile using UID - this needs UID first
-           // We don't have UID yet, so fetch by email (assuming this is allowed by rules)
-           // NOTE: Fetching profile here might expose existence of email. Consider alternatives.
-           // const profileData = await getUserProfileByEmail(email); // Using getUserProfileByEmail
-           // Fetch profile using UID from the service
-           const profileData = await getUserProfileByUid(email); // Corrected to use Uid
+           // We need UID. Try fetching UID from Firestore using email query.
+           const userDoc = await getUserProfileByEmail(email); // Fetch from user service
+           if (!userDoc || !userDoc.uid) {
+                throw new Error("User not found."); // Or a more specific error based on rules
+           }
+           const uid = userDoc.uid;
+           console.log("fetchProfileForPasswordStep: Found UID:", uid);
+
+           // Now fetch the profile data using the UID
+           const profileData = await getUserProfileByUid(uid);
+           console.log("fetchProfileForPasswordStep: Fetched profile data:", profileData);
 
 
            if (profileData) {
                setFetchedProfile(profileData);
-               setFetchedUid(email); // Store UID from profileData if it has it, else need to adjust logic
-               setShowSplash(false); // Hide splash on success
+               setFetchedUid(uid); // Store UID
+               // setShowSplash(false); // Hide splash on success
                setIsSubmitting(false);
                return true; // Profile fetched successfully
            } else {
@@ -278,11 +284,12 @@ export function LoginForm({ className }: { className?: string }) {
            }
        } catch (error) {
            console.error("Error fetching profile before password step:", error);
-           setShowSplash(false); // Hide splash on error
+           // setShowSplash(false); // Hide splash on error
            setIsSubmitting(false);
            toast({
                title: "Profile Check Failed",
-               description: "Could not verify profile information.", // Keep generic
+                // Use error message if available, otherwise generic
+               description: error instanceof Error ? error.message : "Could not verify profile information.",
                variant: "destructive",
            });
            return false; // Indicate failure
@@ -294,28 +301,24 @@ export function LoginForm({ className }: { className?: string }) {
   const handleNext = async () => {
      if (await validateStep(currentStep)) {
          if (currentStep === 1) {
-             // After validating email, directly go to Choose Method step
-             goToStep(2);
+             goToStep(2); // To Choose Method
          } else if (currentStep === 2) {
-             // Based on loginMethod chosen in Step 2, go to Password (3) or Email Sent (5)
              if (loginMethod === 'password') {
-                  // Fetch profile info *before* going to password step
                   const profileFetched = await fetchProfileForPasswordStep();
-                  if (profileFetched) {
-                      goToStep(3); // Proceed to password step if profile found
-                  }
-                  // If fetch failed, stay on step 2, error toast shown by fetchProfileForPasswordStep
+                  if (profileFetched) goToStep(3); // To Password
              }
-             else if (loginMethod === 'emailLink') await handleSendEmailLink(); // Trigger sending link
+             else if (loginMethod === 'emailLink') await handleSendEmailLink(); // Sends link, goes to step 6
              else toast({ title: "Choose Method", description: "Please select a sign-in method.", variant: "destructive" });
-         } else if (currentStep === 3 && loginMethod === 'password' && !mfaResolver) {
-             // If on password step AND not already in MFA flow, trigger the main submit
-             await form.handleSubmit(onSubmit)();
-         } else if (currentStep === 4) { // MFA step
+         } else if (currentStep === 3 && loginMethod === 'password') {
+             await form.handleSubmit(onSubmit)(); // Submit login attempt
+         } else if (currentStep === 4) {
+             // Step 4 now requires action (Send SMS/Email Link), handled by button clicks
+             toast({ title: "Choose Verification", description: "Please select how to verify.", variant: "default" });
+         } else if (currentStep === 5) { // MFA code entry step
              await handleVerifyMfaCode();
          }
-         // Step 5 (Email Sent) has no "Next", user interacts with email link
-         // Step 6 (Verify Email) handles "Check Verification" logic separately
+         // Step 6 (Email Sent confirmation) has no "Next"
+         // Step 7 (Verify Email) handled separately
      }
    };
 
@@ -323,17 +326,17 @@ export function LoginForm({ className }: { className?: string }) {
   const handlePrevious = () => {
     // Logic to go back, potentially resetting states like loginMethod or MFA details
     if (currentStep > 1) {
-        // Clear MFA state if going back from MFA step (4)
-        if (currentStep === 4) {
+        // Clear MFA state if going back from MFA code entry (5) or Choose Verification (4)
+        if (currentStep === 5 || currentStep === 4) {
             setMfaResolver(null);
             setMfaHints([]);
             setVerificationId(null);
             form.setValue("verificationCode", "");
             goToStep(3); // Go back to password step
-        } else if (currentStep === 6) { // Going back from Email Verification step
+        } else if (currentStep === 7) { // Going back from Email Verification step
              setUnverifiedUser(null); // Clear the unverified user state
              goToStep(3); // Go back to password step
-        } else if (currentStep === 3 || currentStep === 5) { // Updated logic
+        } else if (currentStep === 3 || currentStep === 6) { // Updated logic (step 5 -> 6)
             // Go back from Password or Email Sent step
             setLoginMethod(null); // Reset method choice
             setFetchedProfile(null); // Clear profile data fetched for step 3
@@ -357,7 +360,7 @@ export function LoginForm({ className }: { className?: string }) {
      }
      setIsSubmitting(true);
      setSplashLoadingText("Logging in...");
-      // Use fetched profile data for splash screen
+      // Use fetched profile data for splash screen if available
       setSplashUserName(fetchedProfile?.name || values.artistId.split('@')[0]);
       setSplashUserImageUrl(fetchedProfile?.imageUrl || null);
       setShowSplash(true); // Show splash screen
@@ -371,32 +374,9 @@ export function LoginForm({ className }: { className?: string }) {
          console.log("MFA Required, hints:", loginResult.hints);
          setMfaResolver(loginResult.mfaResolver);
          setMfaHints(loginResult.hints);
-         setShowSplash(false); // Hide splash for MFA step
-
-
-         // Attempt to automatically send SMS code
-          const phoneHint = loginResult.hints?.find(hint => hint.factorId === PhoneMultiFactorGenerator.FACTOR_ID);
-          if (phoneHint && recaptchaVerifier) {
-               const phoneInfoOptions = {
-                 multiFactorHint: phoneHint,
-                 session: loginResult.mfaResolver.session,
-               };
-               try {
-                 const verId = await sendMfaVerificationCode(loginResult.mfaResolver, phoneInfoOptions, recaptchaVerifier);
-                 setVerificationId(verId);
-                 console.log("Verification code sent successfully.");
-                 goToStep(4); // Move to MFA code entry step (Step 4)
-               } catch (sendError) {
-                   console.error("Failed to send verification code automatically:", sendError);
-                   toast({ title: "MFA Error", description: "Could not send verification code. Please try again.", variant: "destructive" });
-                   setMfaResolver(null); setMfaHints([]); goToStep(3); // Go back to password step on failure
-               }
-          } else {
-               console.warn("Could not automatically determine phone number or reCAPTCHA not ready for MFA.");
-               toast({ title: "MFA Setup Incomplete", description: "Cannot proceed with MFA automatically.", variant: "destructive" });
-               setMfaResolver(null); setMfaHints([]); goToStep(3); // Go back to password step
-          }
-          setIsSubmitting(false); // Reset submitting state for MFA step
+         setShowSplash(false); // Hide splash for MFA selection step
+         goToStep(4); // Go to Choose Verification step (Step 4)
+         setIsSubmitting(false); // Allow interaction on verification selection step
 
        } else if (loginResult && 'uid' in loginResult) {
           // Standard login successful
@@ -413,7 +393,7 @@ export function LoginForm({ className }: { className?: string }) {
                     toast({ title: "Verification Error", description: "Could not send verification email. Please try resending.", variant: "destructive" });
                }
                setShowSplash(false); // Hide splash for verification step
-               goToStep(6); // Go to email verification step
+               goToStep(7); // Go to email verification step (Step 7)
                setIsSubmitting(false); // Allow interaction on verification step
                return; // Stop further processing until verified
            }
@@ -441,6 +421,81 @@ export function LoginForm({ className }: { className?: string }) {
        });
      }
    }
+
+   // --- Handler for sending MFA SMS code ---
+   const handleSendSmsCode = async () => {
+      if (!mfaResolver || !recaptchaVerifier) {
+          toast({ title: "Error", description: "MFA process not ready or security check failed.", variant: "destructive" });
+          return;
+      }
+      const phoneHint = mfaHints.find(hint => hint.factorId === PhoneMultiFactorGenerator.FACTOR_ID);
+       if (!phoneHint) {
+           toast({ title: "Error", description: "No phone number registered for 2FA.", variant: "destructive" });
+           return;
+       }
+
+       setIsSubmitting(true);
+       setSplashLoadingText("Sending SMS code...");
+       setShowSplash(true); // Show splash while sending
+
+       try {
+            const phoneInfoOptions = {
+                 multiFactorHint: phoneHint,
+                 session: mfaResolver.session,
+            };
+            const verId = await sendMfaVerificationCode(mfaResolver, phoneInfoOptions, recaptchaVerifier);
+            setVerificationId(verId);
+            console.log("Verification code sent successfully via SMS.");
+            setShowSplash(false);
+            goToStep(5); // Move to MFA code entry step (Step 5)
+       } catch (sendError) {
+            console.error("Failed to send verification code via SMS:", sendError);
+            toast({ title: "MFA Error", description: "Could not send SMS verification code.", variant: "destructive" });
+            setShowSplash(false);
+            // Stay on step 4
+       } finally {
+            setIsSubmitting(false);
+       }
+   }
+
+   // --- Handler for sending MFA Email Link ---
+    const handleSendMfaEmailLink = async () => {
+        if (!mfaResolver) {
+            toast({ title: "Error", description: "MFA process not ready.", variant: "destructive" });
+            return;
+        }
+        const email = form.getValues("artistId");
+        if (!email) {
+             toast({ title: "Error", description: "Email address not found.", variant: "destructive" });
+            return;
+        }
+
+        setIsSubmitting(true);
+        setSplashLoadingText("Sending email verification link...");
+        setShowSplash(true);
+
+        try {
+            // Construct the redirect URL (current base URL) - important for email link verification
+            const redirectUrl = window.location.origin + window.location.pathname;
+            await sendSignInLinkToEmail(email, redirectUrl); // Re-use existing function
+
+            setShowSplash(false);
+            toast({
+                title: "Check Your Email!",
+                description: `A sign-in verification link has been sent to ${email}. Click it to complete login.`,
+                duration: 7000,
+            });
+            goToStep(6); // Move to "Check Your Email" confirmation step (Step 6)
+        } catch (error) {
+            setShowSplash(false);
+            console.error("Error sending MFA email link:", error);
+            toast({ title: "Email Link Failed", description: "Could not send verification link.", variant: "destructive" });
+            // Stay on step 4
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
 
    // --- Handler for checking email verification status ---
    const handleCheckVerification = async () => {
@@ -489,7 +544,7 @@ export function LoginForm({ className }: { className?: string }) {
     };
 
 
-   // --- Handler for sending email link ---
+   // --- Handler for sending email link (initial login choice) ---
    const handleSendEmailLink = async () => {
       const email = form.getValues("artistId");
       if (!email) {
@@ -515,7 +570,7 @@ export function LoginForm({ className }: { className?: string }) {
               description: `A sign-in link has been sent to ${email}.`,
               duration: 5000,
           });
-          goToStep(5); // Move to "Email Sent" confirmation step
+          goToStep(6); // Move to "Email Sent" confirmation step (Step 6)
       } catch (error) {
           setShowSplash(false); // Hide splash on error
           console.error("Error sending email link:", error);
@@ -654,7 +709,7 @@ export function LoginForm({ className }: { className?: string }) {
                               <div className="flex flex-col items-center text-center p-6 border-b border-border/30">
                                    {/* Display avatar and name using fetchedProfile */}
                                    <Avatar className="h-20 w-20 mb-4 border-4 border-primary/50">
-                                       <AvatarImage src={fetchedProfile.imageUrl || undefined} alt={fetchedProfile.name} />
+                                       <AvatarImage src={fetchedProfile.imageUrl || undefined} alt={fetchedProfile.name || ''} />
                                        <AvatarFallback className="text-3xl bg-muted text-muted-foreground">
                                            {getInitials()}
                                        </AvatarFallback>
@@ -676,29 +731,69 @@ export function LoginForm({ className }: { className?: string }) {
                         )}
                 </div>
 
-                 {/* Step 4: MFA Code Entry (2FA via Phone) */}
-                  <div className={cn("space-y-4 h-full flex flex-col", getAnimationClasses(4))} aria-hidden={currentStep !== 4}>
-                      {currentStep === 4 && ( // Ensure this is step 4
+                {/* Step 4: Choose MFA Verification Method */}
+                <div className={cn("space-y-4 h-full flex flex-col items-center", getAnimationClasses(4))} aria-hidden={currentStep !== 4}>
+                     {currentStep === 4 && mfaResolver && (
+                         <>
+                              <div className="flex flex-col items-center text-center p-6 border-b border-border/30 w-full">
+                                   <ListChecks className="h-16 w-16 mb-4 text-primary" />
+                                   <h3 className="text-xl font-semibold tracking-tight text-foreground">Two-Factor Verification Required</h3>
+                                   <p className="text-muted-foreground text-sm mt-1">Choose how you'd like to verify your identity.</p>
+                              </div>
+                              <div className="flex-grow p-6 space-y-4 w-full flex flex-col items-center justify-center">
+                                   {/* Show SMS option only if a phone hint exists */}
+                                   {mfaHints.some(hint => hint.factorId === PhoneMultiFactorGenerator.FACTOR_ID) && (
+                                       <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="lg"
+                                            className="w-full sm:w-3/4 justify-start"
+                                            onClick={handleSendSmsCode}
+                                            disabled={isSubmitting || !recaptchaVerifier} // Need recaptcha for SMS
+                                       >
+                                            <Phone className="mr-3 h-5 w-5" /> Send code via SMS
+                                       </Button>
+                                   )}
+                                   {/* Always show Email Link option (as fallback or primary) */}
+                                   <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="lg"
+                                        className="w-full sm:w-3/4 justify-start"
+                                        onClick={handleSendMfaEmailLink}
+                                        disabled={isSubmitting}
+                                   >
+                                        <MailCheck className="mr-3 h-5 w-5" /> Send code via Email Link
+                                   </Button>
+                                     {/* reCAPTCHA Container (needed for SMS) */}
+                                     <div ref={recaptchaContainerRef} className="my-2 flex justify-center"></div>
+                              </div>
+                         </>
+                     )}
+                 </div>
+
+
+                 {/* Step 5: MFA Code Entry (2FA via Phone) - Renumbered */}
+                  <div className={cn("space-y-4 h-full flex flex-col", getAnimationClasses(5))} aria-hidden={currentStep !== 5}>
+                      {currentStep === 5 && ( // Ensure this is step 5
                           <>
                               <div className="flex flex-col items-center text-center p-6 border-b border-border/30">
                                   <Phone className="h-16 w-16 mb-4 text-primary" />
-                                  <h3 className="text-xl font-semibold tracking-tight text-foreground">Two-Factor Authentication</h3>
+                                  <h3 className="text-xl font-semibold tracking-tight text-foreground">Check Your Phone</h3>
                                   <p className="text-muted-foreground text-sm mt-1">
-                                       Enter the code sent to your registered phone number{mfaHints.length > 0 && mfaHints[0]?.displayName ? ` ending in ${mfaHints[0].displayName.slice(-4)}` : ''}.
+                                       Enter the 6-digit code sent to your registered phone number{mfaHints.length > 0 && mfaHints.find(h => h.factorId === PhoneMultiFactorGenerator.FACTOR_ID)?.displayName ? ` ending in ${mfaHints.find(h => h.factorId === PhoneMultiFactorGenerator.FACTOR_ID)!.displayName!.slice(-4)}` : ''}.
                                   </p>
                               </div>
                               <div className="flex-grow p-6 space-y-4">
                                     <FormField control={form.control} name="verificationCode" render={({ field }) => ( <FormItem><FormLabel>Verification Code</FormLabel><FormControl><Input type="text" placeholder="6-digit code" inputMode="numeric" pattern="[0-9]*" maxLength={6} {...field} disabled={isSubmitting} className="text-center tracking-[0.5em] text-base"/> </FormControl><FormMessage /></FormItem> )} />
-                                     {/* reCAPTCHA Container */}
-                                     <div ref={recaptchaContainerRef} className="my-4 flex justify-center"></div>
                               </div>
                          </>
                      )}
                   </div>
 
-                {/* Step 5: Email Link Sent Confirmation */}
-                <div className={cn("space-y-4 h-full flex flex-col items-center justify-center text-center", getAnimationClasses(5))} aria-hidden={currentStep !== 5}>
-                    {currentStep === 5 && ( // Conditionally render the content for step 5
+                {/* Step 6: Email Link Sent Confirmation - Renumbered */}
+                <div className={cn("space-y-4 h-full flex flex-col items-center justify-center text-center", getAnimationClasses(6))} aria-hidden={currentStep !== 6}>
+                    {currentStep === 6 && ( // Conditionally render the content for step 6
                         <>
                             <MailCheck className="h-20 w-20 mb-6 text-green-500" />
                             <h3 className="text-xl font-semibold tracking-tight text-foreground">Check Your Inbox!</h3>
@@ -710,9 +805,9 @@ export function LoginForm({ className }: { className?: string }) {
                      )}
                 </div>
 
-                 {/* Step 6: Verify Email Address */}
-                 <div className={cn("space-y-4 h-full flex flex-col items-center justify-center text-center", getAnimationClasses(6))} aria-hidden={currentStep !== 6}>
-                     {currentStep === 6 && unverifiedUser && (
+                 {/* Step 7: Verify Email Address - Renumbered */}
+                 <div className={cn("space-y-4 h-full flex flex-col items-center justify-center text-center", getAnimationClasses(7))} aria-hidden={currentStep !== 7}>
+                     {currentStep === 7 && unverifiedUser && (
                          <>
                              <MailCheck className="h-20 w-20 mb-6 text-primary" />
                              <h3 className="text-xl font-semibold tracking-tight text-foreground">Verify Your Email</h3>
@@ -755,7 +850,7 @@ export function LoginForm({ className }: { className?: string }) {
 
       {/* Footer with navigation */}
        {/* Hide footer on email sent confirmation step and verification step */}
-       {currentStep !== 5 && currentStep !== 6 && (
+       {currentStep !== 6 && currentStep !== 7 && (
         <div className="flex justify-between items-center mt-auto p-4 h-16 border-t border-border/30">
             <Button type="button" variant="ghost" size="icon" onClick={handlePrevious} disabled={currentStep === 1 || isSubmitting} className={cn("h-10 w-10", currentStep === 1 && "invisible")} aria-label="Previous Step">
                 <ArrowLeft className="h-5 w-5" />
@@ -765,14 +860,28 @@ export function LoginForm({ className }: { className?: string }) {
               variant="ghost"
               size="icon"
               onClick={handleNext}
-              disabled={isSubmitting || (currentStep === 2 && !loginMethod) || (currentStep === 4 && (!form.watch("verificationCode") || form.watch("verificationCode")?.length !== 6))}
-              className={cn("h-10 w-10", isSubmitting && "animate-pulse")}
-              aria-label={currentStep === 4 ? "Verify Code" : (currentStep === 3 ? "Login" : "Next Step")}
+              // Adjusted disabled logic:
+              // - Always disabled if submitting
+              // - On step 2 (Choose Method), disabled if no method selected
+              // - On step 4 (Choose Verification), disable "Next" as actions are specific buttons
+              // - On step 5 (Code Entry), disabled if code is not 6 digits
+              disabled={isSubmitting ||
+                         (currentStep === 2 && !loginMethod) ||
+                         currentStep === 4 || // Disable generic Next on step 4
+                         (currentStep === 5 && (!form.watch("verificationCode") || form.watch("verificationCode")?.length !== 6))
+                        }
+              className={cn("h-10 w-10",
+                            isSubmitting && "animate-pulse",
+                            currentStep === 4 && "invisible" // Hide generic Next on step 4
+                            )}
+               // Adjust label based on the context of the "Next" action
+              aria-label={currentStep === 5 ? "Verify Code" : (currentStep === 3 ? "Login" : "Next Step")}
             >
                  {isSubmitting ? (
                  <Loader2 className="h-5 w-5 animate-spin" />
                  ) : (
-                  (currentStep === 3 || currentStep === 4) ? <LogIn className="h-5 w-5 text-primary" /> : <ArrowRight className="h-5 w-5" />
+                  // Show LogIn icon on Password step (3) or MFA Code step (5)
+                  (currentStep === 3 || currentStep === 5) ? <LogIn className="h-5 w-5 text-primary" /> : <ArrowRight className="h-5 w-5" />
                  )}
              </Button>
         </div>
