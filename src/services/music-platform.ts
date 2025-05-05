@@ -344,6 +344,7 @@ import {
             // 1. Handle New Artwork Upload (to Cloud Storage)
             console.log("Uploading new artwork for release:", releaseId);
             const artworkFileName = `${userId}_${Date.now()}_${newArtworkFile.name}`;
+            // **UPDATED PATH**
             const artworkStorageRef = ref(storage, `releaseArtwork/${userId}/${artworkFileName}`);
             const snapshot = await uploadBytes(artworkStorageRef, newArtworkFile);
             finalArtworkUrl = await getDownloadURL(snapshot.ref);
@@ -501,5 +502,4 @@ import {
         throw new Error("Failed to remove release and associated files.");
     }
   }
-    
-    
+

@@ -162,6 +162,7 @@ export function AddExistingReleaseModal({ isOpen, onClose, onSuccess }: AddExist
       const artworkFile = values.artworkFile;
       if (artworkFile) {
         const artworkFileName = `${user.uid}_${Date.now()}_${artworkFile.name}`;
+        // **UPDATED PATH**
         const artworkStorageRef = ref(storage, `releaseArtwork/${user.uid}/${artworkFileName}`);
         const snapshot = await uploadBytes(artworkStorageRef, artworkFile);
         artworkUrl = await getDownloadURL(snapshot.ref);
