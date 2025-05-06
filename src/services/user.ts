@@ -169,11 +169,11 @@ export async function setPublicProfile(uid: string, data: ProfileFormValues, mer
  * @param artistName The desired display name for the new artist.
  * @param email The email for the new user account.
  * @param password A temporary or user-defined password for the new account.
- * @param isLabel Indicates if the new user is a label account.
+ * @param isLabel This parameter is now ignored, and new users are always created with isLabel: false.
  * @returns The UID of the newly created user.
  * @throws If user creation or profile creation fails.
  */
-export async function createNewArtistAndUser(artistName: string, email: string, password?: string, isLabel: boolean = false): Promise<string> {
+export async function createNewArtistAndUser(artistName: string, email: string, password?: string, _isLabelIgnored: boolean = false): Promise<string> {
     const auth = getAuth(app);
     let tempPassword = password;
 
@@ -199,12 +199,12 @@ export async function createNewArtistAndUser(artistName: string, email: string, 
             phoneNumber: null,
             imageUrl: null,
             hasCompletedTutorial: false,
-            isLabel: isLabel, // Set isLabel based on parameter
+            isLabel: false, // Always set isLabel to false for new users created via this function
         };
         
         // Create the publicProfile document (merge: false to ensure creation)
         await setPublicProfile(newUser.uid, initialProfileData, false); 
-        console.log("Public profile created in Firestore for new user:", newUser.uid, "with isLabel:", isLabel);
+        console.log("Public profile created in Firestore for new user:", newUser.uid, "with isLabel: false");
 
         return newUser.uid;
 
