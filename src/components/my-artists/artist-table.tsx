@@ -3,14 +3,14 @@
 import type { ManagedArtist } from '@/services/artists';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Skeleton } from '@/components/ui/skeleton';
+import { Skeleton } from '@/components/ui/skeleton'; // Corrected import
 import { cn } from '@/lib/utils';
 
 interface ArtistTableProps {
   artists: ManagedArtist[];
   onSelectArtist: (artist: ManagedArtist) => void;
   selectedArtistId?: string | null;
-  isLoading?: boolean; // Optional loading state
+  isLoading?: boolean; 
 }
 
 export function ArtistTable({ artists, onSelectArtist, selectedArtistId, isLoading }: ArtistTableProps) {
@@ -18,13 +18,13 @@ export function ArtistTable({ artists, onSelectArtist, selectedArtistId, isLoadi
 
   if (isLoading) {
     return (
-      <div className="space-y-2">
+      <div className="space-y-2 p-2"> {/* Added padding for skeleton consistency */}
         {Array.from({ length: 3 }).map((_, index) => (
-          <div key={`skel-artist-${index}`} className="flex items-center gap-3 p-2">
-            <Skeleton className="h-10 w-10 rounded-full" />
-            <div className="flex-grow space-y-1">
-              <Skeleton className="h-4 w-3/4" />
-              <Skeleton className="h-3 w-1/2" />
+          <div key={`skel-artist-${index}`} className="flex items-center gap-3 p-2 rounded-md bg-muted/20"> {/* Light background for skeletons */}
+            <Skeleton className="h-10 w-10 rounded-full bg-muted/50" />
+            <div className="flex-grow space-y-1.5"> {/* Adjusted spacing */}
+              <Skeleton className="h-4 w-3/4 bg-muted/50" />
+              <Skeleton className="h-3 w-1/2 bg-muted/50" />
             </div>
           </div>
         ))}

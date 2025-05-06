@@ -37,17 +37,17 @@ export async function getUserProfileByUid(uid: string): Promise<ProfileFormValue
     const docSnap = await getDoc(profileDocRef);
     if (docSnap.exists()) {
       console.log("getUserProfileByUid: Profile data found for UID:", uid, docSnap.data());
-      const data = docSnap.data() as Partial<ProfileFormValues>; // Data from publicProfile/profile
+      const data = docSnap.data() as Partial<ProfileFormValues>; 
 
       // Construct profile ensuring all fields, including isLabel, are sourced from publicProfile
       const completeProfile: ProfileFormValues = {
         name: data.name || "User",
-        email: data.email || "unknown", // Email from profile doc
+        email: data.email || "unknown", 
         bio: data.bio ?? null,
         phoneNumber: data.phoneNumber ?? null,
         imageUrl: data.imageUrl ?? null,
         hasCompletedTutorial: data.hasCompletedTutorial ?? false,
-        isLabel: data.isLabel ?? false, // isLabel from publicProfile document
+        isLabel: data.isLabel ?? false, 
       };
       
       // Fallback to auth user details if some profile fields are missing, but prioritize profileDoc
@@ -60,22 +60,19 @@ export async function getUserProfileByUid(uid: string): Promise<ProfileFormValue
         if (!completeProfile.imageUrl && currentUser.photoURL) {
           completeProfile.imageUrl = currentUser.photoURL;
         }
-         // If profileDoc email is 'unknown', but auth email exists, it might indicate an update process or initial setup.
-         // For consistency in the UI (especially if email updates are pending), we use the profile's email if set.
-         // If profile email is 'unknown' and auth email is available, it could be logged or handled.
         if (completeProfile.email === "unknown" && currentUser.email) {
-             console.warn(`getUserProfileByUid: Profile email is 'unknown' for UID ${uid}, auth email is ${currentUser.email}. Using profile email if available, otherwise auth email.`);
-             completeProfile.email = currentUser.email; // Use auth email if profile one is literally "unknown"
+             completeProfile.email = currentUser.email; 
         }
       }
-       if (!completeProfile.name || completeProfile.name === "User") {
-         completeProfile.name = completeProfile.email?.split('@')[0] || 'User';
+       if ((!completeProfile.name || completeProfile.name === "User") && completeProfile.email !== "unknown") {
+         completeProfile.name = completeProfile.email.split('@')[0];
        }
+
 
       return completeProfile;
     } else {
       console.warn("getUserProfileByUid: No public profile document found at path:", profileDocRef.path);
-      // If no profile sub-document, create a default based on auth user
+      // If no profile sub-document, attempt to create a default based on auth user info ONLY IF auth user matches UID
       const auth = getAuth(app);
       const currentUser = auth.currentUser;
       if (currentUser?.uid === uid) {
@@ -87,12 +84,12 @@ export async function getUserProfileByUid(uid: string): Promise<ProfileFormValue
           phoneNumber: null,
           imageUrl: currentUser.photoURL || null,
           hasCompletedTutorial: false,
-          isLabel: false, // Default isLabel to false when creating from auth fallback
+          isLabel: false, // Default isLabel to false
         };
-        // Persist this default profile
-        // await setPublicProfile(uid, defaultData, false); // Let profile form handle initial save if needed
+        // Do NOT persist here automatically. Let the calling context (e.g., ProfileForm) handle creation if needed.
         return defaultData;
       }
+      console.warn(`getUserProfileByUid: No auth user or UID mismatch. Cannot create default for ${uid}.`);
       return null;
     }
   } catch (error: any) {
@@ -108,7 +105,7 @@ export async function getUserProfileByUid(uid: string): Promise<ProfileFormValue
 
 /**
  * Sets or updates the public profile sub-document.
- * The root user document will still store email, uid, and isLabel for quick checks/rules.
+ * The root user document will still store email, uid, and potentially a redundant isLabel for quick checks/rules.
  * Ensures all fields from ProfileFormValues are either provided or explicitly set to null/default.
  * 'isLabel' is now primarily managed within the publicProfile document.
  */
@@ -132,16 +129,16 @@ export async function setPublicProfile(uid: string, data: ProfileFormValues, mer
     // Data for the publicProfile sub-document
     const profileDataToSet: ProfileFormValues = {
       name: data.name || "User",
-      email: emailToSave, // Email is stored here as primary source for profile display
+      email: emailToSave, 
       bio: data.bio ?? null,
       phoneNumber: data.phoneNumber ?? null,
       imageUrl: data.imageUrl ?? null,
       hasCompletedTutorial: data.hasCompletedTutorial ?? false,
-      isLabel: data.isLabel ?? false, // isLabel is stored in publicProfile
+      isLabel: data.isLabel ?? false, 
     };
     console.log("setPublicProfile: Prepared profileDataToSet for publicProfile:", profileDataToSet);
 
-    // Update the publicProfile sub-document
+    // Update/create the publicProfile sub-document
     await setDoc(profileDocRef, profileDataToSet, { merge: merge });
     console.log(`Public profile sub-document ${merge ? 'updated/merged' : 'created/overwritten'} for UID: ${uid}`);
 
@@ -149,10 +146,15 @@ export async function setPublicProfile(uid: string, data: ProfileFormValues, mer
     // Update root document with email, uid and isLabel for potential quick queries or rules.
     // The source of truth for the detailed profile (including isLabel for form edits) is publicProfile.
     try {
-      await setDoc(rootUserDocRef, { email: emailToSave, uid: uid, isLabel: data.isLabel ?? false }, { merge: true });
-      console.log(`Root user document updated/merged for UID: ${uid} with email: ${emailToSave} and isLabel: ${data.isLabel ?? false}`);
+      // Only update root if it already exists or if we are creating (merge=false typically for creation)
+      const rootDocDataToSet: { email: string, uid: string, isLabel?: boolean } = { email: emailToSave, uid: uid };
+      if (data.isLabel !== undefined) {
+          rootDocDataToSet.isLabel = data.isLabel;
+      }
+      await setDoc(rootUserDocRef, rootDocDataToSet, { merge: true }); // Always merge on root for safety
+      console.log(`Root user document updated/merged for UID: ${uid} with email: ${emailToSave} and isLabel: ${data.isLabel ?? 'unchanged'}`);
     } catch (rootDocError) {
-       console.warn(`Could not update root user document for UID ${uid} (might be restricted by rules):`, rootDocError);
+       console.warn(`Could not update root user document for UID ${uid} (might be restricted by rules or not exist yet for a new user):`, rootDocError);
     }
 
   } catch (error) {
@@ -167,10 +169,11 @@ export async function setPublicProfile(uid: string, data: ProfileFormValues, mer
  * @param artistName The desired display name for the new artist.
  * @param email The email for the new user account.
  * @param password A temporary or user-defined password for the new account.
+ * @param isLabel Indicates if the new user is a label account.
  * @returns The UID of the newly created user.
  * @throws If user creation or profile creation fails.
  */
-export async function createNewArtistAndUser(artistName: string, email: string, password?: string): Promise<string> {
+export async function createNewArtistAndUser(artistName: string, email: string, password?: string, isLabel: boolean = false): Promise<string> {
     const auth = getAuth(app);
     let tempPassword = password;
 
@@ -191,16 +194,17 @@ export async function createNewArtistAndUser(artistName: string, email: string, 
         // Initial data for the publicProfile sub-document
         const initialProfileData: ProfileFormValues = {
             name: artistName,
-            email: newUser.email || email, // Use the email from the created user
+            email: newUser.email || email, 
             bio: `Welcome, ${artistName}!`,
             phoneNumber: null,
             imageUrl: null,
             hasCompletedTutorial: false,
-            isLabel: false, // Default isLabel to false for new artists
+            isLabel: isLabel, // Set isLabel based on parameter
         };
         
-        await setPublicProfile(newUser.uid, initialProfileData, false); // Creates the publicProfile doc
-        console.log("Public profile created in Firestore for new user:", newUser.uid);
+        // Create the publicProfile document (merge: false to ensure creation)
+        await setPublicProfile(newUser.uid, initialProfileData, false); 
+        console.log("Public profile created in Firestore for new user:", newUser.uid, "with isLabel:", isLabel);
 
         return newUser.uid;
 
@@ -216,3 +220,4 @@ export async function createNewArtistAndUser(artistName: string, email: string, 
         throw new Error("Failed to create new artist profile and user account.");
     }
 }
+
