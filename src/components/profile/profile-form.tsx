@@ -1,5 +1,4 @@
 
-
 "use client"
 
 import { useState, useEffect, useRef } from "react";
@@ -41,13 +40,14 @@ const profileSchema = z.object({
   imageUrl: z.string().url("Invalid URL.").optional().nullable(),
   hasCompletedTutorial: z.boolean().optional().default(false),
   isLabel: z.boolean().optional().default(false), // isLabel is part of the profile data
+  managedByLabelId: z.string().optional().nullable(), // Added managedByLabelId
 });
 
 export type ProfileFormValues = z.infer<typeof profileSchema>;
 
 
 interface ProfileFormProps {
-    initialData?: ProfileFormValues; // This will include isLabel
+    initialData?: ProfileFormValues; // This will include isLabel and managedByLabelId
     updateFunction: (data: ProfileFormValues, newImageFile?: File) => Promise<{ updatedData: ProfileFormValues }>;
     onSuccess?: (updatedData: ProfileFormValues) => void;
     onCancel?: () => void;
@@ -82,7 +82,8 @@ export function ProfileForm({
             phoneNumber: null,
             imageUrl: null,
             hasCompletedTutorial: false,
-            isLabel: false, // Default for isLabel if no initialData
+            isLabel: false, 
+            managedByLabelId: null, // Default for managedByLabelId
         },
         mode: "onChange",
     });
@@ -98,7 +99,8 @@ export function ProfileForm({
                 phoneNumber: initialData.phoneNumber ?? null,
                 imageUrl: initialData.imageUrl ?? null,
                 hasCompletedTutorial: initialData.hasCompletedTutorial ?? false,
-                isLabel: initialData.isLabel ?? false, // Initialize isLabel from initialData
+                isLabel: initialData.isLabel ?? false,
+                managedByLabelId: initialData.managedByLabelId ?? null, // Initialize managedByLabelId
             };
             form.reset(mergedDefaults);
             setCurrentImageUrl(initialData.imageUrl ?? null);
@@ -136,11 +138,11 @@ export function ProfileForm({
     };
 
     async function onSubmit(values: ProfileFormValues) {
-        console.log("ProfileForm onSubmit called with values (including isLabel):", values);
+        console.log("ProfileForm onSubmit called with values (including isLabel and managedByLabelId):", values);
         setIsSubmitting(true);
 
         try {
-            // Ensure isLabel from the form (values.isLabel) is passed to updateFunction
+            // Ensure isLabel and managedByLabelId from the form are passed
             const { updatedData } = await updateFunction(values, selectedImageFile);
             console.log("ProfileForm: updateFunction successful, updatedData:", updatedData);
 
@@ -149,7 +151,7 @@ export function ProfileForm({
             setSelectedImageFile(undefined);
             setImagePreviewUrl(null);
 
-            form.reset(updatedData); // Reset form with all updated data, including isLabel
+            form.reset(updatedData); 
 
             if (onSuccess) {
                 onSuccess(updatedData);
@@ -211,7 +213,7 @@ export function ProfileForm({
 
                  <FormField
                     control={form.control}
-                    name="isLabel" // Field for isLabel
+                    name="isLabel" 
                     render={({ field }) => (
                         <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm bg-background/50 dark:bg-background/30">
                             <div className="space-y-0.5">

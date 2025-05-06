@@ -27,8 +27,9 @@ import {
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-// Placeholder for a function to create a new artist profile and potentially a new user
-// import { createNewArtistAndUser } from "@/services/user"; 
+import { createNewArtistAndUser } from "@/services/user";
+import { useAuth } from "@/context/auth-context";
+
 
 const createArtistSchema = z.object({
   artistName: z.string().min(2, "Artist name must be at least 2 characters.").max(100, "Artist name too long."),
@@ -46,6 +47,7 @@ interface CreateArtistModalProps {
 export function CreateArtistModal({ isOpen, onClose, onSuccess }: CreateArtistModalProps) {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { user: labelUser } = useAuth(); // Get the currently logged-in label user
 
   const form = useForm<CreateArtistFormValues>({
     resolver: zodResolver(createArtistSchema),
@@ -58,22 +60,24 @@ export function CreateArtistModal({ isOpen, onClose, onSuccess }: CreateArtistMo
 
   async function onSubmit(values: CreateArtistFormValues) {
     setIsSubmitting(true);
+    if (!labelUser?.uid) {
+        toast({ title: "Authentication Error", description: "Label user not found. Please log in again.", variant: "destructive" });
+        setIsSubmitting(false);
+        return;
+    }
     try {
-      // Placeholder: Implement actual artist and user creation logic
-      // For now, we'll just simulate success and pass the name back.
-      console.log("Simulating creation of new artist:", values);
-      // await createNewArtistAndUser(values.artistName, values.artistEmail); // Example
-      await new Promise(resolve => setTimeout(resolve, 1500));
-
+      // Pass labelUser.uid as the labelManagerId
+      // isLabel is now hardcoded to false within createNewArtistAndUser
+      await createNewArtistAndUser(values.artistName, values.artistEmail, undefined, false, labelUser.uid);
 
       toast({
-        title: "Artist Profile Creation (Simulated)",
-        description: `"${values.artistName}" would be created with email ${values.artistEmail}. This is a placeholder.`,
+        title: "Artist Profile Created",
+        description: `Successfully created profile for ${values.artistName}.`,
         variant: "default",
       });
       onSuccess(values.artistName);
       form.reset();
-      // onClose(); // onSuccess should handle closing via parent state
+      // onClose(); // Parent handles closing via onSuccess if needed
     } catch (error) {
       console.error("Error creating new artist profile:", error);
       toast({
@@ -86,13 +90,14 @@ export function CreateArtistModal({ isOpen, onClose, onSuccess }: CreateArtistMo
     }
   }
 
+  // Corrected logic here, ensure no syntax errors before this return
   return (
     <Dialog open={isOpen} onOpenChange={(open) => {if (!open) {form.reset(); onClose();}}}>
       <DialogContent className="sm:max-w-md bg-card/85 dark:bg-card/70 border-border/50">
         <DialogHeader>
           <DialogTitle className="text-primary">Create New Artist Profile</DialogTitle>
           <DialogDescription className="text-muted-foreground">
-            Set up a new artist. This will also create a new user account if the email isn't already in use.
+            Set up a new artist. This will create a user account and link them to your label.
           </DialogDescription>
         </DialogHeader>
 
@@ -145,4 +150,3 @@ export function CreateArtistModal({ isOpen, onClose, onSuccess }: CreateArtistMo
     </Dialog>
   );
 }
-
