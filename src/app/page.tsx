@@ -6,7 +6,7 @@ import Image from "next/image";
 import UserProfile from "@/components/common/user-profile";
 import { TimeWeather } from "@/components/common/time-weather";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { LayoutDashboard, FileText, Home, ListMusic, CalendarClock, Loader2 } from "lucide-react";
+import { LayoutDashboard, FileText, Home, ListMusic, CalendarClock, Users, Briefcase } from "lucide-react"; // Added Users icon for My Artists
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/auth-context";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -16,14 +16,14 @@ import { Button } from "@/components/ui/button";
 import { getUserProfileByUid } from "@/services/user";
 import type { ProfileFormValues } from "@/components/profile/profile-form";
 import { useToast } from "@/hooks/use-toast";
-import { DashboardRedirectModal } from "@/components/dashboard/dashboard-redirect-modal"; // Import the new modal
+import { DashboardRedirectModal } from "@/components/dashboard/dashboard-redirect-modal";
 
 
 const PineappleIcon = () => (
   <img
       src="https://media.lordicon.com/icons/wired/gradient/1843-pineapple.svg"
       alt="Pineapple Icon"
-      className="h-12 w-12 md:h-16 md:w-16" // Increased size for Material You feel
+      className="h-12 w-12 md:h-16 md:w-16"
       data-ai-hint="pineapple logo icon"
   />
 );
@@ -41,8 +41,6 @@ const greetings = [
     "Yo, {{name}}!",
 ];
 
-// Removed borderStyles array
-
 export default function HomePage() {
     const { user, loading: authLoading } = useAuth();
     const router = useRouter();
@@ -50,10 +48,9 @@ export default function HomePage() {
     const [profileData, setProfileData] = useState<ProfileFormValues | null | undefined>(undefined);
     const [profileLoading, setProfileLoading] = useState(true);
     const [clientGreeting, setClientGreeting] = useState("");
-    // Removed randomBorderStyles state
     const [isDashboardModalOpen, setIsDashboardModalOpen] = useState(false);
 
-    const navItems = [
+    const baseNavItems = [
         {
             title: "Dashboard",
             href: "/dashboard",
@@ -73,15 +70,15 @@ export default function HomePage() {
            title: "Spotify for Artists",
            href: SPOTIFY_FOR_ARTISTS_URL,
            imageSrc: "https://s29.q4cdn.com/175625835/files/images/S4A.jpeg",
-           description: "Access your Spotify profile", // Description won't be shown but good for data structure
+           description: "Access your Spotify profile",
            external: true
          },
       ];
 
+    const [navItems, setNavItems] = useState(baseNavItems);
+
 
     useEffect(() => {
-        // Removed random border style generation
-
         const fetchProfileData = async () => {
             if (authLoading || !user?.uid) {
                 setProfileLoading(false);
@@ -95,6 +92,21 @@ export default function HomePage() {
 
                 if (fetchedProfile) {
                     setProfileData(fetchedProfile);
+                    // Update navItems based on isLabel status
+                    if (fetchedProfile.isLabel) {
+                        setNavItems([
+                            ...baseNavItems,
+                            {
+                                title: "My Artists",
+                                href: "/my-artists", // Placeholder link
+                                icon: <Users className="h-12 w-12 md:h-16 md:w-16" />,
+                                description: "Manage your roster",
+                                external: false,
+                            }
+                        ]);
+                    } else {
+                        setNavItems(baseNavItems);
+                    }
                 } else {
                   console.log("No public profile found for user, creating default...");
                   const defaultData: ProfileFormValues = {
@@ -104,10 +116,10 @@ export default function HomePage() {
                     bio: null,
                     phoneNumber: null,
                     hasCompletedTutorial: false,
+                    isLabel: false, // Default isLabel for new profiles
                   };
-                  // This function was missing from the provided context, assuming it exists.
-                  // await setPublicProfile(user.uid, defaultData, false); 
                   setProfileData(defaultData);
+                  setNavItems(baseNavItems); // Default nav items if no profile or not a label
                 }
             } catch (error) {
                 console.error("Error fetching user profile for greeting:", error);
@@ -118,16 +130,17 @@ export default function HomePage() {
                      duration: 2000,
                  });
                 setProfileData(null);
+                setNavItems(baseNavItems); // Default nav items on error
             } finally {
                 setProfileLoading(false);
             }
         };
 
         fetchProfileData();
-    }, [user, authLoading, toast]);
+    }, [user, authLoading, toast]); // Removed baseNavItems from dependency array
 
     const getRandomGreeting = (name: string) => {
-        if (typeof window === 'undefined') return `Welcome, ${name}!`; // SSR fallback
+        if (typeof window === 'undefined') return `Welcome, ${name}!`;
         const randomIndex = Math.floor(Math.random() * greetings.length);
         return greetings[randomIndex].replace("{{name}}", name);
     };
@@ -163,7 +176,7 @@ export default function HomePage() {
     const isLoading = authLoading || profileLoading;
     const displayName = profileData?.name || user?.displayName || (user?.email ? user.email.split('@')[0] : 'Artist');
 
-     if (isLoading || profileData === undefined ) { // Removed randomBorderStyles.length check
+     if (isLoading || profileData === undefined ) {
         return (
              <div className="flex min-h-screen w-full flex-col bg-transparent">
                  <main className="relative z-10 flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
@@ -233,31 +246,28 @@ export default function HomePage() {
                         const animationClass = "opacity-0 animate-fade-in-up";
                         const animationDelay = `${index * 120}ms`;
                         const activeStateClasses = "active:scale-[0.97] active:opacity-90 transition-transform duration-100";
-                        // Removed currentBorderStyle, cards will use their default styling or specific styling below
 
                         const cardContent = item.imageSrc ? (
-                            // For items with imageSrc (like Spotify), render only the image within the styled anchor
                             <div className={cn(
                                 "relative w-full h-full overflow-hidden bg-card/60 dark:bg-card/50 border border-border/30 shadow-lg transition-all duration-300 ease-out cursor-pointer",
                                 "hover:shadow-xl hover:border-primary/60 hover:-translate-y-1.5 hover-glow",
-                                "rounded-xl" // Consistent rounded corners for Material You
+                                "rounded-xl"
                             )}>
                                 <Image
                                     src={item.imageSrc}
                                     alt={item.title}
                                     layout="fill"
-                                    objectFit="cover" // Ensure image covers the area
+                                    objectFit="cover"
                                     className="transition-transform duration-300 group-hover:scale-105"
                                     data-ai-hint="spotify for artists banner"
                                     unoptimized
                                 />
                             </div>
                         ) : (
-                            // For other items, render the Card component with icon and text
                             <Card className={cn(
                                 "bg-card/60 dark:bg-card/50 border border-border/30 shadow-lg transition-all duration-300 ease-out cursor-pointer text-center h-full flex flex-col justify-center items-center p-6 overflow-hidden",
                                 "hover:shadow-xl hover:border-primary/60 hover:-translate-y-1.5 hover-glow",
-                                "rounded-xl" // Consistent rounded corners for Material You
+                                "rounded-xl"
                             )}>
                                 <CardContent className="flex flex-col items-center justify-center space-y-3 md:space-y-4 p-0">
                                     <div className="p-3 md:p-4 rounded-2xl bg-primary/10 text-primary transition-colors group-hover:bg-primary/20 mb-2">
@@ -311,4 +321,3 @@ export default function HomePage() {
         </div>
     );
 }
-

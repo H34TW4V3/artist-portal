@@ -5,7 +5,7 @@ import { useState, useEffect, useRef } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
-import { Loader2, Upload, AlertCircle, Mail, Phone, User, FileText, ShieldIcon } from "lucide-react"; 
+import { Loader2, Upload, AlertCircle, Mail, Phone, User, FileText, ShieldIcon, Users } from "lucide-react"; 
 import Image from "next/image";
 
 import { Button } from "@/components/ui/button";
@@ -28,7 +28,7 @@ import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import { Separator } from "@/components/ui/separator";
 
-// Schema for profile data - smsMfaEnabled removed, emailLinkSignInEnabled removed
+// Schema for profile data - added isLabel
 const profileSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters.").max(50, "Name must be 50 characters or less."),
   email: z.string().email("Invalid email address."),
@@ -37,13 +37,11 @@ const profileSchema = z.object({
       .refine(val => !val || /^[+]*[(]{0,1}[0-9]{1,4}[)]{0,1}[-\s\./0-9]*$/.test(val), {
           message: "Invalid phone number format.",
        }),
-  imageUrl: z.string().url("Invalid URL.").optional().nullable(), // This will store the URL, not the file
+  imageUrl: z.string().url("Invalid URL.").optional().nullable(),
   hasCompletedTutorial: z.boolean().optional().default(false),
-  // emailLinkSignInEnabled: z.boolean().optional().default(false), // Removed
+  isLabel: z.boolean().optional().default(false), // Added isLabel field
 });
 
-// Ensure ProfileFormValues exactly matches the schema including optionality for emailLinkSignInEnabled if it were present.
-// Since it's removed from schema, we only need Omit if it was ever part of the passed `initialData` type incorrectly.
 export type ProfileFormValues = z.infer<typeof profileSchema>;
 
 
@@ -79,11 +77,11 @@ export function ProfileForm({
         defaultValues: initialData || {
             name: "",
             email: "",
-            bio: null, // Ensure nullable fields default to null if not provided
+            bio: null,
             phoneNumber: null,
             imageUrl: null,
             hasCompletedTutorial: false,
-            // emailLinkSignInEnabled: false, // This field is removed from schema
+            isLabel: false, // Default for isLabel
         },
         mode: "onChange",
     });
@@ -97,15 +95,15 @@ export function ProfileForm({
                 email: initialData.email || "",
                 bio: initialData.bio ?? null,
                 phoneNumber: initialData.phoneNumber ?? null,
-                imageUrl: initialData.imageUrl ?? null, // Use the URL for the form value too
+                imageUrl: initialData.imageUrl ?? null,
                 hasCompletedTutorial: initialData.hasCompletedTutorial ?? false,
-                // emailLinkSignInEnabled is removed
+                isLabel: initialData.isLabel ?? false, // Initialize isLabel
             };
             form.reset(mergedDefaults);
             setCurrentImageUrl(initialData.imageUrl ?? null);
             setFormInitialName(initialData.name || "User");
-            setSelectedImageFile(undefined); // Clear any previously selected file
-            setImagePreviewUrl(null);      // Clear preview
+            setSelectedImageFile(undefined);
+            setImagePreviewUrl(null);
         }
     }, [initialData, form]);
 
@@ -122,13 +120,13 @@ export function ProfileForm({
                 return;
             }
 
-            setSelectedImageFile(file); // Store the file object
+            setSelectedImageFile(file);
             const reader = new FileReader();
             reader.onloadend = () => {
-                setImagePreviewUrl(reader.result as string); // Show client-side preview
+                setImagePreviewUrl(reader.result as string);
             };
             reader.readAsDataURL(file);
-            form.setValue('imageUrl', '', { shouldDirty: true }); // Mark form dirty; imageUrl field in schema is for URL
+            form.setValue('imageUrl', '', { shouldDirty: true });
         }
     };
 
@@ -140,18 +138,15 @@ export function ProfileForm({
         console.log("ProfileForm onSubmit called with values:", values);
         setIsSubmitting(true);
 
-        // Pass the form values and the selected image file (if any) to the updateFunction
         try {
             const { updatedData } = await updateFunction(values, selectedImageFile);
             console.log("ProfileForm: updateFunction successful, updatedData:", updatedData);
 
-            // Update local component state based on the data returned from updateFunction
             setFormInitialName(updatedData.name);
-            setCurrentImageUrl(updatedData.imageUrl ?? null); // Update currentImageUrl from returned data
-            setSelectedImageFile(undefined); // Clear selected file after successful upload
-            setImagePreviewUrl(null);      // Clear preview
+            setCurrentImageUrl(updatedData.imageUrl ?? null);
+            setSelectedImageFile(undefined);
+            setImagePreviewUrl(null);
 
-            // Reset the form with the new data to clear dirty state, validation errors, etc.
             form.reset(updatedData);
 
             if (onSuccess) {
@@ -159,13 +154,11 @@ export function ProfileForm({
             }
         } catch (error) {
             console.error("ProfileForm: Error during updateFunction call:", error);
-            // Error toast is likely handled by the parent updateFunction or UserProfile component
         } finally {
             setIsSubmitting(false);
         }
     }
 
-    // Determine if form is dirty: either RHF says it's dirty OR a new image has been selected
     const formIsDirty = formIsDirtyState || !!selectedImageFile;
     const formIsValid = formIsValidState;
 
@@ -180,7 +173,6 @@ export function ProfileForm({
                     <FormLabel>Profile Picture</FormLabel>
                     <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
                         <Avatar className="h-20 w-20 sm:h-24 sm:w-24 cursor-pointer border-2 border-primary/30 hover:border-primary/60 transition-colors" onClick={handleAvatarClick}>
-                           {/* Display preview if available, otherwise current image, then fallback */}
                            <AvatarImage src={imagePreviewUrl || currentImageUrl || undefined} alt={formInitialName} />
                             <AvatarFallback className="text-2xl sm:text-3xl bg-muted text-muted-foreground">
                                 {formInitialName?.split(' ').map(n => n[0]).join('').toUpperCase() || 'U'}
@@ -190,13 +182,7 @@ export function ProfileForm({
                             <Button type="button" variant="outline" size="sm" onClick={handleAvatarClick} disabled={isSubmitting}>
                                 <Upload className="mr-2 h-4 w-4" /> Change Picture
                             </Button>
-                            {/* Hidden file input, controlled by the button/avatar click */}
                             <input type="file" ref={fileInputRef} accept="image/*" onChange={handleFileChange} className="hidden" disabled={isSubmitting} />
-                            {/* The imageUrl field in the form is for the URL, not the file itself.
-                                It's managed by the parent component after upload.
-                                We don't need a FormField for 'imageUrl' here for file upload.
-                                The selectedImageFile state handles the file.
-                            */}
                             <FormDescription className="text-xs">Click avatar or button to upload (JPG, PNG, GIF, max 5MB).</FormDescription>
                         </div>
                     </div>
@@ -213,22 +199,45 @@ export function ProfileForm({
 
                 <FormField control={form.control} name="email" render={({ field }) => ( <FormItem><FormLabel className="flex items-center gap-1.5"><Mail className="h-3.5 w-3.5"/>Account Email</FormLabel><FormControl><Input type="email" placeholder="your.email@example.com" {...field} disabled={isSubmitting} /></FormControl><FormDescription className="text-xs">Change your sign-in email. Verification will be required.</FormDescription><FormMessage /></FormItem> )} />
 
-                <FormField control={form.control} name="phoneNumber" render={({ field }) => ( <FormItem><FormLabel className="flex items-center gap-1.5"><Phone className="h-3.5 w-3.5"/>Phone Number</FormLabel><FormControl><Input type="tel" placeholder="e.g., +1 555-123-4567" {...field} value={field.value ?? ""} disabled={isSubmitting} /></FormControl><FormDescription className="text-xs">Used for urgent communication. SMS 2FA is currently disabled.</FormDescription><FormMessage /></FormItem> )} />
+                <FormField control={form.control} name="phoneNumber" render={({ field }) => ( <FormItem><FormLabel className="flex items-center gap-1.5"><Phone className="h-3.5 w-3.5"/>Phone Number</FormLabel><FormControl><Input type="tel" placeholder="e.g., +1 555-123-4567" {...field} value={field.value ?? ""} disabled={isSubmitting} /></FormControl><FormDescription className="text-xs">Used for urgent communication.</FormDescription><FormMessage /></FormItem> )} />
 
                 <FormField control={form.control} name="bio" render={({ field }) => ( <FormItem><FormLabel className="flex items-center gap-1.5"><FileText className="h-3.5 w-3.5"/>Bio</FormLabel><FormControl><Textarea placeholder="Tell us a little bit about yourself or your music..." className="resize-y min-h-[80px] sm:min-h-[100px]" {...field} value={field.value ?? ""} disabled={isSubmitting} /></FormControl><FormDescription className="text-xs">A short bio (optional, max 300 characters).</FormDescription><FormMessage /></FormItem> )} />
 
                 <Separator className="my-6" />
 
-                 <h3 className="text-lg font-semibold text-foreground mb-3">Account Security</h3>
+                <h3 className="text-lg font-semibold text-foreground mb-3">Account Settings</h3>
+
+                 <FormField
+                    control={form.control}
+                    name="isLabel"
+                    render={({ field }) => (
+                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm bg-background/50 dark:bg-background/30">
+                            <div className="space-y-0.5">
+                                <FormLabel className="flex items-center gap-2"><Users className="h-4 w-4" /> Label Account</FormLabel>
+                                <FormDescription className="text-xs">
+                                    Enable if this account represents a label managing multiple artists.
+                                </FormDescription>
+                            </div>
+                            <FormControl>
+                                <Switch
+                                    checked={field.value}
+                                    onCheckedChange={field.onChange}
+                                    disabled={isSubmitting}
+                                    aria-readonly={isSubmitting}
+                                />
+                            </FormControl>
+                        </FormItem>
+                    )}
+                />
 
 
                  <div className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm bg-background/50 dark:bg-background/30">
                     <div className="space-y-0.5">
                         <FormLabel className="flex items-center gap-2">
-                             <ShieldIcon className="h-4 w-4" /> SMS Two-Factor Auth (2FA)
+                             <ShieldIcon className="h-4 w-4" /> Two-Factor Authentication (2FA)
                         </FormLabel>
                         <FormDescription className="text-xs">
-                             SMS-based 2FA is currently disabled for this portal.
+                             {isSmsMfaEnrolled ? "SMS 2FA is currently enabled." : "SMS-based 2FA is currently disabled."}
                         </FormDescription>
                     </div>
                      <Button
@@ -237,9 +246,9 @@ export function ProfileForm({
                          size="sm"
                          onClick={onManageMfa}
                          disabled={isSubmitting}
-                         title={"View 2FA Status"}
+                         title={isSmsMfaEnrolled ? "Manage 2FA" : "Setup 2FA"}
                      >
-                         View Status
+                         {isSmsMfaEnrolled ? "Manage" : "Setup"}
                      </Button>
                  </div>
 

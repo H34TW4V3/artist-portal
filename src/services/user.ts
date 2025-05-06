@@ -15,7 +15,7 @@ import {
   addDoc,
   getDoc,
 } from "firebase/firestore";
-import { getAuth, createUserWithEmailAndPassword, updateProfile } from "firebase/auth"; // Import createUserWithEmailAndPassword and updateProfile
+import { getAuth, createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
 import { app, db } from './firebase-config';
 import type { ProfileFormValues } from "@/components/profile/profile-form";
 
@@ -45,7 +45,7 @@ export async function getUserProfileByUid(uid: string): Promise<ProfileFormValue
         phoneNumber: data.phoneNumber ?? null,
         imageUrl: data.imageUrl ?? null,
         hasCompletedTutorial: data.hasCompletedTutorial ?? false,
-        // emailLinkSignInEnabled is removed from ProfileFormValues
+        isLabel: data.isLabel ?? false, // Include isLabel
       };
       
       const auth = getAuth(app);
@@ -79,7 +79,7 @@ export async function getUserProfileByUid(uid: string): Promise<ProfileFormValue
           phoneNumber: null,
           imageUrl: currentUser.photoURL || null,
           hasCompletedTutorial: false,
-          // emailLinkSignInEnabled is removed
+          isLabel: false, // Default for isLabel
         };
       }
       return null;
@@ -123,13 +123,13 @@ export async function setPublicProfile(uid: string, data: ProfileFormValues, mer
       phoneNumber: data.phoneNumber ?? null,
       imageUrl: data.imageUrl ?? null,
       hasCompletedTutorial: data.hasCompletedTutorial ?? false,
-      // emailLinkSignInEnabled is removed
+      isLabel: data.isLabel ?? false, // Include isLabel
     };
     console.log("setPublicProfile: Prepared profileDataToSet:", profileDataToSet);
 
     try {
-      await setDoc(rootUserDocRef, { email: emailToSave, uid: uid }, { merge: true });
-      console.log(`Root user document updated/merged for UID: ${uid} with email: ${emailToSave}`);
+      await setDoc(rootUserDocRef, { email: emailToSave, uid: uid, isLabel: data.isLabel ?? false }, { merge: true }); // Also save isLabel to root if needed
+      console.log(`Root user document updated/merged for UID: ${uid} with email: ${emailToSave} and isLabel: ${data.isLabel}`);
     } catch (rootDocError) {
        console.warn(`Could not update root user document for UID ${uid} (might be restricted by rules):`, rootDocError);
     }
@@ -157,37 +157,29 @@ export async function createNewArtistAndUser(artistName: string, email: string, 
     let tempPassword = password;
 
     if (!tempPassword) {
-        // Generate a strong random password if none is provided
         tempPassword = Math.random().toString(36).slice(-10) + Math.random().toString(36).slice(-10).toUpperCase();
         console.log(`Generated temporary password for new user ${email}: ${tempPassword}`);
-        // It's crucial to communicate this password to the user securely or prompt them to set one immediately.
-        // For this example, we'll proceed, but real-world scenarios need secure handling.
     }
 
     try {
-        // 1. Create the Firebase user
         const userCredential = await createUserWithEmailAndPassword(auth, email, tempPassword);
         const newUser = userCredential.user;
         console.log("New Firebase user created successfully:", newUser.uid, newUser.email);
 
-        // 2. Update the Firebase Auth user's display name
         await updateProfile(newUser, { displayName: artistName });
         console.log("Firebase Auth profile updated with displayName:", artistName);
 
-        // 3. Create the public profile document in Firestore
         const initialProfileData: ProfileFormValues = {
             name: artistName,
-            email: newUser.email || email, // Use email from auth object if available
+            email: newUser.email || email,
             bio: `Welcome, ${artistName}!`,
             phoneNumber: null,
-            imageUrl: null, // Or a default image URL
-            hasCompletedTutorial: false, // New users haven't completed tutorial
+            imageUrl: null,
+            hasCompletedTutorial: false,
+            isLabel: false, // Default isLabel to false for new artists
         };
-        await setPublicProfile(newUser.uid, initialProfileData, false); // Use merge:false for initial creation
+        await setPublicProfile(newUser.uid, initialProfileData, false);
         console.log("Public profile created in Firestore for new user:", newUser.uid);
-
-        // TODO: Consider sending a welcome email with the temporary password
-        // or a password reset link to prompt the user to set their own password.
 
         return newUser.uid;
 
