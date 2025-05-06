@@ -1,13 +1,11 @@
-
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { format, parseISO } from "date-fns";
-// Added AlertTriangle for takedown button
-import { Loader2, Link as LinkIcon, Upload, CalendarIcon, Music, Trash2, PlusCircle, X, Save, ExternalLink, AlertTriangle } from "lucide-react";
+import { format, parseISO, differenceInHours } from "date-fns"; // Added differenceInHours
+import { Loader2, Link as LinkIcon, Upload, CalendarIcon, Music, Trash2, PlusCircle, X, Save, ExternalLink, AlertTriangle, RotateCcw } from "lucide-react"; // Added RotateCcw
 import Image from 'next/image';
 import { Timestamp } from "firebase/firestore";
 
@@ -20,7 +18,6 @@ import {
   DialogFooter,
   DialogClose,
 } from "@/components/ui/dialog";
-// Added AlertDialog imports
 import {
     AlertDialog,
     AlertDialogAction,
@@ -33,29 +30,25 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label"; // Keep Label for standalone labels
+import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form";
-// Updated import to include initiateTakedown service function
-import { updateRelease, initiateTakedown, type ReleaseWithId, type TrackInfo, type ReleaseMetadata } from "@/services/music-platform";
-import { storage } from "@/services/firebase-config"; // Import storage instance (if needed, maybe not here)
-import { useAuth } from "@/context/auth-context"; // To get user ID for storage path
-// Removed direct storage function imports as updateRelease handles it now
-// import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+// Updated import to include cancelTakedownRequest service function
+import { updateRelease, initiateTakedown, cancelTakedownRequest, type ReleaseWithId, type TrackInfo, type ReleaseMetadata } from "@/services/music-platform";
+import { storage } from "@/services/firebase-config";
+import { useAuth } from "@/context/auth-context";
 
-// Schema for managing/editing an existing release
 const manageReleaseSchema = z.object({
   title: z.string().min(2, "Title must be at least 2 characters.").max(100, "Title must be 100 characters or less."),
   artist: z.string().min(2, "Artist name must be at least 2 characters.").max(100, "Artist name must be 100 characters or less."),
-  releaseDate: z.date({ required_error: "A release date is required." }), // Use date object for picker
-  artworkFile: z.instanceof(File).optional().nullable() // New artwork file is optional
+  releaseDate: z.date({ required_error: "A release date is required." }),
+  artworkFile: z.instanceof(File).optional().nullable()
     .refine(file => !file || file.size <= 5 * 1024 * 1024, 'Artwork must be 5MB or less.')
     .refine(file => !file || file.type.startsWith('image/'), 'Artwork must be an image file.'),
   tracks: z.array(z.object({ name: z.string().min(1, "Track name cannot be empty.").max(100, "Track name too long.") })).min(1, "At least one track is required."),
   spotifyLink: z.string().url("Invalid Spotify link URL.").optional().nullable(),
-  // artworkUrl is handled separately, not directly in the Zod schema for form submission
 });
 
 type ManageReleaseFormValues = z.infer<typeof manageReleaseSchema>;
@@ -63,35 +56,34 @@ type ManageReleaseFormValues = z.infer<typeof manageReleaseSchema>;
 interface ManageReleaseModalProps {
   isOpen: boolean;
   onClose: () => void;
-  releaseData: ReleaseWithId | null; // The release being managed
-  onSuccess: () => void; // Callback after successful update
-  onTakedownSuccess: () => void; // Added callback for successful takedown
+  releaseData: ReleaseWithId | null;
+  onSuccess: () => void;
+  onTakedownSuccess: () => void;
 }
 
 export function ManageReleaseModal({ isOpen, onClose, releaseData, onSuccess, onTakedownSuccess }: ManageReleaseModalProps) {
   const { user } = useAuth();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isTakedownSubmitting, setIsTakedownSubmitting] = useState(false); // State for takedown action
-  const [isTakedownConfirmOpen, setIsTakedownConfirmOpen] = useState(false); // State for takedown confirmation dialog
-  const [artworkPreviewUrl, setArtworkPreviewUrl] = useState<string | null>(null); // For new uploads
-  const [currentArtworkUrl, setCurrentArtworkUrl] = useState<string | null>(null); // From initialData
+  const [isTakedownSubmitting, setIsTakedownSubmitting] = useState(false);
+  const [isCancelTakedownSubmitting, setIsCancelTakedownSubmitting] = useState(false); // For cancelling takedown
+  const [isTakedownConfirmOpen, setIsTakedownConfirmOpen] = useState(false);
+  const [isCancelTakedownConfirmOpen, setIsCancelTakedownConfirmOpen] = useState(false); // For cancelling takedown confirm
+  const [artworkPreviewUrl, setArtworkPreviewUrl] = useState<string | null>(null);
+  const [currentArtworkUrl, setCurrentArtworkUrl] = useState<string | null>(null);
   const artworkInputRef = useRef<HTMLInputElement>(null);
   const placeholderArtwork = "/placeholder-artwork.png";
 
-  // Function to safely parse initial date (string YYYY-MM-DD or Timestamp) into a Date object
   const parseInitialDate = (dateValue: string | Date | Timestamp | undefined): Date => {
       if (!dateValue) return new Date();
       try {
           if (dateValue instanceof Timestamp) {
               return dateValue.toDate();
           } else if (typeof dateValue === 'string') {
-               // For "YYYY-MM-DD" strings, ensure UTC interpretation for consistency
                 if (dateValue.match(/^\d{4}-\d{2}-\d{2}$/)) {
                      const [year, month, day] = dateValue.split('-').map(Number);
                      return new Date(Date.UTC(year, month - 1, day));
                 }
-                // Fallback for other string formats or ISO strings with timezones
                 const parsed = new Date(dateValue);
                 return isNaN(parsed.getTime()) ? new Date() : parsed;
           } else if (dateValue instanceof Date) {
@@ -100,13 +92,12 @@ export function ManageReleaseModal({ isOpen, onClose, releaseData, onSuccess, on
       } catch (e) {
           console.error("Error parsing initial date in manage modal:", dateValue, e);
       }
-      return new Date(); // Fallback
+      return new Date();
   };
-
 
   const form = useForm<ManageReleaseFormValues>({
     resolver: zodResolver(manageReleaseSchema),
-    defaultValues: { // Initialize with empty/default values
+    defaultValues: {
       title: "",
       artist: "",
       releaseDate: new Date(),
@@ -122,27 +113,26 @@ export function ManageReleaseModal({ isOpen, onClose, releaseData, onSuccess, on
     name: "tracks",
   });
 
-   // Reset form when modal opens with new data or closes
    useEffect(() => {
      if (isOpen && releaseData) {
          form.reset({
              title: releaseData.title || "",
              artist: releaseData.artist || "",
              releaseDate: parseInitialDate(releaseData.releaseDate),
-             artworkFile: null, // Reset file input
-             // Map existing tracks or provide default if none
+             artworkFile: null,
              tracks: releaseData.tracks && releaseData.tracks.length > 0 ? releaseData.tracks : [{ name: "" }],
              spotifyLink: releaseData.spotifyLink || "",
          });
          setCurrentArtworkUrl(releaseData.artworkUrl || null);
-         setArtworkPreviewUrl(null); // Clear preview on open
-         setIsTakedownConfirmOpen(false); // Ensure confirm dialog is closed on reopen
-         setIsTakedownSubmitting(false); // Reset takedown loading state
-         if (artworkInputRef.current) { // Clear file input visually
+         setArtworkPreviewUrl(null);
+         setIsTakedownConfirmOpen(false);
+         setIsCancelTakedownConfirmOpen(false);
+         setIsTakedownSubmitting(false);
+         setIsCancelTakedownSubmitting(false);
+         if (artworkInputRef.current) {
              artworkInputRef.current.value = "";
          }
      } else if (!isOpen) {
-          // Optionally reset form on close after a delay
            setTimeout(() => {
                 form.reset({
                     title: "", artist: "", releaseDate: new Date(), artworkFile: null,
@@ -151,18 +141,19 @@ export function ManageReleaseModal({ isOpen, onClose, releaseData, onSuccess, on
                 setCurrentArtworkUrl(null);
                 setArtworkPreviewUrl(null);
                 setIsTakedownConfirmOpen(false);
+                setIsCancelTakedownConfirmOpen(false);
                 setIsTakedownSubmitting(false);
-                 if (artworkInputRef.current) { // Clear file input visually
+                setIsCancelTakedownSubmitting(false);
+                 if (artworkInputRef.current) {
                      artworkInputRef.current.value = "";
                  }
            }, 150);
      }
-     setIsSubmitting(false); // Reset submitting state
+     setIsSubmitting(false);
    // eslint-disable-next-line react-hooks/exhaustive-deps
-   }, [isOpen, releaseData]); // Rerun when isOpen or releaseData changes
+   }, [isOpen, releaseData]);
 
 
-  // Handle artwork file selection
   const handleArtworkChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
@@ -190,11 +181,9 @@ export function ManageReleaseModal({ isOpen, onClose, releaseData, onSuccess, on
     }
   };
 
-  // Clear artwork selection
   const clearArtwork = () => {
     form.setValue("artworkFile", null, { shouldValidate: true, shouldDirty: true });
-    setArtworkPreviewUrl(null); // Clear preview
-    // Note: We don't clear currentArtworkUrl here, it represents the saved state
+    setArtworkPreviewUrl(null);
     if (artworkInputRef.current) {
       artworkInputRef.current.value = "";
     }
@@ -208,27 +197,24 @@ export function ManageReleaseModal({ isOpen, onClose, releaseData, onSuccess, on
     setIsSubmitting(true);
 
     try {
-      // Prepare data for the update function
       const dataToUpdate: Partial<Omit<ReleaseMetadata, 'userId' | 'createdAt' | 'zipUrl' | 'status' >> & { releaseDate?: Date } = {
         title: values.title,
         artist: values.artist,
-        releaseDate: values.releaseDate, // Pass Date object, service function handles formatting
+        releaseDate: values.releaseDate,
         tracks: values.tracks,
         spotifyLink: values.spotifyLink || null,
-        // artworkUrl is handled by updateRelease service based on artworkFile
       };
 
-      // Call the update service function, passing the new artwork file if selected
       await updateRelease(releaseData.id, dataToUpdate, values.artworkFile || undefined);
 
       toast({
         title: "Release Updated",
         description: `"${values.title}" has been updated successfully.`,
         variant: "default",
-        duration: 2000, // Short duration
+        duration: 2000,
       });
-      onSuccess(); // Call success callback
-      onClose();   // Close modal
+      onSuccess();
+      onClose();
 
     } catch (error) {
       console.error("Error updating release:", error);
@@ -242,25 +228,22 @@ export function ManageReleaseModal({ isOpen, onClose, releaseData, onSuccess, on
     }
   };
 
-  // Handle Takedown Request using the service function
   const handleTakedownRequest = async () => {
       if (!releaseData) return;
       setIsTakedownSubmitting(true);
       console.log(`Submitting takedown request for release: ${releaseData.id} - ${releaseData.title}`);
 
       try {
-          // Call the service function to update status and trigger backend (simulation)
           await initiateTakedown(releaseData.id);
-
           toast({
               title: "Takedown Requested",
               description: `Request to takedown "${releaseData.title}" submitted. This may take some time to reflect on platforms.`,
               variant: "default",
-              duration: 4000, // Longer duration for info
+              duration: 4000,
           });
-          setIsTakedownConfirmOpen(false); // Close confirmation dialog
-          onClose(); // Close the main manage modal
-          onTakedownSuccess(); // Notify parent to refetch/update list
+          setIsTakedownConfirmOpen(false);
+          onClose();
+          onTakedownSuccess();
 
       } catch (error) {
           console.error("Error submitting takedown request:", error);
@@ -274,15 +257,38 @@ export function ManageReleaseModal({ isOpen, onClose, releaseData, onSuccess, on
       }
   };
 
+  const handleCancelTakedownRequest = async () => {
+      if (!releaseData) return;
+      setIsCancelTakedownSubmitting(true);
+      try {
+          await cancelTakedownRequest(releaseData.id);
+          toast({
+              title: "Takedown Cancelled",
+              description: `Takedown request for "${releaseData.title}" has been cancelled.`,
+              variant: "default",
+          });
+          setIsCancelTakedownConfirmOpen(false);
+          onClose();
+          onTakedownSuccess(); // Refresh list
+      } catch (error: any) {
+          toast({
+              title: "Cancellation Failed",
+              description: error.message || "Could not cancel takedown request.",
+              variant: "destructive",
+          });
+      } finally {
+          setIsCancelTakedownSubmitting(false);
+      }
+  };
 
-  // Determine image source: preview > current > placeholder
   const displayArtworkSrc = artworkPreviewUrl || currentArtworkUrl || placeholderArtwork;
-  // Check if form is dirty (includes artwork file change) and valid
   const formIsDirty = form.formState.isDirty || !!form.watch('artworkFile');
   const formIsValid = form.formState.isValid;
 
+  const canCancelTakedown = releaseData?.status === 'takedown_requested' && releaseData.takedownRequestedAt &&
+                            differenceInHours(new Date(), releaseData.takedownRequestedAt.toDate()) < 24;
 
-  if (!releaseData) return null; // Don't render if no release data
+  if (!releaseData) return null;
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -298,19 +304,18 @@ export function ManageReleaseModal({ isOpen, onClose, releaseData, onSuccess, on
             <Form {...form}>
               <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4 py-4 pr-1">
 
-                {/* Artwork Display/Upload */}
                  <FormItem>
                     <FormLabel>Release Artwork</FormLabel>
                      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 mt-1">
                          <Image
                              src={displayArtworkSrc}
                              alt={`${releaseData.title} artwork`}
-                             width={120} // Larger size in modal
+                             width={120}
                              height={120}
                              className="rounded-md object-cover aspect-square border border-border bg-muted/20"
                              onError={(e) => { e.currentTarget.src = placeholderArtwork; e.currentTarget.srcset = ""; }}
-                             unoptimized // Good for dynamic or external URLs
-                             priority={false} // Only use priority if it's critical LCP
+                             unoptimized
+                             priority={false}
                          />
                          <div className="flex flex-col gap-2 flex-grow">
                              <Button
@@ -322,7 +327,7 @@ export function ManageReleaseModal({ isOpen, onClose, releaseData, onSuccess, on
                              >
                                  <Upload className="mr-2 h-4 w-4" /> Change Artwork
                              </Button>
-                             {artworkPreviewUrl && ( // Show clear button only when previewing new image
+                             {artworkPreviewUrl && (
                                   <Button
                                      type="button"
                                      variant="ghost"
@@ -349,13 +354,10 @@ export function ManageReleaseModal({ isOpen, onClose, releaseData, onSuccess, on
                              <FormDescription className="text-xs">Upload a new image file (PNG, JPG, GIF, max 5MB).</FormDescription>
                          </div>
                      </div>
-                    {/* Hidden field for artworkFile, handled by react-hook-form */}
                     <FormField name="artworkFile" control={form.control} render={() => null} />
                      <FormMessage>{form.formState.errors.artworkFile?.message}</FormMessage>
                  </FormItem>
 
-
-                {/* Release Title */}
                 <FormField
                   control={form.control}
                   name="title"
@@ -370,7 +372,6 @@ export function ManageReleaseModal({ isOpen, onClose, releaseData, onSuccess, on
                   )}
                 />
 
-                 {/* Artist Name */}
                  <FormField
                     control={form.control}
                     name="artist"
@@ -385,7 +386,6 @@ export function ManageReleaseModal({ isOpen, onClose, releaseData, onSuccess, on
                     )}
                 />
 
-                {/* Release Date (Read-only for now, consider allowing edits carefully) */}
                 <FormField
                   control={form.control}
                   name="releaseDate"
@@ -393,10 +393,8 @@ export function ManageReleaseModal({ isOpen, onClose, releaseData, onSuccess, on
                     <FormItem>
                         <FormLabel>Original Release Date</FormLabel>
                         <FormControl>
-                            {/* Displaying as read-only text */}
                             <Input
                                 type="text"
-                                // Use UTC date formatting for consistency if the input was YYYY-MM-DD
                                 value={field.value instanceof Date && !isNaN(field.value.getTime())
                                         ? format(field.value, "PPP", { timeZone: typeof releaseData.releaseDate === 'string' && releaseData.releaseDate.match(/^\d{4}-\d{2}-\d{2}$/) ? 'UTC' : undefined })
                                         : "Invalid Date"
@@ -412,8 +410,6 @@ export function ManageReleaseModal({ isOpen, onClose, releaseData, onSuccess, on
                   )}
                 />
 
-
-                {/* Tracks List (Editable) */}
                 <div className="space-y-3">
                   <FormLabel>Tracks</FormLabel>
                   {fields.map((field, index) => (
@@ -438,7 +434,7 @@ export function ManageReleaseModal({ isOpen, onClose, releaseData, onSuccess, on
                                     variant="ghost"
                                     size="icon"
                                     onClick={() => remove(index)}
-                                    disabled={isSubmitting || fields.length <= 1} // Keep at least one track
+                                    disabled={isSubmitting || fields.length <= 1}
                                     className="h-8 w-8 text-muted-foreground hover:text-destructive flex-shrink-0"
                                 >
                                     <Trash2 className="h-4 w-4" />
@@ -464,8 +460,6 @@ export function ManageReleaseModal({ isOpen, onClose, releaseData, onSuccess, on
                   <FormMessage>{form.formState.errors.tracks?.root?.message || form.formState.errors.tracks?.message}</FormMessage>
                 </div>
 
-
-                {/* Spotify Link (Editable) */}
                 <FormField
                   control={form.control}
                   name="spotifyLink"
@@ -481,7 +475,7 @@ export function ManageReleaseModal({ isOpen, onClose, releaseData, onSuccess, on
                                 value={field.value ?? ""}
                                 disabled={isSubmitting}
                              />
-                             {field.value && ( // Show external link button if link exists
+                             {field.value && (
                                 <Button
                                     type="button"
                                     variant="outline"
@@ -502,41 +496,50 @@ export function ManageReleaseModal({ isOpen, onClose, releaseData, onSuccess, on
                   )}
                 />
 
-                 {/* Takedown Request Section */}
                  <div className="pt-4 border-t border-border/50">
                      <h4 className="text-sm font-medium text-destructive mb-2">Danger Zone</h4>
-                     <div className="flex items-center justify-between">
+                     <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
                          <div>
                              <p className="text-sm text-muted-foreground">Submit a request to remove this release from all platforms.</p>
-                             <p className="text-xs text-destructive">This action is permanent and cannot be easily undone.</p>
+                             <p className="text-xs text-destructive">This action is permanent and cannot be easily undone unless cancelled within 24 hours.</p>
                          </div>
-                         <Button
-                             type="button"
-                             variant="destructive"
-                             onClick={() => setIsTakedownConfirmOpen(true)}
-                             disabled={isSubmitting || isTakedownSubmitting || releaseData.status === 'takedown_requested'} // Disable if already requested
-                         >
-                              {releaseData.status === 'takedown_requested' ? 'Takedown In Progress' :
-                                <>
-                                 <AlertTriangle className="mr-2 h-4 w-4" /> Submit Takedown Request
-                                </>
-                              }
-                         </Button>
+                         <div className="flex gap-2 flex-shrink-0">
+                             {releaseData.status === 'takedown_requested' && canCancelTakedown && (
+                                 <Button
+                                     type="button"
+                                     variant="outline"
+                                     onClick={() => setIsCancelTakedownConfirmOpen(true)}
+                                     disabled={isSubmitting || isCancelTakedownSubmitting}
+                                     className="border-yellow-500 text-yellow-600 hover:bg-yellow-500/10"
+                                 >
+                                     <RotateCcw className="mr-2 h-4 w-4" /> Cancel Takedown
+                                 </Button>
+                             )}
+                            <Button
+                                type="button"
+                                variant="destructive"
+                                onClick={() => setIsTakedownConfirmOpen(true)}
+                                disabled={isSubmitting || isTakedownSubmitting || releaseData.status === 'takedown_requested'}
+                            >
+                                {releaseData.status === 'takedown_requested' ? 'Takedown In Progress' :
+                                    <>
+                                    <AlertTriangle className="mr-2 h-4 w-4" /> Submit Takedown
+                                    </>
+                                }
+                            </Button>
+                         </div>
                      </div>
                  </div>
 
-
-                {/* Footer with Save/Close */}
-                <DialogFooter className="pt-6 mt-4 border-t border-border/50"> {/* Added margin top */}
+                <DialogFooter className="pt-6 mt-4 border-t border-border/50">
                     <DialogClose asChild>
-                        <Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting || isTakedownSubmitting}>
+                        <Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting || isTakedownSubmitting || isCancelTakedownSubmitting}>
                         Close
                         </Button>
                     </DialogClose>
                     <Button
                         type="submit"
-                        // Disable if submitting, takedown in progress, form hasn't changed, OR form is invalid
-                         disabled={isSubmitting || isTakedownSubmitting || !formIsDirty || !formIsValid}
+                         disabled={isSubmitting || isTakedownSubmitting || isCancelTakedownSubmitting || !formIsDirty || !formIsValid}
                         className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-md disabled:shadow-none disabled:bg-muted disabled:text-muted-foreground"
                     >
                         {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
@@ -548,7 +551,6 @@ export function ManageReleaseModal({ isOpen, onClose, releaseData, onSuccess, on
             </Form>
         </ScrollArea>
 
-        {/* Takedown Confirmation Dialog */}
         <AlertDialog open={isTakedownConfirmOpen} onOpenChange={setIsTakedownConfirmOpen}>
             <AlertDialogContent className="bg-card/85 dark:bg-card/70 border-border">
                 <AlertDialogHeader>
@@ -556,7 +558,7 @@ export function ManageReleaseModal({ isOpen, onClose, releaseData, onSuccess, on
                     <AlertDialogDescription className="text-muted-foreground">
                         Are you absolutely sure you want to request a takedown for
                         &quot;{releaseData?.title}&quot;? This action is permanent and will remove the release
-                        from all streaming platforms. This process cannot be easily reversed.
+                        from all streaming platforms. You can cancel this request within 24 hours.
                     </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
@@ -579,8 +581,36 @@ export function ManageReleaseModal({ isOpen, onClose, releaseData, onSuccess, on
             </AlertDialogContent>
         </AlertDialog>
 
+        <AlertDialog open={isCancelTakedownConfirmOpen} onOpenChange={setIsCancelTakedownConfirmOpen}>
+            <AlertDialogContent className="bg-card/85 dark:bg-card/70 border-border">
+                <AlertDialogHeader>
+                    <AlertDialogTitle className="text-yellow-600">Confirm Cancellation</AlertDialogTitle>
+                    <AlertDialogDescription className="text-muted-foreground">
+                        Are you sure you want to cancel the takedown request for &quot;{releaseData?.title}&quot;?
+                        The release will remain live on platforms.
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                    <AlertDialogCancel disabled={isCancelTakedownSubmitting} className="border-input hover:bg-muted/50">
+                        Back
+                    </AlertDialogCancel>
+                    <AlertDialogAction
+                        onClick={handleCancelTakedownRequest}
+                        disabled={isCancelTakedownSubmitting}
+                        className="bg-yellow-500 text-primary-foreground hover:bg-yellow-600"
+                    >
+                        {isCancelTakedownSubmitting ? (
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : (
+                            <RotateCcw className="mr-2 h-4 w-4" />
+                        )}
+                        {isCancelTakedownSubmitting ? 'Cancelling...' : 'Yes, Cancel Takedown'}
+                    </AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
+
       </DialogContent>
     </Dialog>
   );
 }
-
