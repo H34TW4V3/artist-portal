@@ -3,53 +3,28 @@ rules_version = '2';
 
 service firebase.storage {
   match /b/{bucket}/o {
-
-    // General user-specific files (if any are stored directly under /users/USER_ID/)
-    // Users can read, create, update, and delete files within their own folder.
-    match /users/{userId}/{allPaths=**} {
-      allow read: if request.auth != null && request.auth.uid == userId;
-      // allow write covers create, update, and delete operations.
-      allow write: if request.auth != null && request.auth.uid == userId;
+    // Match any files and folders in the 'releases' path
+    match /releases/{userId}/{allPaths=**} {
+      // Allow read, write, delete for the authenticated user who owns this folder
+      allow read, write, delete: if request.auth != null && request.auth.uid == userId;
     }
 
-    // Profile Images
-    // Anyone can read profile images (e.g., for public display).
-    // Only the authenticated user can create, update, or delete their own profile image.
-    match /profileImages/{userId}/{fileName} {
-      allow read: if true;
-      allow write: if request.auth != null && request.auth.uid == userId;
-    }
-
-    // Release Artwork
-    // Anyone can read release artwork (e.g., for display in the app).
-    // Only the authenticated user can create, update, or delete their own release artwork.
+    // Match any files and folders in the 'releaseArtwork' path
     match /releaseArtwork/{userId}/{fileName} {
-      allow read: if true;
+      // Allow write access for the authenticated user who owns this folder
       allow write: if request.auth != null && request.auth.uid == userId;
+      // Allow read access for any authenticated user (or public if needed, adjust accordingly)
+      // For now, let's keep it to authenticated users to read any artwork
+      allow read: if request.auth != null;
     }
 
-    // Release ZIP Files (Uploaded by users for distribution)
-    // Only the authenticated user can read, create, update, or delete their own release ZIP files.
-    match /releases/{userId}/{fileName} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+    // Match any files and folders in the 'profileImages' path
+    match /profileImages/{userId}/{allPaths=**} {
+      // Allow read, write, delete for the authenticated user who owns this folder
+      allow read, write, delete: if request.auth != null && request.auth.uid == userId;
     }
 
-    // Demo Submissions (Example - if demos are stored)
-    // This is a more complex example.
-    // If demos are uploaded by authenticated users:
-    // match /demoSubmissions/{userId}/{fileName} {
-    //   allow write: if request.auth != null && request.auth.uid == userId;
-    //   allow read: if request.auth != null && request.auth.uid == userId; // Or admin access
-    // }
-    // If demos can be submitted anonymously (requires careful security considerations):
-    // match /demoSubmissions/{submissionId}/{fileName} {
-    //   allow write: if request.auth == null; // Example for anonymous uploads - use with caution
-    //   // Read access would likely be restricted to admins
-    // }
-
-
-    // Default deny for any other paths not explicitly matched above.
-    // This is a security best practice.
+    // Deny all other access by default
     match /{allPaths=**} {
       allow read, write: if false;
     }

@@ -340,8 +340,7 @@ import {
         if (newArtworkFile) {
             // 1. Handle New Artwork Upload (to Cloud Storage)
             console.log("Uploading new artwork for release:", releaseId);
-            const artworkFileName = `${userId}_${Date.now()}_${newArtworkFile.name}`;
-            // **UPDATED PATH**
+            const artworkFileName = `${newArtworkFile.name}`; // Use original file name, or generate a unique one
             const artworkStorageRef = ref(storage, `releaseArtwork/${userId}/${artworkFileName}`);
             const snapshot = await uploadBytes(artworkStorageRef, newArtworkFile);
             finalArtworkUrl = await getDownloadURL(snapshot.ref);
@@ -350,6 +349,7 @@ import {
             // Attempt to delete old artwork if it existed and wasn't the placeholder
             if (currentData.artworkUrl && !currentData.artworkUrl.includes('placeholder')) {
                 try {
+                    // Ensure currentData.artworkUrl is a full GCS URL (gs://bucket/path or https://firebasestorage.googleapis.com/...)
                     const oldArtworkRef = ref(storage, currentData.artworkUrl);
                     await deleteObject(oldArtworkRef);
                     console.log("Old artwork deleted:", currentData.artworkUrl);
