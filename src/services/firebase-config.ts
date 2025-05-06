@@ -71,15 +71,23 @@ if (!firebaseConfig.appId) {
 // A typical rule might look like:
 // service firebase.storage {
 //   match /b/{bucket}/o {
+//     match /profileImages/{userId}/{allPaths=**} {
+//       // Allow general read if your app needs to display other users' profile images (e.g., in a list)
+//       allow read: if request.auth != null;
+//       allow write: if request.auth != null && request.auth.uid == userId;
+//     }
 //     match /releases/{userId}/{allPaths=**} {
 //       allow read: if request.auth != null; // Or specific read conditions
 //       allow write: if request.auth != null && request.auth.uid == userId;
 //     }
 //     match /releaseArtwork/{userId}/{allPaths=**} {
+//       // Allow general read if your app needs to display other users' release artwork
 //       allow read: if request.auth != null;
 //       allow write: if request.auth != null && request.auth.uid == userId;
 //     }
 //   }
 // }
 // Review and adjust these rules according to your application's security needs.
-
+// If `getManagedArtists` or similar features need to display images from other users,
+// their respective storage paths (`profileImages/{userId}` or `releaseArtwork/{userId}`)
+// need to allow `read: if request.auth != null;`.
