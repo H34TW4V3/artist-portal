@@ -42,7 +42,7 @@ import {
 
   export interface ReleaseMetadataBase {
     title: string;
-    artist: string | null; // Allow artist to be null
+    artists: string[]; // Changed from artist: string | null
     releaseDate: string | Date | Timestamp; // Allow multiple types initially, standardize before saving
   }
 
@@ -59,14 +59,14 @@ import {
   }
 
   export interface ReleaseUploadMetadata {
-    artistName: string; // Added artistName
+    artistNames: string[]; // Changed from artistName: string
     releaseName: string;
     releaseDate: string | Date;
   }
 
   export type ReleaseWithId = ReleaseMetadata & { id: string };
 
-  export type ExistingReleaseData = Omit<ReleaseMetadata, 'userId' | 'createdAt' | 'zipUrl' | 'status' | 'artworkUrl' | 'artist' | 'releaseDate' | 'takedownRequestedAt' | 'previousStatusBeforeTakedown'> & { artworkUrl?: string | null, artist?: string | null, releaseDate: Date };
+  export type ExistingReleaseData = Omit<ReleaseMetadata, 'userId' | 'createdAt' | 'zipUrl' | 'status' | 'artworkUrl' | 'artists' | 'releaseDate' | 'takedownRequestedAt' | 'previousStatusBeforeTakedown'> & { artworkUrl?: string | null, artists?: string[], releaseDate: Date };
 
 
   // --- Helper Functions ---
@@ -139,34 +139,28 @@ import {
   }
 
   export async function getReleases(): Promise<ReleaseWithId[]> {
-    const userId = getCurrentUserId(); // This will throw if no user
-    // if (!userId) return []; // This line is no longer needed due to the throw in getCurrentUserId
-
+    const userId = getCurrentUserId(); 
     const releasesRef = collection(db, "users", userId, "releases");
-    // Order by releaseDate (desc for newest first), then by createdAt (desc as secondary sort)
     const q = query(releasesRef, orderBy("releaseDate", "desc"), orderBy("createdAt", "desc"));
 
     try {
         const querySnapshot = await getDocs(q);
         const releases: ReleaseWithId[] = [];
         querySnapshot.forEach((docSnap) => {
-          const data = docSnap.data() as ReleaseMetadata; // Cast data
-          releases.push({ id: docSnap.id, ...data }); // Include document ID
+          const data = docSnap.data() as ReleaseMetadata; 
+          releases.push({ id: docSnap.id, ...data }); 
         });
         console.log(`Fetched ${releases.length} releases for user ${userId}`);
         return releases;
     } catch (error) {
         console.error("Error fetching releases:", error);
-        throw new Error("Failed to fetch releases."); // Rethrow a user-friendly error
+        throw new Error("Failed to fetch releases."); 
     }
   }
 
   export async function getLatestReleaseArtwork(): Promise<string | null> {
       const userId = getCurrentUserId();
-      // if (!userId) return null; // Not needed due to throw in getCurrentUserId
-
       const releasesRef = collection(db, "users", userId, "releases");
-      // Get the most recently created release
       const q = query(releasesRef, orderBy("createdAt", "desc"), limit(1));
 
       try {
@@ -179,7 +173,6 @@ import {
           const latestReleaseDoc = querySnapshot.docs[0];
           const data = latestReleaseDoc.data() as ReleaseMetadata;
 
-          // Check if artworkUrl exists and is a non-empty string
           if (data.artworkUrl && typeof data.artworkUrl === 'string' && data.artworkUrl.trim() !== '') {
               console.log(`Found latest artwork URL for user ${userId}: ${data.artworkUrl}`);
               return data.artworkUrl;
@@ -189,7 +182,7 @@ import {
           }
       } catch (error) {
           console.error("Error fetching latest release artwork:", error);
-          return null; // Return null on error
+          return null; 
       }
   }
 
@@ -202,7 +195,6 @@ import {
 
     const sanitizedReleaseName = uploadMetadata.releaseName.replace(/[^a-zA-Z0-9-_]/g, '_');
     const zipFileName = `release_${sanitizedReleaseName}_${Date.now()}.zip`;
-    // Ensure the path matches Storage rules: releases/{userId}/{fileName}
     const storagePath = `releases/${userId}/${zipFileName}`;
     const storageRef = ref(storage, storagePath);
 
@@ -218,22 +210,24 @@ import {
         throw new Error("Failed to upload release file.");
     }
 
-    // Use artistName from uploadMetadata directly
-    const artistName = uploadMetadata.artistName;
-    if (!artistName) {
-        console.error("uploadReleaseZip: Artist name is missing from upload metadata.");
-        throw new Error("Artist name is required for new release.");
+    const primaryArtistName = uploadMetadata.artistNames && uploadMetadata.artistNames.length > 0 
+        ? uploadMetadata.artistNames[0] 
+        : "Unknown Artist"; // Fallback if artistNames is empty or not provided
+    
+    if (primaryArtistName === "Unknown Artist") {
+        console.warn("uploadReleaseZip: Artist names array is empty. Using 'Unknown Artist'.");
     }
+
 
     const newReleaseData: Omit<ReleaseMetadata, 'id' | 'createdAt'> = {
       title: uploadMetadata.releaseName,
-      artist: artistName, 
-      releaseDate: formatDateToString(uploadMetadata.releaseDate), // Standardize date format
-      artworkUrl: null, // Initially no artwork, can be updated later
+      artists: uploadMetadata.artistNames && uploadMetadata.artistNames.length > 0 ? uploadMetadata.artistNames : [primaryArtistName], 
+      releaseDate: formatDateToString(uploadMetadata.releaseDate), 
+      artworkUrl: null, 
       zipUrl: downloadURL,
       userId: userId,
-      status: 'processing', // Initial status
-      tracks: [], // Placeholder for tracks, assume ZIP contains details
+      status: 'processing', 
+      tracks: [], 
       spotifyLink: null,
       takedownRequestedAt: null,
       previousStatusBeforeTakedown: null,
@@ -244,10 +238,10 @@ import {
         console.log("Attempting to add new release document to Firestore:", newReleaseData);
         const docRef = await addDoc(releasesRef, {
             ...newReleaseData,
-            createdAt: serverTimestamp(), // Add server timestamp
+            createdAt: serverTimestamp(), 
         });
         console.log("New release metadata document created in Firestore with ID:", docRef.id);
-        return docRef.id; // Return the ID of the newly created document
+        return docRef.id; 
     } catch (firestoreError) {
         console.error("Firestore document creation failed for new release:", firestoreError);
         throw new Error("Failed to save release metadata after upload.");
@@ -259,24 +253,26 @@ import {
       const userId = getCurrentUserId();
       console.log("addExistingRelease: Received data:", data);
 
-      let artistNameToSave = data.artist; // Use artist from form if provided
-      if (!artistNameToSave) {
+      let artistsToSave: string[] = [];
+      if (data.artists && data.artists.length > 0) {
+          artistsToSave = data.artists;
+      } else {
           const userProfile = await getUserProfileByUid(userId);
           const auth = getAuth(app);
-          artistNameToSave = userProfile?.name || auth.currentUser?.displayName || auth.currentUser?.email?.split('@')[0] || "Unknown Artist";
-          console.log("addExistingRelease: Artist name not provided, defaulted to:", artistNameToSave);
+          const defaultArtistName = userProfile?.name || auth.currentUser?.displayName || auth.currentUser?.email?.split('@')[0] || "Unknown Artist";
+          artistsToSave = [defaultArtistName];
+          console.log("addExistingRelease: Artist names not provided, defaulted to:", artistsToSave);
       }
 
-      // Prepare the data for Firestore, ensuring all fields are correctly formatted or set to null
       const releaseData: Omit<ReleaseMetadata, 'id' | 'createdAt' | 'zipUrl'> = {
           title: data.title,
-          artist: artistNameToSave,
-          releaseDate: formatDateToString(data.releaseDate), // Standardize date format
-          artworkUrl: data.artworkUrl || null, // Use provided artwork URL or null
+          artists: artistsToSave,
+          releaseDate: formatDateToString(data.releaseDate), 
+          artworkUrl: data.artworkUrl || null, 
           userId: userId,
-          status: 'existing', // Set status for existing releases
-          tracks: data.tracks || [], // Use provided tracks or empty array
-          spotifyLink: data.spotifyLink || null, // Use provided Spotify link or null
+          status: 'existing', 
+          tracks: data.tracks || [], 
+          spotifyLink: data.spotifyLink || null, 
           takedownRequestedAt: null,
           previousStatusBeforeTakedown: null,
       };
@@ -286,7 +282,7 @@ import {
       try {
           const docRef = await addDoc(releasesRef, {
               ...releaseData,
-              createdAt: serverTimestamp(), // Add server timestamp
+              createdAt: serverTimestamp(), 
           });
           console.log("Existing release document created in Firestore with ID:", docRef.id);
           return docRef.id;
@@ -301,8 +297,8 @@ import {
 
   export async function updateRelease(
     releaseId: string,
-    data: Partial<Omit<ReleaseMetadata, 'userId' | 'createdAt' | 'zipUrl' | 'status'>>, // Data to update
-    newArtworkFile?: File // Optional new artwork file
+    data: Partial<Omit<ReleaseMetadata, 'userId' | 'createdAt' | 'zipUrl' | 'status'>>, 
+    newArtworkFile?: File 
   ): Promise<void> {
     const userId = getCurrentUserId();
     console.log(`updateRelease: Attempting to update release ${releaseId} for user ${userId}`);
@@ -311,7 +307,7 @@ import {
 
 
     const releaseDocRef = doc(db, "users", userId, "releases", releaseId);
-    let finalArtworkUrl: string | null = data.artworkUrl !== undefined ? data.artworkUrl : undefined; // Start with form's URL if provided
+    let finalArtworkUrl: string | null | undefined = data.artworkUrl; 
 
     try {
         const currentDocSnap = await getDoc(releaseDocRef);
@@ -322,11 +318,14 @@ import {
         const currentData = currentDocSnap.data() as ReleaseMetadata;
         console.log("Current release data:", currentData);
 
-        // If a new artwork file is provided, upload it and update the URL
+        if (finalArtworkUrl === undefined && !newArtworkFile) { // if data.artworkUrl is not in `data`, keep current
+            finalArtworkUrl = currentData.artworkUrl;
+        }
+
+
         if (newArtworkFile) {
             console.log("Uploading new artwork for release:", releaseId);
-            const artworkFileName = `${userId}_${Date.now()}_${newArtworkFile.name}`; // Unique file name
-            // Path should match storage rules: releaseArtwork/{userId}/{fileName}
+            const artworkFileName = `${userId}_${Date.now()}_${newArtworkFile.name}`; 
             const artworkStoragePath = `releaseArtwork/${userId}/${artworkFileName}`; 
             const artworkStorageRef = ref(storage, artworkStoragePath);
             
@@ -335,20 +334,18 @@ import {
             finalArtworkUrl = await getDownloadURL(snapshot.ref);
             console.log("New artwork uploaded, URL:", finalArtworkUrl);
 
-            // Delete old artwork if it existed and wasn't a placeholder
             if (currentData.artworkUrl && !currentData.artworkUrl.includes('placeholder') && currentData.artworkUrl.startsWith('https://firebasestorage.googleapis.com/')) {
                 try {
                     const oldArtworkRef = ref(storage, currentData.artworkUrl);
                     await deleteObject(oldArtworkRef);
                     console.log("Old artwork deleted:", currentData.artworkUrl);
                 } catch (deleteError: any) {
-                    // Log warning if old artwork deletion fails but don't block update
                     if (deleteError.code !== 'storage/object-not-found') {
                         console.warn("Failed to delete old artwork (non-critical):", deleteError);
                     }
                 }
             }
-        } else if (data.artworkUrl === null) { // If artworkUrl is explicitly set to null (meaning remove)
+        } else if (data.artworkUrl === null) { 
              finalArtworkUrl = null;
               if (currentData.artworkUrl && !currentData.artworkUrl.includes('placeholder') && currentData.artworkUrl.startsWith('https://firebasestorage.googleapis.com/')) {
                  try {
@@ -361,26 +358,22 @@ import {
                      }
                  }
              }
-        } else if (finalArtworkUrl === undefined) { // If no new file and no explicit artworkUrl in data, keep current
-            finalArtworkUrl = currentData.artworkUrl;
         }
 
 
       const dataToUpdate: Partial<ReleaseMetadata> = {
-        ...data, // Spread incoming data
-        artworkUrl: finalArtworkUrl, // Set the determined artwork URL
+        ...data, 
+        artworkUrl: finalArtworkUrl, 
       };
 
-       // Standardize releaseDate if it's part of the update
        if (dataToUpdate.releaseDate) {
            dataToUpdate.releaseDate = formatDateToString(dataToUpdate.releaseDate);
        }
 
-       // Remove fields that should not be directly updated by this function
        delete (dataToUpdate as any).userId;
        delete (dataToUpdate as any).createdAt;
        delete (dataToUpdate as any).zipUrl;
-       // status, takedownRequestedAt, previousStatusBeforeTakedown are handled by specific functions
+       
 
       console.log("Attempting to update release document in Firestore:", releaseId, "with data:", dataToUpdate);
       await updateDoc(releaseDocRef, dataToUpdate);
@@ -393,11 +386,11 @@ import {
     }
   }
 
-  // Simulate platform takedown (replace with actual API call if applicable)
+  
   async function requestPlatformTakedown(releaseId: string): Promise<void> {
       console.log(`Simulating platform takedown request for release ${releaseId}...`);
-      // In a real scenario, this would interact with a backend or distribution service
-      await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate delay
+      
+      await new Promise(resolve => setTimeout(resolve, 1500)); 
       console.log(`Platform takedown simulation complete for ${releaseId}.`);
   }
 
@@ -417,11 +410,11 @@ import {
           await updateDoc(releaseDocRef, {
               status: 'takedown_requested',
               takedownRequestedAt: serverTimestamp(),
-              previousStatusBeforeTakedown: currentStatus || 'existing', // Store previous status
+              previousStatusBeforeTakedown: currentStatus || 'existing', 
           });
           console.log(`Release ${releaseId} status updated to takedown_requested in Firestore.`);
 
-          // Simulate or call actual platform takedown API
+          
           await requestPlatformTakedown(releaseId);
 
       } catch (error: any) {
@@ -451,7 +444,7 @@ import {
             throw new Error("Takedown request not found or already processed.");
         }
 
-        // Check if within 24 hours
+        
         const takedownTime = release.takedownRequestedAt.toDate();
         const twentyFourHoursInMs = 24 * 60 * 60 * 1000;
 
@@ -460,8 +453,8 @@ import {
             throw new Error("Takedown request cannot be cancelled after 24 hours.");
         }
 
-        // Restore previous status
-        const statusToRestore = release.previousStatusBeforeTakedown || 'existing'; // Default to 'existing' if somehow null
+        
+        const statusToRestore = release.previousStatusBeforeTakedown || 'existing'; 
         await updateDoc(releaseDocRef, {
             status: statusToRestore,
             takedownRequestedAt: null,
@@ -469,7 +462,7 @@ import {
         });
         console.log(`Takedown request for release ${releaseId} cancelled. Status restored to ${statusToRestore}.`);
 
-        // Potentially notify backend to halt platform takedown (simulation)
+        
         console.log(`Simulating notification to backend to cancel platform takedown for ${releaseId}.`);
         await new Promise(resolve => setTimeout(resolve, 500));
 
@@ -482,7 +475,7 @@ import {
 
 
 export async function removeRelease(releaseId: string): Promise<void> {
-    const userId = getCurrentUserId(); // This will throw if no user
+    const userId = getCurrentUserId(); 
     console.log(`Attempting to remove release ${releaseId} for user ${userId}`);
 
     const releaseDocRef = doc(db, "users", userId, "releases", releaseId);
@@ -493,7 +486,7 @@ export async function removeRelease(releaseId: string): Promise<void> {
         const data = docSnap.data() as ReleaseMetadata;
         console.log("Release data found for removal:", data);
 
-        // Delete artwork from Storage if URL exists and is a Firebase Storage URL
+        
         if (data.artworkUrl && !data.artworkUrl.includes('placeholder') && data.artworkUrl.startsWith('https://firebasestorage.googleapis.com/')) {
              try { 
                  await deleteObject(ref(storage, data.artworkUrl)); 
@@ -508,7 +501,7 @@ export async function removeRelease(releaseId: string): Promise<void> {
              }
         }
 
-        // Delete ZIP file from Storage if URL exists and is a Firebase Storage URL
+        
         if (data.zipUrl && data.zipUrl.startsWith('https://firebasestorage.googleapis.com/')) {
              try { 
                  await deleteObject(ref(storage, data.zipUrl)); 
@@ -527,7 +520,7 @@ export async function removeRelease(releaseId: string): Promise<void> {
           console.warn(`Release document ${releaseId} not found for deletion in user ${userId}'s collection. Skipping storage deletion.`);
       }
 
-      // Delete the Firestore document
+      
       await deleteDoc(releaseDocRef);
       console.log("Release document deleted from Firestore:", releaseId);
 
@@ -544,22 +537,22 @@ export async function addTestRelease(): Promise<string | null> {
 
     const userProfile = await getUserProfileByUid(userId);
     const auth = getAuth(app);
-    const artistName = userProfile?.name || auth.currentUser?.displayName || auth.currentUser?.email?.split('@')[0] || "Test Artist";
-    console.log("Using artist name for test release:", artistName);
+    const artistDisplayName = userProfile?.name || auth.currentUser?.displayName || auth.currentUser?.email?.split('@')[0] || "Test Artist";
+    console.log("Using artist name for test release:", artistDisplayName);
 
 
     const testReleaseData: Omit<ReleaseMetadata, 'id' | 'userId' | 'createdAt' | 'zipUrl'> = {
         title: "My Awesome Test EP",
-        artist: artistName,
-        releaseDate: formatDateToString(new Date(new Date().setDate(new Date().getDate() + 7))), // Release 7 days from now
-        artworkUrl: "https://picsum.photos/seed/testrelease1/300/300", // Placeholder artwork
-        status: 'existing', // Test releases are 'existing'
+        artists: [artistDisplayName], // Store as an array
+        releaseDate: formatDateToString(new Date(new Date().setDate(new Date().getDate() + 7))), 
+        artworkUrl: "https://picsum.photos/seed/testrelease1/300/300", 
+        status: 'existing', 
         tracks: [
             { name: "Test Track 1 (Sunrise Mix)" },
             { name: "Another Test Vibe" },
             { name: "The Test Outro" },
         ],
-        spotifyLink: "https://open.spotify.com/album/0sNOF9WDwhWunNAHPD3qYc", // Example Spotify link
+        spotifyLink: "https://open.spotify.com/album/0sNOF9WDwhWunNAHPD3qYc", 
         takedownRequestedAt: null,
         previousStatusBeforeTakedown: null,
     };
@@ -569,7 +562,7 @@ export async function addTestRelease(): Promise<string | null> {
         console.log("Adding test release data to Firestore:", testReleaseData);
         const docRef = await addDoc(releasesRef, {
             ...testReleaseData,
-            userId: userId, // Ensure userId is set
+            userId: userId, 
             createdAt: serverTimestamp(),
         });
         console.log("Test release added successfully with ID:", docRef.id);

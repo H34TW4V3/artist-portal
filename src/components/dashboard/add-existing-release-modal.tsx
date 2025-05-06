@@ -6,7 +6,7 @@ import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { format } from "date-fns";
-import { Loader2, Link as LinkIcon, Upload, CalendarIcon, Music, Trash2, PlusCircle, X } from "lucide-react";
+import { Loader2, Link as LinkIcon, Upload, CalendarIcon, Music, Trash2, PlusCircle, X, UserPlus } from "lucide-react";
 import Image from 'next/image';
 
 import {
@@ -27,20 +27,24 @@ import { Calendar } from "@/components/ui/calendar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form";
-import { addExistingRelease, type ExistingReleaseData } from "@/services/music-platform"; // Import service and type
-import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage"; // Import storage functions
-import { storage } from "@/services/firebase-config"; // Import storage instance
-import { useAuth } from "@/context/auth-context"; // To get user ID for storage path
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"; // Import Select
-import { getUserProfileByUid } from "@/services/user"; // To fetch profile for artist names
-import type { ProfileFormValues } from "@/components/profile/profile-form"; // Import ProfileFormValues
+import { addExistingRelease, type ExistingReleaseData } from "@/services/music-platform"; 
+import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage"; 
+import { storage } from "@/services/firebase-config"; 
+import { useAuth } from "@/context/auth-context"; 
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"; 
+import { CreateArtistModal } from "./create-artist-modal";
+import type { ProfileFormValues } from "@/components/profile/profile-form";
+import { getUserProfileByUid } from "@/services/user";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
 
-// Schema for adding an existing release - artist field is now optional.
+
 const existingReleaseSchema = z.object({
   title: z.string().min(2, "Title must be at least 2 characters.").max(100, "Title must be 100 characters or less."),
-  artist: z.string().min(2, "Artist name must be at least 2 characters.").max(100, "Artist name must be 100 characters or less.").optional().nullable(), // Artist is optional
+  primaryArtistName: z.string().min(2, "Primary artist name must be at least 2 characters.").max(100, "Artist name too long."),
+  additionalArtistNames: z.array(z.string().min(2, "Artist name must be at least 2 characters.").max(100, "Artist name too long.")).optional(),
   releaseDate: z.date({ required_error: "A release date is required." }),
-  artworkFile: z.instanceof(File).optional().nullable() // Artwork file is optional
+  artworkFile: z.instanceof(File).optional().nullable() 
     .refine(file => !file || file.size <= 5 * 1024 * 1024, 'Artwork must be 5MB or less.')
     .refine(file => !file || file.type.startsWith('image/'), 'Artwork must be an image file.'),
   tracks: z.array(z.object({ name: z.string().min(1, "Track name cannot be empty.").max(100, "Track name too long.") })).min(1, "At least one track is required."),
@@ -52,7 +56,7 @@ type ExistingReleaseFormValues = z.infer<typeof existingReleaseSchema>;
 interface AddExistingReleaseModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSuccess: () => void; // Callback after successful addition
+  onSuccess: () => void; 
 }
 
 export function AddExistingReleaseModal({ isOpen, onClose, onSuccess }: AddExistingReleaseModalProps) {
@@ -62,15 +66,20 @@ export function AddExistingReleaseModal({ isOpen, onClose, onSuccess }: AddExist
   const [artworkPreviewUrl, setArtworkPreviewUrl] = useState<string | null>(null);
   const artworkInputRef = useRef<HTMLInputElement>(null);
   const [userProfile, setUserProfile] = useState<ProfileFormValues | null>(null);
+  const [isCreateArtistModalOpen, setIsCreateArtistModalOpen] = useState(false);
+  const [availableArtistNames, setAvailableArtistNames] = useState<string[]>([]);
+  const [selectedAdditionalArtists, setSelectedAdditionalArtists] = useState<string[]>([]);
+
 
   const form = useForm<ExistingReleaseFormValues>({
     resolver: zodResolver(existingReleaseSchema),
     defaultValues: {
       title: "",
-      artist: "", // Initialize as empty string
+      primaryArtistName: "", 
+      additionalArtistNames: [],
       releaseDate: new Date(),
       artworkFile: null,
-      tracks: [{ name: "" }], // Start with one empty track
+      tracks: [{ name: "" }], 
       spotifyLink: "",
     },
     mode: "onChange",
@@ -82,66 +91,76 @@ export function AddExistingReleaseModal({ isOpen, onClose, onSuccess }: AddExist
   });
 
   useEffect(() => {
-    const fetchProfile = async () => {
+    const fetchProfileAndSetArtists = async () => {
         if (user?.uid) {
             const profile = await getUserProfileByUid(user.uid);
             setUserProfile(profile);
-            // Set default artist name after profile is fetched
+            const initialNames = profile?.name ? [profile.name] : [];
+            // Placeholder for fetching other associated artist names
+            const placeholderNames = ["DJ Another Name", "Producer Alias"];
+            const allNames = Array.from(new Set([...initialNames, ...placeholderNames].filter(Boolean))) as string[];
+            setAvailableArtistNames(allNames);
+            
             form.reset({
-                ...form.getValues(), // Keep other form values
-                artist: profile?.name || "", // Default to profile name
+                ...form.getValues(), 
+                primaryArtistName: profile?.name || "", 
+                additionalArtistNames: [],
             });
+            setSelectedAdditionalArtists([]);
         }
     };
     if (isOpen) {
-        fetchProfile();
+        fetchProfileAndSetArtists();
     }
   }, [isOpen, user, form]);
 
 
-   // Reset form when modal closes or opens
    useEffect(() => {
      if (isOpen) {
          form.reset({
              title: "",
-             artist: userProfile?.name || "", // Use fetched profile name or empty
+             primaryArtistName: userProfile?.name || "", 
+             additionalArtistNames: [],
              releaseDate: new Date(),
              artworkFile: null,
              tracks: [{ name: "" }],
              spotifyLink: "",
          });
          setArtworkPreviewUrl(null);
-          if (artworkInputRef.current) { // Clear file input visually
+         setSelectedAdditionalArtists([]);
+          if (artworkInputRef.current) { 
              artworkInputRef.current.value = "";
           }
      } else {
-          // Small delay before resetting on close to avoid flicker if reopening quickly
+          
           setTimeout(() => {
             form.reset({
                 title: "",
-                artist: userProfile?.name || "",
+                primaryArtistName: userProfile?.name || "",
+                additionalArtistNames: [],
                 releaseDate: new Date(),
                 artworkFile: null,
                 tracks: [{ name: "" }],
                 spotifyLink: "",
             });
              setArtworkPreviewUrl(null);
-              if (artworkInputRef.current) { // Clear file input visually
+             setSelectedAdditionalArtists([]);
+              if (artworkInputRef.current) { 
                   artworkInputRef.current.value = "";
               }
           }, 150);
      }
      setIsSubmitting(false);
    // eslint-disable-next-line react-hooks/exhaustive-deps
-   }, [isOpen, userProfile]); // Add userProfile dependency to reset with artist name
+   }, [isOpen, userProfile]); 
 
-  // Handle artwork file selection
+  
   const handleArtworkChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
         if (file.size > 5 * 1024 * 1024) {
             toast({ title: "Image Too Large", description: "Artwork must be 5MB or less.", variant: "destructive" });
-            form.setValue("artworkFile", null); // Clear value
+            form.setValue("artworkFile", null); 
             setArtworkPreviewUrl(null);
             return;
         }
@@ -163,7 +182,7 @@ export function AddExistingReleaseModal({ isOpen, onClose, onSuccess }: AddExist
     }
   };
 
-  // Clear artwork selection
+  
   const clearArtwork = () => {
     form.setValue("artworkFile", null, { shouldValidate: true, shouldDirty: true });
     setArtworkPreviewUrl(null);
@@ -181,7 +200,7 @@ export function AddExistingReleaseModal({ isOpen, onClose, onSuccess }: AddExist
     let artworkUrl: string | null = null;
 
     try {
-      // 1. Upload artwork if provided
+      
       const artworkFile = values.artworkFile;
       if (artworkFile) {
         const artworkFileName = `${user.uid}_${Date.now()}_${artworkFile.name}`;
@@ -191,9 +210,12 @@ export function AddExistingReleaseModal({ isOpen, onClose, onSuccess }: AddExist
         console.log("Artwork uploaded for existing release:", artworkUrl);
       }
 
+      const allArtistNames = [values.primaryArtistName, ...(values.additionalArtistNames || [])].filter(Boolean);
+
+
       const releaseData: ExistingReleaseData = {
         title: values.title,
-        artist: values.artist || userProfile?.name || null, // Use form value or profile name or null
+        artists: allArtistNames, 
         releaseDate: values.releaseDate,
         artworkUrl: artworkUrl,
         tracks: values.tracks,
@@ -223,9 +245,7 @@ export function AddExistingReleaseModal({ isOpen, onClose, onSuccess }: AddExist
     }
   };
   
-  // Placeholder for multiple artist names - replace with actual data source
-  const artistNames = userProfile?.name ? [userProfile.name, "DJ Another Name", "Producer Alias"] : [];
-
+  
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-lg md:max-w-2xl bg-card/85 dark:bg-card/70 border-border/50">
@@ -256,32 +276,86 @@ export function AddExistingReleaseModal({ isOpen, onClose, onSuccess }: AddExist
 
                  <FormField
                     control={form.control}
-                    name="artist"
+                    name="primaryArtistName"
                     render={({ field }) => (
                         <FormItem>
-                        <FormLabel>Artist Name</FormLabel>
-                        {artistNames.length > 1 ? (
-                            <Select onValueChange={field.onChange} defaultValue={field.value ?? userProfile?.name ?? ""} disabled={isSubmitting}>
-                                <FormControl>
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Select an artist name" />
-                                    </SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                    {artistNames.map(name => (
-                                        <SelectItem key={name} value={name}>{name}</SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                        <FormLabel>Primary Artist Name</FormLabel>
+                        {availableArtistNames.length > 0 ? (
+                            <div className="flex items-center gap-2">
+                                <Select onValueChange={field.onChange} defaultValue={field.value || userProfile?.name || ""} disabled={isSubmitting}>
+                                    <FormControl>
+                                        <SelectTrigger className="flex-grow">
+                                            <SelectValue placeholder="Select primary artist" />
+                                        </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                        {availableArtistNames.map(name => (
+                                            <SelectItem key={name} value={name}>{name}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                <Button type="button" variant="outline" size="icon" onClick={() => setIsCreateArtistModalOpen(true)} className="h-10 w-10 flex-shrink-0" title="Create New Artist Profile">
+                                    <UserPlus className="h-4 w-4"/>
+                                </Button>
+                            </div>
                         ) : (
-                            <FormControl>
-                                <Input placeholder="Defaults to your profile name" {...field} value={field.value ?? userProfile?.name ?? ""} disabled={isSubmitting} />
-                            </FormControl>
+                             <div className="flex items-center gap-2">
+                                <FormControl>
+                                    <Input placeholder="Enter primary artist name" {...field} className="flex-grow" disabled={isSubmitting} />
+                                </FormControl>
+                                <Button type="button" variant="outline" size="icon" onClick={() => setIsCreateArtistModalOpen(true)} className="h-10 w-10 flex-shrink-0" title="Create New Artist Profile">
+                                    <UserPlus className="h-4 w-4"/>
+                                </Button>
+                            </div>
                         )}
                         <FormMessage />
                         </FormItem>
                     )}
                 />
+
+                 <FormField
+                    control={form.control}
+                    name="additionalArtistNames"
+                    render={() => ( // field is not directly used here, but control is via form.getValues/setValue
+                        <FormItem>
+                            <FormLabel>Additional Artists (Optional)</FormLabel>
+                            <Popover>
+                                <PopoverTrigger asChild>
+                                    <Button variant="outline" className="w-full justify-start text-left font-normal border-input" disabled={isSubmitting || availableArtistNames.length <=1}>
+                                        {selectedAdditionalArtists.length > 0 
+                                            ? selectedAdditionalArtists.join(', ') 
+                                            : "Select additional artists"}
+                                    </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-[--radix-popover-trigger-width] p-0 bg-popover border-border">
+                                     <ScrollArea className="max-h-48">
+                                    {availableArtistNames.filter(name => name !== form.getValues("primaryArtistName")).map((artist) => (
+                                        <div key={artist} className="flex items-center space-x-2 p-2 hover:bg-accent hover:text-accent-foreground rounded-sm">
+                                            <Checkbox
+                                                id={`artist-select-${artist}`}
+                                                checked={selectedAdditionalArtists.includes(artist)}
+                                                onCheckedChange={(checked) => {
+                                                    const newSelection = checked 
+                                                        ? [...selectedAdditionalArtists, artist] 
+                                                        : selectedAdditionalArtists.filter(name => name !== artist);
+                                                    setSelectedAdditionalArtists(newSelection);
+                                                    form.setValue("additionalArtistNames", newSelection, { shouldValidate: true, shouldDirty: true });
+                                                }}
+                                            />
+                                            <label htmlFor={`artist-select-${artist}`} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                                                {artist}
+                                            </label>
+                                        </div>
+                                    ))}
+                                     {availableArtistNames.filter(name => name !== form.getValues("primaryArtistName")).length === 0 && <p className="p-2 text-sm text-muted-foreground">No other artists available to select.</p>}
+                                     </ScrollArea>
+                                </PopoverContent>
+                            </Popover>
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                />
+
 
                 <FormField
                   control={form.control}
@@ -461,6 +535,16 @@ export function AddExistingReleaseModal({ isOpen, onClose, onSuccess }: AddExist
               </form>
             </Form>
         </ScrollArea>
+         <CreateArtistModal
+            isOpen={isCreateArtistModalOpen}
+            onClose={() => setIsCreateArtistModalOpen(false)}
+            onSuccess={(newArtistName) => {
+                setAvailableArtistNames(prev => Array.from(new Set([...prev, newArtistName])).sort());
+                form.setValue("primaryArtistName", newArtistName, { shouldValidate: true, shouldDirty: true });
+                setIsCreateArtistModalOpen(false);
+                toast({ title: "Artist Profile Created", description: `${newArtistName} can now be selected.`});
+            }}
+        />
 
       </DialogContent>
     </Dialog>

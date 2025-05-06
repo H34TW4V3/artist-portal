@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
-import { Loader2, UploadCloud, PlusCircle, Wand2 } from "lucide-react"; // Added Wand2 for test release
+import { Loader2, UploadCloud, PlusCircle, Wand2 } from "lucide-react"; 
 import { Timestamp } from "firebase/firestore"; 
 
 import { Button } from "@/components/ui/button";
@@ -22,7 +22,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { UploadReleaseModal } from './upload-release-modal'; 
 import { AddExistingReleaseModal } from './add-existing-release-modal'; 
 import type { ReleaseWithId, ReleaseMetadata } from '@/services/music-platform'; 
-// Import addTestRelease
+
 import { removeRelease, getReleases, addTestRelease } from '@/services/music-platform'; 
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton'; 
@@ -56,7 +56,7 @@ export function ReleaseList({ className }: ReleaseListProps) {
 
   
   const fetchReleases = async () => {
-    if (!user) { // If no user, don't attempt to fetch
+    if (!user) { 
         console.log("ReleaseList: No user, skipping fetchReleases.");
         setIsLoading(false); 
         setReleases([]);    
@@ -79,7 +79,7 @@ export function ReleaseList({ className }: ReleaseListProps) {
             console.log(`Release ${release.id} ('${release.title}') marked for permanent deletion (takedown requested > 48hrs ago).`);
             releaseIdsToDelete.push(release.id);
             titlesOfReleasesToDelete.push(release.title);
-            // Do not add to releasesToDisplay, it will be deleted.
+            
           } else {
             releasesToDisplay.push(release);
           }
@@ -88,7 +88,7 @@ export function ReleaseList({ className }: ReleaseListProps) {
         }
       }
 
-      setReleases(releasesToDisplay); // Update UI optimistically
+      setReleases(releasesToDisplay); 
       console.log("ReleaseList: Releases displayed:", releasesToDisplay.length);
 
 
@@ -132,15 +132,15 @@ export function ReleaseList({ className }: ReleaseListProps) {
   
   useEffect(() => {
     console.log("ReleaseList: useEffect triggered. User:", user?.uid, "AuthLoading:", authLoading);
-    if (!authLoading && user) { // Fetch only if auth is resolved and user exists
+    if (!authLoading && user) { 
         fetchReleases();
-    } else if (!authLoading && !user) { // If auth resolved and no user, clear list and stop loading
+    } else if (!authLoading && !user) { 
         setIsLoading(false);
         setReleases([]);
         console.log("ReleaseList: No authenticated user, clearing releases and stopping load.");
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, authLoading]); // Depend on user and authLoading
+  }, [user, authLoading]); 
 
 
   
@@ -186,7 +186,7 @@ export function ReleaseList({ className }: ReleaseListProps) {
                 description: "A sample release has been added to your list.",
                 variant: "default"
             });
-            await fetchReleases(); // Refresh the list
+            await fetchReleases(); 
         }
     } catch (error) {
         console.error("Error adding test release:", error);
@@ -250,7 +250,7 @@ export function ReleaseList({ className }: ReleaseListProps) {
     }
   };
 
-  // Determine if the Add Release button should be disabled
+  
   const isAddReleaseDisabled = authLoading || !user || isLoadingTestRelease;
   if (user) {
       console.log("ReleaseList rendering. User:", user.uid, "AuthLoading:", authLoading, "IsLoading:", isLoading, "IsAddReleaseDisabled:", isAddReleaseDisabled);
@@ -291,7 +291,7 @@ export function ReleaseList({ className }: ReleaseListProps) {
                             <PlusCircle className="mr-2 h-4 w-4" /> Add Release
                         </Button>
                     </DropdownMenuTrigger>
-                    {user && ( // Only render DropdownMenuContent if user is logged in
+                    {user && ( 
                         <DropdownMenuContent align="end" className="bg-popover border-border">
                             <DropdownMenuItem onClick={openUploadModal} className="cursor-pointer focus:bg-accent focus:text-accent-foreground">
                                 <UploadCloud className="mr-2 h-4 w-4" />
@@ -307,15 +307,15 @@ export function ReleaseList({ className }: ReleaseListProps) {
              </div>
         </CardHeader>
         <CardContent>
-             {authLoading ? ( // Show main loader if auth is still loading
+             {authLoading ? ( 
                   <div className="flex justify-center items-center py-10">
                       <Loader2 className="h-8 w-8 animate-spin text-primary" />
                   </div>
-             ) : !user ? ( // Message if not logged in (after auth check)
+             ) : !user ? ( 
                  <div className="text-center py-10 text-muted-foreground">
                      Please log in to manage your releases.
                  </div>
-             ) : ( // Content for logged-in users
+             ) : ( 
              <div className="overflow-x-auto rounded-md border border-border/50">
                 <Table>
                 <TableHeader>
@@ -324,14 +324,14 @@ export function ReleaseList({ className }: ReleaseListProps) {
                         Artwork
                     </TableHead>
                     <TableHead className="p-2">Title</TableHead>
-                    <TableHead className="hidden md:table-cell p-2">Artist</TableHead>
+                    <TableHead className="hidden md:table-cell p-2">Artist(s)</TableHead>
                     <TableHead className="hidden md:table-cell p-2">Release Date</TableHead>
                     <TableHead className="hidden md:table-cell p-2">Status</TableHead>
                     
                     </TableRow>
                 </TableHeader>
                 <TableBody>
-                    {isLoading ? ( // Show table skeleton if releases are loading
+                    {isLoading ? ( 
                         Array.from({ length: 3 }).map((_, index) => (
                             <TableRow key={`skeleton-${index}`} className="border-b border-border/30">
                                 <TableCell className="hidden sm:table-cell p-2">
@@ -369,7 +369,9 @@ export function ReleaseList({ className }: ReleaseListProps) {
                                     />
                                 </TableCell>
                                 <TableCell className="font-medium text-foreground p-2 align-middle">{release.title}</TableCell>
-                                <TableCell className="hidden md:table-cell text-muted-foreground p-2 align-middle">{release.artist}</TableCell>
+                                <TableCell className="hidden md:table-cell text-muted-foreground p-2 align-middle">
+                                    {release.artists && release.artists.length > 0 ? release.artists.join(', ') : 'Unknown Artist'}
+                                </TableCell>
                                 <TableCell className="hidden md:table-cell text-muted-foreground p-2 align-middle">
                                   {formatDate(release.releaseDate || release.createdAt)}
                                 </TableCell>
@@ -422,3 +424,4 @@ export function ReleaseList({ className }: ReleaseListProps) {
     </>
   );
 }
+

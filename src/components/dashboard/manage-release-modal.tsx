@@ -5,8 +5,8 @@ import React, { useState, useRef, useEffect } from "react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { format, parseISO, differenceInHours, isWithinInterval, addHours } from "date-fns"; // Added isWithinInterval, addHours
-import { Loader2, Link as LinkIcon, Upload, CalendarIcon, Music, Trash2, PlusCircle, X, Save, ExternalLink, AlertTriangle, RotateCcw, Ban } from "lucide-react"; // Added Ban
+import { format, parseISO, differenceInHours, isWithinInterval, addHours } from "date-fns"; 
+import { Loader2, Link as LinkIcon, Upload, CalendarIcon, Music, Trash2, PlusCircle, X, Save, ExternalLink, AlertTriangle, RotateCcw, Ban, UserPlus } from "lucide-react"; 
 import Image from 'next/image';
 import { Timestamp } from "firebase/firestore";
 
@@ -39,13 +39,19 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDes
 import { updateRelease, initiateTakedown, cancelTakedownRequest, type ReleaseWithId, type TrackInfo, type ReleaseMetadata } from "@/services/music-platform";
 import { storage } from "@/services/firebase-config";
 import { useAuth } from "@/context/auth-context";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"; // Import Select
-import { getUserProfileByUid } from "@/services/user"; // To fetch profile for artist names
-import type { ProfileFormValues } from "@/components/profile/profile-form"; // Import ProfileFormValues
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"; 
+import { CreateArtistModal } from "./create-artist-modal";
+import type { ProfileFormValues } from "@/components/profile/profile-form"; 
+import { getUserProfileByUid } from "@/services/user";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Badge } from "@/components/ui/badge";
+
 
 const manageReleaseSchema = z.object({
   title: z.string().min(2, "Title must be at least 2 characters.").max(100, "Title must be 100 characters or less."),
-  artist: z.string().min(2, "Artist name must be at least 2 characters.").max(100, "Artist name must be 100 characters or less."),
+  primaryArtistName: z.string().min(2, "Primary artist name must be at least 2 characters.").max(100, "Artist name too long."),
+  additionalArtistNames: z.array(z.string().min(2, "Artist name must be at least 2 characters.").max(100, "Artist name too long.")).optional(),
   releaseDate: z.date({ required_error: "A release date is required." }),
   artworkFile: z.instanceof(File).optional().nullable()
     .refine(file => !file || file.size <= 5 * 1024 * 1024, 'Artwork must be 5MB or less.')
@@ -68,7 +74,7 @@ export function ManageReleaseModal({ isOpen, onClose, releaseData, onSuccess, on
   const { user } = useAuth();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isTakedownActionLoading, setIsTakedownActionLoading] = useState(false); // Consolidated loading state
+  const [isTakedownActionLoading, setIsTakedownActionLoading] = useState(false); 
   const [isTakedownConfirmOpen, setIsTakedownConfirmOpen] = useState(false);
   const [isCancelTakedownConfirmOpen, setIsCancelTakedownConfirmOpen] = useState(false);
   const [artworkPreviewUrl, setArtworkPreviewUrl] = useState<string | null>(null);
@@ -76,6 +82,10 @@ export function ManageReleaseModal({ isOpen, onClose, releaseData, onSuccess, on
   const artworkInputRef = useRef<HTMLInputElement>(null);
   const placeholderArtwork = "/placeholder-artwork.png";
   const [userProfile, setUserProfile] = useState<ProfileFormValues | null>(null);
+  const [isCreateArtistModalOpen, setIsCreateArtistModalOpen] = useState(false);
+  const [availableArtistNames, setAvailableArtistNames] = useState<string[]>([]);
+  const [selectedAdditionalArtists, setSelectedAdditionalArtists] = useState<string[]>([]);
+
 
   const parseInitialDate = (dateValue: string | Date | Timestamp | undefined): Date => {
       if (!dateValue) return new Date();
@@ -102,7 +112,8 @@ export function ManageReleaseModal({ isOpen, onClose, releaseData, onSuccess, on
     resolver: zodResolver(manageReleaseSchema),
     defaultValues: {
       title: "",
-      artist: "",
+      primaryArtistName: "",
+      additionalArtistNames: [],
       releaseDate: new Date(),
       artworkFile: null,
       tracks: [{ name: "" }],
@@ -117,23 +128,52 @@ export function ManageReleaseModal({ isOpen, onClose, releaseData, onSuccess, on
   });
 
    useEffect(() => {
-    const fetchProfile = async () => {
+    const fetchProfileAndSetArtists = async () => {
         if (user?.uid) {
             const profile = await getUserProfileByUid(user.uid);
             setUserProfile(profile);
+            const initialNames = profile?.name ? [profile.name] : [];
+            const placeholderNames = ["DJ Another Name", "Producer Alias"]; // Example
+            const allNames = Array.from(new Set([...initialNames, ...placeholderNames].filter(Boolean))) as string[];
+            setAvailableArtistNames(allNames);
+
+            if (releaseData) {
+                 const primary = releaseData.artists?.[0] || profile?.name || "";
+                 const additional = releaseData.artists?.slice(1) || [];
+                 form.reset({
+                    title: releaseData.title || "",
+                    primaryArtistName: primary,
+                    additionalArtistNames: additional,
+                    releaseDate: parseInitialDate(releaseData.releaseDate),
+                    artworkFile: null,
+                    tracks: releaseData.tracks && releaseData.tracks.length > 0 ? releaseData.tracks : [{ name: "" }],
+                    spotifyLink: releaseData.spotifyLink || "",
+                });
+                setSelectedAdditionalArtists(additional);
+            } else {
+                 form.reset({
+                    ...form.getValues(),
+                    primaryArtistName: profile?.name || "",
+                    additionalArtistNames: [],
+                });
+                setSelectedAdditionalArtists([]);
+            }
         }
     };
     if (isOpen) {
-        fetchProfile();
+        fetchProfileAndSetArtists();
     }
-   }, [isOpen, user]);
+   }, [isOpen, user, releaseData, form]);
 
 
    useEffect(() => {
      if (isOpen && releaseData) {
+         const primary = releaseData.artists?.[0] || userProfile?.name || "";
+         const additional = releaseData.artists?.slice(1) || [];
          form.reset({
              title: releaseData.title || "",
-             artist: releaseData.artist || userProfile?.name || "", // Default to profile name if release artist is empty
+             primaryArtistName: primary,
+             additionalArtistNames: additional,
              releaseDate: parseInitialDate(releaseData.releaseDate),
              artworkFile: null,
              tracks: releaseData.tracks && releaseData.tracks.length > 0 ? releaseData.tracks : [{ name: "" }],
@@ -141,6 +181,7 @@ export function ManageReleaseModal({ isOpen, onClose, releaseData, onSuccess, on
          });
          setCurrentArtworkUrl(releaseData.artworkUrl || null);
          setArtworkPreviewUrl(null);
+         setSelectedAdditionalArtists(additional);
          setIsTakedownConfirmOpen(false);
          setIsCancelTakedownConfirmOpen(false);
          setIsTakedownActionLoading(false);
@@ -150,11 +191,12 @@ export function ManageReleaseModal({ isOpen, onClose, releaseData, onSuccess, on
      } else if (!isOpen) {
            setTimeout(() => {
                 form.reset({
-                    title: "", artist: userProfile?.name || "", releaseDate: new Date(), artworkFile: null,
+                    title: "", primaryArtistName: userProfile?.name || "", additionalArtistNames:[], releaseDate: new Date(), artworkFile: null,
                     tracks: [{ name: "" }], spotifyLink: ""
                 });
                 setCurrentArtworkUrl(null);
                 setArtworkPreviewUrl(null);
+                setSelectedAdditionalArtists([]);
                 setIsTakedownConfirmOpen(false);
                 setIsCancelTakedownConfirmOpen(false);
                 setIsTakedownActionLoading(false);
@@ -210,13 +252,16 @@ export function ManageReleaseModal({ isOpen, onClose, releaseData, onSuccess, on
     }
     setIsSubmitting(true);
 
+    const allArtistNames = [values.primaryArtistName, ...(values.additionalArtistNames || [])].filter(Boolean);
+
     try {
       const dataToUpdate: Partial<Omit<ReleaseMetadata, 'userId' | 'createdAt' | 'zipUrl' | 'status' >> & { releaseDate?: Date } = {
         title: values.title,
-        artist: values.artist,
+        artists: allArtistNames,
         releaseDate: values.releaseDate,
         tracks: values.tracks,
         spotifyLink: values.spotifyLink || null,
+        // artworkUrl will be handled by updateRelease service if newArtworkFile is passed
       };
 
       await updateRelease(releaseData.id, dataToUpdate, values.artworkFile || undefined);
@@ -306,10 +351,7 @@ export function ManageReleaseModal({ isOpen, onClose, releaseData, onSuccess, on
 
   if (!releaseData) return null;
   
-  // Placeholder for multiple artist names - replace with actual data source
-  const artistNames = userProfile?.name ? [userProfile.name, "DJ Another Name", "Producer Alias"] : [];
-
-
+  
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-lg md:max-w-2xl bg-card/85 dark:bg-card/70 border-border/50">
@@ -393,34 +435,89 @@ export function ManageReleaseModal({ isOpen, onClose, releaseData, onSuccess, on
                   )}
                 />
 
-                 <FormField
+                <FormField
                     control={form.control}
-                    name="artist"
+                    name="primaryArtistName"
                     render={({ field }) => (
                         <FormItem>
-                        <FormLabel>Artist Name</FormLabel>
-                        {artistNames.length > 1 ? (
-                            <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isSubmitting}>
-                                <FormControl>
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Select an artist name" />
-                                    </SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                    {artistNames.map(name => (
-                                        <SelectItem key={name} value={name}>{name}</SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                        <FormLabel>Primary Artist Name</FormLabel>
+                        {availableArtistNames.length > 0 ? (
+                             <div className="flex items-center gap-2">
+                                <Select onValueChange={field.onChange} value={field.value} disabled={isSubmitting}>
+                                    <FormControl>
+                                        <SelectTrigger className="flex-grow">
+                                            <SelectValue placeholder="Select primary artist" />
+                                        </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                        {availableArtistNames.map(name => (
+                                            <SelectItem key={`primary-${name}`} value={name}>{name}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                <Button type="button" variant="outline" size="icon" onClick={() => setIsCreateArtistModalOpen(true)} className="h-10 w-10 flex-shrink-0" title="Create New Artist Profile">
+                                    <UserPlus className="h-4 w-4"/>
+                                </Button>
+                            </div>
                         ) : (
-                            <FormControl>
-                                <Input {...field} disabled={isSubmitting} />
-                            </FormControl>
+                            <div className="flex items-center gap-2">
+                                <FormControl>
+                                    <Input {...field} disabled={isSubmitting} className="flex-grow" />
+                                </FormControl>
+                                <Button type="button" variant="outline" size="icon" onClick={() => setIsCreateArtistModalOpen(true)} className="h-10 w-10 flex-shrink-0" title="Create New Artist Profile">
+                                    <UserPlus className="h-4 w-4"/>
+                                </Button>
+                            </div>
                         )}
                         <FormMessage />
                         </FormItem>
                     )}
                 />
+
+                 <FormField
+                    control={form.control}
+                    name="additionalArtistNames"
+                    render={() => (
+                        <FormItem>
+                            <FormLabel>Additional Artists (Optional)</FormLabel>
+                            <Popover>
+                                <PopoverTrigger asChild>
+                                    <Button variant="outline" className="w-full justify-start text-left font-normal border-input" disabled={isSubmitting || availableArtistNames.length <=1}>
+                                        {selectedAdditionalArtists.length > 0 
+                                            ? selectedAdditionalArtists.map(artist => <Badge key={artist} variant="secondary" className="mr-1 mb-1">{artist}</Badge>)
+                                            : "Select additional artists"}
+                                        {selectedAdditionalArtists.length === 0 &&  <span className="ml-auto text-muted-foreground text-xs">Click to select</span> }
+                                    </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-[--radix-popover-trigger-width] p-0 bg-popover border-border">
+                                    <ScrollArea className="max-h-48">
+                                        {availableArtistNames.filter(name => name !== form.getValues("primaryArtistName")).map((artist) => (
+                                            <div key={`additional-${artist}`} className="flex items-center space-x-2 p-2 hover:bg-accent hover:text-accent-foreground rounded-sm">
+                                                <Checkbox
+                                                    id={`artist-select-manage-${artist}`}
+                                                    checked={selectedAdditionalArtists.includes(artist)}
+                                                    onCheckedChange={(checked) => {
+                                                        const newSelection = checked 
+                                                            ? [...selectedAdditionalArtists, artist] 
+                                                            : selectedAdditionalArtists.filter(name => name !== artist);
+                                                        setSelectedAdditionalArtists(newSelection);
+                                                        form.setValue("additionalArtistNames", newSelection, { shouldValidate: true, shouldDirty: true });
+                                                    }}
+                                                />
+                                                <label htmlFor={`artist-select-manage-${artist}`} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                                                    {artist}
+                                                </label>
+                                            </div>
+                                        ))}
+                                        {availableArtistNames.filter(name => name !== form.getValues("primaryArtistName")).length === 0 && <p className="p-2 text-sm text-muted-foreground">No other artists available.</p>}
+                                    </ScrollArea>
+                                </PopoverContent>
+                            </Popover>
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                />
+
 
                 <FormField
                   control={form.control}
@@ -653,6 +750,16 @@ export function ManageReleaseModal({ isOpen, onClose, releaseData, onSuccess, on
                 </AlertDialogFooter>
             </AlertDialogContent>
         </AlertDialog>
+         <CreateArtistModal
+            isOpen={isCreateArtistModalOpen}
+            onClose={() => setIsCreateArtistModalOpen(false)}
+            onSuccess={(newArtistName) => {
+                setAvailableArtistNames(prev => Array.from(new Set([...prev, newArtistName])).sort());
+                form.setValue("primaryArtistName", newArtistName, { shouldValidate: true, shouldDirty: true });
+                setIsCreateArtistModalOpen(false);
+                toast({ title: "Artist Profile Created", description: `${newArtistName} can now be selected.`});
+            }}
+        />
 
       </DialogContent>
     </Dialog>

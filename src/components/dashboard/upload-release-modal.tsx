@@ -6,7 +6,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { format } from "date-fns";
-import { Loader2, UploadCloud, X, CalendarIcon, FileArchive, HelpCircle, Info, ArrowLeft, ArrowRight, CheckCircle, AlertTriangle, UserPlus } from "lucide-react"; // Added UserPlus
+import { Loader2, UploadCloud, X, CalendarIcon, FileArchive, HelpCircle, Info, ArrowLeft, ArrowRight, CheckCircle, AlertTriangle, UserPlus } from "lucide-react"; 
 
 import { Button } from "@/components/ui/button";
 import {
@@ -46,19 +46,24 @@ import { uploadReleaseZip, type ReleaseUploadMetadata } from "@/services/music-p
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Progress } from "@/components/ui/progress";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"; // Import Select
-import { CreateArtistModal } from "./create-artist-modal"; // Import CreateArtistModal
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"; 
+import { CreateArtistModal } from "./create-artist-modal"; 
 import { useAuth } from "@/context/auth-context";
 import { getUserProfileByUid } from "@/services/user";
 import type { ProfileFormValues } from "@/components/profile/profile-form";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
+
 
 const STEPS = [
-  { id: 1, name: "Artist & Release Details" }, // Combined artist and release details
+  { id: 1, name: "Artist & Release Details" }, 
   { id: 2, name: "Upload Package" },
 ];
 
+// Schema updated for multiple artists
 const uploadSchema = z.object({
-  artistName: z.string().min(2, "Artist name must be at least 2 characters.").max(100, "Artist name must be 100 characters or less."),
+  primaryArtistName: z.string().min(2, "Primary artist name must be at least 2 characters.").max(100, "Artist name too long."),
+  additionalArtistNames: z.array(z.string().min(2, "Artist name must be at least 2 characters.").max(100, "Artist name too long.")).optional(),
   releaseName: z.string().min(2, "Release name must be at least 2 characters.").max(100, "Name must be 100 characters or less."),
   releaseDate: z.date({ required_error: "A release date is required." }),
   releaseZip: z.instanceof(File).refine(file => file?.size > 0, 'Release ZIP file is required.')
@@ -86,13 +91,15 @@ export function UploadReleaseModal({ isOpen, onClose, onSuccess }: UploadRelease
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [userProfile, setUserProfile] = useState<ProfileFormValues | null>(null);
   const [isCreateArtistModalOpen, setIsCreateArtistModalOpen] = useState(false);
-  const [artistNames, setArtistNames] = useState<string[]>([]); // State for artist names
+  const [availableArtistNames, setAvailableArtistNames] = useState<string[]>([]); 
+  const [selectedAdditionalArtists, setSelectedAdditionalArtists] = useState<string[]>([]);
 
 
   const form = useForm<UploadFormValues>({
     resolver: zodResolver(uploadSchema),
     defaultValues: {
-      artistName: "",
+      primaryArtistName: "",
+      additionalArtistNames: [],
       releaseName: "",
       releaseDate: new Date(),
       releaseZip: undefined,
@@ -105,16 +112,19 @@ export function UploadReleaseModal({ isOpen, onClose, onSuccess }: UploadRelease
         if (user?.uid) {
             const profile = await getUserProfileByUid(user.uid);
             setUserProfile(profile);
-            const initialArtistNames = profile?.name ? [profile.name] : [];
-            // TODO: Fetch other associated artist names if applicable
-            // For now, just using the primary profile name, and adding placeholders
-            const placeholderArtistNames = ["DJ Another Name", "Producer Alias"];
-            setArtistNames([...initialArtistNames, ...placeholderArtistNames].filter(Boolean) as string[]);
+            // Combine profile name with any associated/placeholder names
+            const initialNames = profile?.name ? [profile.name] : [];
+            // In a real app, fetch associated artist names here
+            const placeholderNames = ["DJ Another Name", "Producer Alias"]; // Example
+            const allNames = Array.from(new Set([...initialNames, ...placeholderNames].filter(Boolean))) as string[];
+            setAvailableArtistNames(allNames);
 
             form.reset({
                 ...form.getValues(),
-                artistName: profile?.name || "",
+                primaryArtistName: profile?.name || "",
+                additionalArtistNames: [], // Reset additional artists
             });
+            setSelectedAdditionalArtists([]); // Reset selected additional artists state
         }
     };
     if (isOpen) {
@@ -139,22 +149,24 @@ export function UploadReleaseModal({ isOpen, onClose, onSuccess }: UploadRelease
    useEffect(() => {
        if (!isOpen) {
            const timer = setTimeout(() => {
-                form.reset({ artistName: userProfile?.name || "", releaseName: "", releaseDate: new Date(), releaseZip: undefined });
+                form.reset({ primaryArtistName: userProfile?.name || "", additionalArtistNames: [], releaseName: "", releaseDate: new Date(), releaseZip: undefined });
                 setZipFileName(null);
                 setIsSubmitting(false);
                 setShowConfirmationDialog(false);
                 setConfirmedReleaseName("");
                 setCurrentStep(1);
                 setPreviousStep(1);
+                setSelectedAdditionalArtists([]);
                  if (fileInputRef.current) { fileInputRef.current.value = ""; }
            }, 150);
            return () => clearTimeout(timer);
        } else {
-           form.reset({ artistName: userProfile?.name || "", releaseName: "", releaseDate: new Date(), releaseZip: undefined });
+           form.reset({ primaryArtistName: userProfile?.name || "", additionalArtistNames: [], releaseName: "", releaseDate: new Date(), releaseZip: undefined });
            setZipFileName(null);
            setIsSubmitting(false);
            setCurrentStep(1);
            setPreviousStep(1);
+           setSelectedAdditionalArtists([]);
             if (fileInputRef.current) { fileInputRef.current.value = ""; }
        }
    // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -178,7 +190,7 @@ export function UploadReleaseModal({ isOpen, onClose, onSuccess }: UploadRelease
 
    const validateStep = async (step: number): Promise<boolean> => {
      let fieldsToValidate: (keyof UploadFormValues)[] = [];
-     if (step === 1) fieldsToValidate = ["artistName", "releaseName", "releaseDate"];
+     if (step === 1) fieldsToValidate = ["primaryArtistName", "releaseName", "releaseDate"]; // "additionalArtistNames" is optional
      else if (step === 2) fieldsToValidate = ["releaseZip"];
 
      const isValid = await form.trigger(fieldsToValidate);
@@ -223,8 +235,10 @@ export function UploadReleaseModal({ isOpen, onClose, onSuccess }: UploadRelease
         setIsSubmitting(false); return;
     }
 
+    const allArtistNames = [values.primaryArtistName, ...(values.additionalArtistNames || [])].filter(Boolean);
+
     const uploadData: ReleaseUploadMetadata = {
-        artistName: values.artistName, // Include artist name
+        artistNames: allArtistNames, 
         releaseName: values.releaseName,
         releaseDate: formattedReleaseDate,
     };
@@ -280,20 +294,20 @@ export function UploadReleaseModal({ isOpen, onClose, onSuccess }: UploadRelease
                     <>
                     <FormField
                       control={form.control}
-                      name="artistName"
+                      name="primaryArtistName"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Artist Name</FormLabel>
-                          {artistNames.length > 0 ? (
+                          <FormLabel>Primary Artist Name</FormLabel>
+                          {availableArtistNames.length > 0 ? (
                             <div className="flex items-center gap-2">
                                 <Select onValueChange={field.onChange} defaultValue={field.value || userProfile?.name || ""} disabled={isSubmitting}>
                                     <FormControl>
                                         <SelectTrigger className="flex-grow">
-                                            <SelectValue placeholder="Select an artist name" />
+                                            <SelectValue placeholder="Select primary artist" />
                                         </SelectTrigger>
                                     </FormControl>
                                     <SelectContent>
-                                        {artistNames.map(name => (
+                                        {availableArtistNames.map(name => (
                                             <SelectItem key={name} value={name}>{name}</SelectItem>
                                         ))}
                                     </SelectContent>
@@ -305,7 +319,7 @@ export function UploadReleaseModal({ isOpen, onClose, onSuccess }: UploadRelease
                           ) : (
                             <div className="flex items-center gap-2">
                                 <FormControl>
-                                    <Input placeholder="Enter artist name" {...field} className="focus:ring-accent flex-grow" disabled={isSubmitting} />
+                                    <Input placeholder="Enter primary artist name" {...field} className="focus:ring-accent flex-grow" disabled={isSubmitting} />
                                 </FormControl>
                                  <Button type="button" variant="outline" size="icon" onClick={() => setIsCreateArtistModalOpen(true)} className="h-10 w-10 flex-shrink-0" title="Create New Artist Profile">
                                      <UserPlus className="h-4 w-4"/>
@@ -316,6 +330,51 @@ export function UploadReleaseModal({ isOpen, onClose, onSuccess }: UploadRelease
                         </FormItem>
                       )}
                     />
+
+                    <FormField
+                        control={form.control}
+                        name="additionalArtistNames"
+                        render={() => (
+                            <FormItem>
+                                <FormLabel>Additional Artists (Optional)</FormLabel>
+                                 <Popover>
+                                    <PopoverTrigger asChild>
+                                        <Button variant="outline" className="w-full justify-start text-left font-normal border-input" disabled={isSubmitting || availableArtistNames.length <= 1}>
+                                            {selectedAdditionalArtists.length > 0 
+                                                ? selectedAdditionalArtists.join(', ') 
+                                                : "Select additional artists"}
+                                        </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0 bg-popover border-border">
+                                        <ScrollArea className="max-h-48">
+                                        {availableArtistNames.filter(name => name !== form.getValues("primaryArtistName")).map((artist) => (
+                                            <div key={artist} className="flex items-center space-x-2 p-2 hover:bg-accent hover:text-accent-foreground rounded-sm">
+                                                <Checkbox
+                                                    id={`artist-${artist}`}
+                                                    checked={selectedAdditionalArtists.includes(artist)}
+                                                    onCheckedChange={(checked) => {
+                                                        const newSelection = checked 
+                                                            ? [...selectedAdditionalArtists, artist] 
+                                                            : selectedAdditionalArtists.filter(name => name !== artist);
+                                                        setSelectedAdditionalArtists(newSelection);
+                                                        form.setValue("additionalArtistNames", newSelection, { shouldValidate: true, shouldDirty: true });
+                                                    }}
+                                                />
+                                                <label htmlFor={`artist-${artist}`} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                                                    {artist}
+                                                </label>
+                                            </div>
+                                        ))}
+                                        {availableArtistNames.length <=1 && <p className="p-2 text-sm text-muted-foreground">No other artists available or selected as primary.</p>}
+                                        </ScrollArea>
+                                    </PopoverContent>
+                                </Popover>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+
+
                     <FormField control={form.control} name="releaseName" render={({ field }) => ( <FormItem><FormLabel>Release Name</FormLabel><FormControl><Input placeholder="Enter release name" {...field} className="focus:ring-accent" disabled={isSubmitting} /></FormControl><FormMessage /></FormItem> )} />
                     <FormField control={form.control} name="releaseDate" render={({ field }) => ( <FormItem className="flex flex-col"><FormLabel>Release Date</FormLabel><Popover><PopoverTrigger asChild><FormControl><Button variant={"outline"} className={cn("w-full justify-start text-left font-normal border-input focus:ring-accent", !field.value && "text-muted-foreground")} disabled={isSubmitting}><CalendarIcon className="mr-2 h-4 w-4 opacity-50" />{field.value && field.value instanceof Date && !isNaN(field.value.getTime()) ? format(field.value, "PPP") : <span>Pick a date</span>}</Button></FormControl></PopoverTrigger><PopoverContent className="w-auto p-0 bg-popover border-border" align="start"><Calendar mode="single" selected={field.value instanceof Date && !isNaN(field.value.getTime()) ? field.value : undefined} onSelect={(date) => field.onChange(date || new Date())} disabled={(date) => date < new Date(new Date().setHours(0,0,0,0))} initialFocus /></PopoverContent></Popover><FormDescription className="text-xs">The date the release should go live.</FormDescription><FormMessage /></FormItem> )} />
                     </>
@@ -366,8 +425,8 @@ export function UploadReleaseModal({ isOpen, onClose, onSuccess }: UploadRelease
         onClose={() => setIsCreateArtistModalOpen(false)}
         onSuccess={(newArtistName) => {
             // Add new artist name to the list and select it
-            setArtistNames(prev => [...prev, newArtistName].sort());
-            form.setValue("artistName", newArtistName, { shouldValidate: true, shouldDirty: true });
+            setAvailableArtistNames(prev => Array.from(new Set([...prev, newArtistName])).sort());
+            form.setValue("primaryArtistName", newArtistName, { shouldValidate: true, shouldDirty: true });
             setIsCreateArtistModalOpen(false);
             toast({ title: "Artist Profile Created", description: `${newArtistName} can now be selected.`});
         }}
