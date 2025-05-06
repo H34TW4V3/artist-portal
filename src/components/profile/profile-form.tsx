@@ -5,7 +5,7 @@ import { useState, useEffect, useRef } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
-import { Loader2, Upload, AlertCircle, Mail, Phone, User, FileText, ShieldIcon, Users } from "lucide-react"; 
+import { Loader2, Upload, AlertCircle, Mail, Phone, User, FileText, ShieldIcon, Users } from "lucide-react";
 import Image from "next/image";
 
 import { Button } from "@/components/ui/button";
@@ -24,7 +24,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Switch } from "@/components/ui/switch";
+// import { Switch } from "@/components/ui/switch"; // Switch no longer needed
 import { cn } from "@/lib/utils";
 import { Separator } from "@/components/ui/separator";
 
@@ -47,12 +47,12 @@ export type ProfileFormValues = z.infer<typeof profileSchema>;
 
 
 interface ProfileFormProps {
-    initialData?: ProfileFormValues; // This will include isLabel and managedByLabelId
+    initialData?: ProfileFormValues;
     updateFunction: (data: ProfileFormValues, newImageFile?: File) => Promise<{ updatedData: ProfileFormValues }>;
     onSuccess?: (updatedData: ProfileFormValues) => void;
     onCancel?: () => void;
-    onManageMfa: () => void;
-    isSmsMfaEnrolled: boolean;
+    // onManageMfa: () => void; // MFA management removed
+    // isSmsMfaEnrolled: boolean; // MFA state removed
     className?: string;
 }
 
@@ -61,8 +61,8 @@ export function ProfileForm({
     updateFunction,
     onSuccess,
     onCancel,
-    onManageMfa,
-    isSmsMfaEnrolled,
+    // onManageMfa, // Removed
+    // isSmsMfaEnrolled, // Removed
     className
 }: ProfileFormProps) {
     const { toast } = useToast();
@@ -82,8 +82,8 @@ export function ProfileForm({
             phoneNumber: null,
             imageUrl: null,
             hasCompletedTutorial: false,
-            isLabel: false, 
-            managedByLabelId: null, // Default for managedByLabelId
+            isLabel: false,
+            managedByLabelId: null,
         },
         mode: "onChange",
     });
@@ -100,7 +100,7 @@ export function ProfileForm({
                 imageUrl: initialData.imageUrl ?? null,
                 hasCompletedTutorial: initialData.hasCompletedTutorial ?? false,
                 isLabel: initialData.isLabel ?? false,
-                managedByLabelId: initialData.managedByLabelId ?? null, // Initialize managedByLabelId
+                managedByLabelId: initialData.managedByLabelId ?? null,
             };
             form.reset(mergedDefaults);
             setCurrentImageUrl(initialData.imageUrl ?? null);
@@ -142,7 +142,6 @@ export function ProfileForm({
         setIsSubmitting(true);
 
         try {
-            // Ensure isLabel and managedByLabelId from the form are passed
             const { updatedData } = await updateFunction(values, selectedImageFile);
             console.log("ProfileForm: updateFunction successful, updatedData:", updatedData);
 
@@ -151,7 +150,7 @@ export function ProfileForm({
             setSelectedImageFile(undefined);
             setImagePreviewUrl(null);
 
-            form.reset(updatedData); 
+            form.reset(updatedData);
 
             if (onSuccess) {
                 onSuccess(updatedData);
@@ -171,8 +170,10 @@ export function ProfileForm({
 
     return (
         <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className={cn("space-y-4 px-2 py-4 sm:px-6", className)}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className={cn("space-y-6 px-2 py-4 sm:px-6", className)}> {/* Increased top padding for separation */}
 
+                {/* User Details Section */}
+                <h3 className="text-lg font-semibold text-foreground mb-3 pt-2">User Details</h3>
                 <FormItem>
                     <FormLabel>Profile Picture</FormLabel>
                     <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
@@ -207,54 +208,11 @@ export function ProfileForm({
 
                 <FormField control={form.control} name="bio" render={({ field }) => ( <FormItem><FormLabel className="flex items-center gap-1.5"><FileText className="h-3.5 w-3.5"/>Bio</FormLabel><FormControl><Textarea placeholder="Tell us a little bit about yourself or your music..." className="resize-y min-h-[80px] sm:min-h-[100px]" {...field} value={field.value ?? ""} disabled={isSubmitting} /></FormControl><FormDescription className="text-xs">A short bio (optional, max 300 characters).</FormDescription><FormMessage /></FormItem> )} />
 
-                <Separator className="my-6" />
-
-                <h3 className="text-lg font-semibold text-foreground mb-3">Account Settings</h3>
-
-                 <FormField
-                    control={form.control}
-                    name="isLabel" 
-                    render={({ field }) => (
-                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm bg-background/50 dark:bg-background/30">
-                            <div className="space-y-0.5">
-                                <FormLabel className="flex items-center gap-2"><Users className="h-4 w-4" /> Label Account</FormLabel>
-                                <FormDescription className="text-xs">
-                                    Enable if this account represents a label managing multiple artists.
-                                </FormDescription>
-                            </div>
-                            <FormControl>
-                                <Switch
-                                    checked={field.value}
-                                    onCheckedChange={field.onChange}
-                                    disabled={isSubmitting}
-                                    aria-readonly={isSubmitting}
-                                />
-                            </FormControl>
-                        </FormItem>
-                    )}
-                />
-
-
-                 <div className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm bg-background/50 dark:bg-background/30">
-                    <div className="space-y-0.5">
-                        <FormLabel className="flex items-center gap-2">
-                             <ShieldIcon className="h-4 w-4" /> Two-Factor Authentication (2FA)
-                        </FormLabel>
-                        <FormDescription className="text-xs">
-                             {isSmsMfaEnrolled ? "SMS 2FA is currently enabled." : "SMS-based 2FA is currently disabled."}
-                        </FormDescription>
-                    </div>
-                     <Button
-                         type="button"
-                         variant="outline"
-                         size="sm"
-                         onClick={onManageMfa}
-                         disabled={isSubmitting}
-                         title={isSmsMfaEnrolled ? "Manage 2FA" : "Setup 2FA"}
-                     >
-                         {isSmsMfaEnrolled ? "Manage" : "Setup"}
-                     </Button>
-                 </div>
+                {/* Removed Account Settings Section (isLabel and MFA) */}
+                {/* <Separator className="my-6" /> */}
+                {/* <h3 className="text-lg font-semibold text-foreground mb-3">Account Settings</h3> */}
+                {/* Removed isLabel Switch */}
+                {/* Removed MFA Switch */}
 
 
                 <div className="flex justify-end gap-2 pt-4 mt-6">

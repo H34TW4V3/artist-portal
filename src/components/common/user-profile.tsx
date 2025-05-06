@@ -3,7 +3,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { getAuth, sendEmailVerification, reload } from "firebase/auth"; 
+import { getAuth, sendEmailVerification, reload } from "firebase/auth";
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -26,12 +26,12 @@ import {
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogClose } from "@/components/ui/dialog";
 import { PasswordUpdateForm } from "@/components/profile/password-update-form";
 import { ProfileForm, type ProfileFormValues } from "@/components/profile/profile-form";
-import { MfaManagementModal } from "@/components/profile/mfa-management-modal"; 
+// import { MfaManagementModal } from "@/components/profile/mfa-management-modal"; // MFA Modal no longer needed
 import { useToast } from "@/hooks/use-toast";
-import { LogOut, UserCog, KeyRound, Loader2, MailCheck } from "lucide-react"; 
+import { LogOut, UserCog, KeyRound, Loader2, MailCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"; 
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 
 const profileSchema = z.object({
@@ -57,28 +57,32 @@ export default function UserProfile() {
   const [isProfileLoading, setIsProfileLoading] = useState(true);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
-  const [isMfaModalOpen, setIsMfaModalOpen] = useState(false); 
-  const [isSmsMfaEnrolled, setIsSmsMfaEnrolled] = useState(false); 
+  // const [isMfaModalOpen, setIsMfaModalOpen] = useState(false); // MFA state removed
+  // const [isSmsMfaEnrolled, setIsSmsMfaEnrolled] = useState(false); // MFA state removed
   const [isUpdating, setIsUpdating] = useState(false);
-  const [showEmailVerificationNotice, setShowEmailVerificationNotice] = useState(false); 
+  const [showEmailVerificationNotice, setShowEmailVerificationNotice] = useState(false);
+
+  // State for multi-step profile modal
+  const [profileModalStep, setProfileModalStep] = useState(1);
+  const PROFILE_MODAL_TOTAL_STEPS = 2;
+
 
   useEffect(() => {
-    const fetchProfile = async () => { 
+    const fetchProfile = async () => {
       if (authLoading || !user?.uid) {
         setIsProfileLoading(false);
         setProfileData(null);
-        setIsSmsMfaEnrolled(false); 
+        // setIsSmsMfaEnrolled(false); // MFA state removed
         return;
       }
 
       setShowEmailVerificationNotice(!user.emailVerified);
       setIsProfileLoading(true);
       try {
-        // getUserProfileByUid now fetches isLabel from the publicProfile subcollection
         const fetchedProfile = await getUserProfileByUid(user.uid);
-        
+
         if (fetchedProfile) {
-            setProfileData(fetchedProfile); 
+            setProfileData(fetchedProfile);
             if (user.email !== fetchedProfile.email) {
                  console.warn(`UserProfile: Auth email (${user.email}) and Firestore profile email (${fetchedProfile.email}) mismatch. This could indicate a pending email update. Displaying Firestore email.`);
             }
@@ -91,18 +95,17 @@ export default function UserProfile() {
             bio: null,
             phoneNumber: null,
             hasCompletedTutorial: false,
-            isLabel: false, // Default isLabel for new profiles
+            isLabel: false,
           };
-          // Set profile data for the form, but don't persist here; let ProfileForm handle initial save if user edits.
           setProfileData(defaultData);
         }
 
-        setIsSmsMfaEnrolled(false); 
+        // setIsSmsMfaEnrolled(false); // MFA state removed
 
       } catch (error) {
-        console.error("Error fetching user profile in UserProfile component:", error); 
+        console.error("Error fetching user profile in UserProfile component:", error);
         toast({
-          title: "Error Loading Profile", 
+          title: "Error Loading Profile",
           description: "Could not load your profile data. Please try refreshing.",
           variant: "destructive",
         });
@@ -113,16 +116,16 @@ export default function UserProfile() {
             bio: null,
             phoneNumber: null,
             hasCompletedTutorial: false,
-            isLabel: false, // Default isLabel on error
+            isLabel: false,
         });
-        setIsSmsMfaEnrolled(false); 
+        // setIsSmsMfaEnrolled(false); // MFA state removed
       } finally {
         setIsProfileLoading(false);
       }
     };
 
     fetchProfile();
-  }, [user, authLoading, toast]); 
+  }, [user, authLoading, toast]);
 
   const handleLogout = async () => {
     try {
@@ -177,25 +180,24 @@ export default function UserProfile() {
               console.log("handleUpdateProfile: Image uploaded, URL:", newImageUrl);
           }
 
-          // Ensure isLabel is correctly included in the data to save.
-          // It should come from the form `data` object, which gets its default from `profileData`.
           const dataToSave: ProfileFormValues = {
               ...data,
               email: formEmail,
               imageUrl: newImageUrl,
               hasCompletedTutorial: data.hasCompletedTutorial ?? profileData?.hasCompletedTutorial ?? false,
-              isLabel: data.isLabel ?? profileData?.isLabel ?? false, 
+              isLabel: data.isLabel ?? profileData?.isLabel ?? false,
           };
 
-          // setPublicProfile now handles isLabel within the publicProfile subcollection
           await setPublicProfile(user.uid, dataToSave, true);
 
-          setProfileData(dataToSave); // Update local state with saved data (including isLabel)
+          setProfileData(dataToSave);
           console.log("handleUpdateProfile: Public profile updated successfully in Firestore and local state.");
 
-          setIsProfileModalOpen(false); 
+          // Only close modal if on the last step and update was successful without email change needing verification
+          // If email change is initiated, modal might stay open or have specific handling.
+          // For now, we assume if not an email change or if email change is non-blocking, we can proceed to next step or close.
 
-           if (!emailUpdateInitiated) {
+           if (!emailUpdateInitiated) { // Only toast success if no email verification is pending
                toast({
                    title: "Profile Updated",
                    description: "Your profile information has been saved.",
@@ -203,7 +205,7 @@ export default function UserProfile() {
                    duration: 2000,
                });
            }
-          return { updatedData: dataToSave }; 
+          return { updatedData: dataToSave };
       } catch (error) {
           console.error("Error updating profile in handleUpdateProfile:", error);
           if (!(error instanceof Error && error.message.includes("email"))) {
@@ -222,7 +224,7 @@ export default function UserProfile() {
 
   const handleSendVerificationEmail = async () => {
         if (!user) return;
-        setIsUpdating(true); 
+        setIsUpdating(true);
         try {
             await sendVerificationEmail();
             toast({
@@ -245,7 +247,7 @@ export default function UserProfile() {
    useEffect(() => {
      const checkVerification = async () => {
        if (user && !user.emailVerified) {
-         await reload(user); 
+         await reload(user);
          const refreshedUser = getAuth(app).currentUser;
          if (refreshedUser?.emailVerified) {
            setShowEmailVerificationNotice(false);
@@ -262,18 +264,17 @@ export default function UserProfile() {
        checkVerification();
      }
    // eslint-disable-next-line react-hooks/exhaustive-deps
-   }, [isProfileModalOpen, user]); 
+   }, [isProfileModalOpen, user]);
 
-    const handleMfaEnrollmentChange = (enrolled: boolean) => {
-        setIsSmsMfaEnrolled(enrolled); 
-    };
+    // const handleMfaEnrollmentChange = (enrolled: boolean) => { // MFA state removed
+    //     setIsSmsMfaEnrolled(enrolled);
+    // };
 
   const getInitials = (name: string | undefined | null): string => {
     return name?.split(' ').map(n => n[0]).join('').toUpperCase() || 'U';
   };
 
   const isLoading = authLoading || isProfileLoading;
-  // Display name and email now correctly sourced from profileData if available
   const displayName = profileData?.name || user?.displayName || (profileData?.email ? profileData.email.split('@')[0] : 'Artist');
   const displayEmail = profileData?.email || user?.email || 'Loading...';
   const displayImageUrl = profileData?.imageUrl || user?.photoURL || undefined;
@@ -286,16 +287,37 @@ export default function UserProfile() {
       return null;
   }
 
+  const handleNextProfileStep = () => {
+    if (profileModalStep < PROFILE_MODAL_TOTAL_STEPS) {
+        setProfileModalStep(profileModalStep + 1);
+    } else {
+        // This case should ideally be handled by the form's submit button
+        // Or trigger form submission here if needed.
+        // For now, if it's the last step, the "Save Changes" button in ProfileForm will handle closing.
+    }
+  };
+
+  const handlePreviousProfileStep = () => {
+      if (profileModalStep > 1) {
+          setProfileModalStep(profileModalStep - 1);
+      }
+  };
+
+  const openProfileModal = () => {
+    setProfileModalStep(1); // Reset to first step when opening
+    setIsProfileModalOpen(true);
+  }
+
 
   return (
     <div className="flex items-center gap-2">
         {showEmailVerificationNotice && !isProfileModalOpen && (
              <Button
-                variant="ghost" 
+                variant="ghost"
                 size="sm"
                 onClick={handleSendVerificationEmail}
                 disabled={isUpdating}
-                className="text-destructive hover:bg-destructive/10 h-auto px-2 py-1 mr-2 animate-pulse" 
+                className="text-destructive hover:bg-destructive/10 h-auto px-2 py-1 mr-2 animate-pulse"
                 title="Verify your email address"
             >
                  <MailCheck className="h-4 w-4 mr-1.5" />
@@ -331,7 +353,7 @@ export default function UserProfile() {
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator className="bg-border/50" />
-            <DropdownMenuItem onClick={() => setIsProfileModalOpen(true)} className="cursor-pointer focus:bg-accent focus:text-accent-foreground text-base py-2 px-3">
+            <DropdownMenuItem onClick={openProfileModal} className="cursor-pointer focus:bg-accent focus:text-accent-foreground text-base py-2 px-3">
               <UserCog className="mr-2 h-5 w-5" />
               <span>Manage Profile</span>
             </DropdownMenuItem>
@@ -348,12 +370,13 @@ export default function UserProfile() {
         </DropdownMenu>
       )}
 
-       <Dialog open={isProfileModalOpen} onOpenChange={setIsProfileModalOpen}>
+       <Dialog open={isProfileModalOpen} onOpenChange={(open) => { if (!open) setProfileModalStep(1); setIsProfileModalOpen(open); }}>
            <DialogContent className="sm:max-w-md md:max-w-lg lg:max-w-xl bg-card/85 dark:bg-card/70 border-border/50">
                <DialogHeader>
                   <DialogTitle className="text-primary">Manage Your Profile</DialogTitle>
                    <DialogDescription className="text-muted-foreground">
-                       Update your personal details, profile picture, and sign-in preferences.
+                        {profileModalStep === 1 && "Update your personal details and profile picture."}
+                        {profileModalStep === 2 && "Review and manage account settings."}
                    </DialogDescription>
                </DialogHeader>
                 {showEmailVerificationNotice && (
@@ -375,18 +398,41 @@ export default function UserProfile() {
                      </Alert>
                  )}
                 {profileData && !isProfileLoading ? (
-                    <ProfileForm
-                        key={user?.uid || 'profile-form'}
-                        initialData={profileData} // This now includes isLabel from publicProfile
-                        updateFunction={handleUpdateProfile}
-                        onCancel={() => setIsProfileModalOpen(false)}
-                         onSuccess={(updatedData) => {
-                             setProfileData(updatedData); // Update local state with the latest
-                         }}
-                         onManageMfa={() => setIsMfaModalOpen(true)} 
-                         isSmsMfaEnrolled={isSmsMfaEnrolled} 
-                         className="bg-transparent shadow-none border-0 p-0 mt-2"
-                    />
+                    // Conditionally render form content based on step
+                    profileModalStep === 1 ? (
+                        <ProfileForm
+                            key={user?.uid || 'profile-form'}
+                            initialData={profileData}
+                            updateFunction={handleUpdateProfile}
+                            onCancel={() => setIsProfileModalOpen(false)}
+                            onSuccess={(updatedData) => {
+                                 setProfileData(updatedData);
+                                 // Optionally move to next step or close modal based on logic
+                                 // For now, ProfileForm's save will handle its own success (e.g., may not close modal directly)
+                            }}
+                            // onManageMfa={() => setIsMfaModalOpen(true)} // MFA removed
+                            // isSmsMfaEnrolled={isSmsMfaEnrolled} // MFA removed
+                            className="bg-transparent shadow-none border-0 p-0 mt-2"
+                        />
+                    ) : profileModalStep === 2 ? (
+                        <div className="p-6 space-y-6">
+                             <h3 className="text-lg font-semibold text-foreground">Account Settings</h3>
+                             <p className="text-sm text-muted-foreground">
+                                 Additional account settings and preferences will be available here in the future.
+                                 For now, you can manage your password via the main profile dropdown.
+                             </p>
+                             {/* Example: Placeholder for future settings */}
+                              <div className="flex items-center justify-between rounded-lg border p-3 shadow-sm bg-background/50 dark:bg-background/30">
+                                 <div className="space-y-0.5">
+                                     <FormLabel className="flex items-center gap-2"><Users className="h-4 w-4" /> Account Type</FormLabel>
+                                     <FormDescription className="text-xs">
+                                         This account is currently a: <span className="font-semibold">{profileData.isLabel ? "Label Account" : "Artist Account"}</span>.
+                                         Contact support to change your account type.
+                                     </FormDescription>
+                                 </div>
+                              </div>
+                        </div>
+                    ) : null
                 ) : (
                      <div className="flex justify-center items-center p-10">
                          <div className="flex flex-col items-center gap-4">
@@ -396,6 +442,37 @@ export default function UserProfile() {
                          </div>
                      </div>
                  )}
+                 {/* Footer for step navigation */}
+                 <DialogFooter className="pt-4 border-t border-border/30">
+                    <Button
+                        type="button"
+                        variant="outline"
+                        onClick={handlePreviousProfileStep}
+                        disabled={profileModalStep === 1 || isUpdating}
+                        className={cn(profileModalStep === 1 && "invisible")}
+                    >
+                        Previous
+                    </Button>
+                    {profileModalStep < PROFILE_MODAL_TOTAL_STEPS ? (
+                        <Button
+                            type="button"
+                            onClick={handleNextProfileStep}
+                            disabled={isUpdating}
+                            className="bg-primary hover:bg-primary/90 text-primary-foreground"
+                        >
+                            Next
+                        </Button>
+                    ) : (
+                         // Save button is now part of ProfileForm for step 1
+                         // For step 2 or other final steps, a different "Done" or "Close" might be appropriate
+                         // Or if step 1 (ProfileForm) handles its own save & close:
+                        <DialogClose asChild>
+                            <Button type="button" variant="default" className="bg-primary hover:bg-primary/90 text-primary-foreground">
+                                Done
+                            </Button>
+                        </DialogClose>
+                    )}
+                </DialogFooter>
            </DialogContent>
        </Dialog>
 
@@ -416,12 +493,15 @@ export default function UserProfile() {
         </DialogContent>
       </Dialog>
 
+        {/* MFA Modal Removed */}
+        {/*
         <MfaManagementModal
              isOpen={isMfaModalOpen}
              onClose={() => setIsMfaModalOpen(false)}
-             phoneNumber={profileData?.phoneNumber} 
-             onEnrollmentChange={handleMfaEnrollmentChange} 
+             phoneNumber={profileData?.phoneNumber}
+             onEnrollmentChange={handleMfaEnrollmentChange}
         />
+        */}
     </div>
   );
 }
