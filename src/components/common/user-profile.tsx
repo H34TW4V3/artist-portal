@@ -23,15 +23,15 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogClose } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogClose, DialogFooter } from "@/components/ui/dialog"; // Added DialogFooter
 import { PasswordUpdateForm } from "@/components/profile/password-update-form";
 import { ProfileForm, type ProfileFormValues } from "@/components/profile/profile-form";
-// import { MfaManagementModal } from "@/components/profile/mfa-management-modal"; // MFA Modal no longer needed
 import { useToast } from "@/hooks/use-toast";
-import { LogOut, UserCog, KeyRound, Loader2, MailCheck } from "lucide-react";
+import { LogOut, UserCog, KeyRound, Loader2, MailCheck, Users } from "lucide-react"; // Added Users icon
 import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { FormLabel, FormDescription } from "@/components/ui/form"; // Added FormLabel, FormDescription for Account Type display
 
 
 const profileSchema = z.object({
@@ -44,7 +44,8 @@ const profileSchema = z.object({
        }),
   imageUrl: z.string().url("Invalid URL.").optional().nullable(),
   hasCompletedTutorial: z.boolean().optional().default(false),
-  isLabel: z.boolean().optional().default(false), // Added isLabel field
+  isLabel: z.boolean().optional().default(false), 
+  managedByLabelId: z.string().optional().nullable(),
 });
 
 export default function UserProfile() {
@@ -57,8 +58,6 @@ export default function UserProfile() {
   const [isProfileLoading, setIsProfileLoading] = useState(true);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
-  // const [isMfaModalOpen, setIsMfaModalOpen] = useState(false); // MFA state removed
-  // const [isSmsMfaEnrolled, setIsSmsMfaEnrolled] = useState(false); // MFA state removed
   const [isUpdating, setIsUpdating] = useState(false);
   const [showEmailVerificationNotice, setShowEmailVerificationNotice] = useState(false);
 
@@ -72,7 +71,6 @@ export default function UserProfile() {
       if (authLoading || !user?.uid) {
         setIsProfileLoading(false);
         setProfileData(null);
-        // setIsSmsMfaEnrolled(false); // MFA state removed
         return;
       }
 
@@ -96,11 +94,10 @@ export default function UserProfile() {
             phoneNumber: null,
             hasCompletedTutorial: false,
             isLabel: false,
+            managedByLabelId: null,
           };
           setProfileData(defaultData);
         }
-
-        // setIsSmsMfaEnrolled(false); // MFA state removed
 
       } catch (error) {
         console.error("Error fetching user profile in UserProfile component:", error);
@@ -117,8 +114,8 @@ export default function UserProfile() {
             phoneNumber: null,
             hasCompletedTutorial: false,
             isLabel: false,
+            managedByLabelId: null,
         });
-        // setIsSmsMfaEnrolled(false); // MFA state removed
       } finally {
         setIsProfileLoading(false);
       }
@@ -186,6 +183,7 @@ export default function UserProfile() {
               imageUrl: newImageUrl,
               hasCompletedTutorial: data.hasCompletedTutorial ?? profileData?.hasCompletedTutorial ?? false,
               isLabel: data.isLabel ?? profileData?.isLabel ?? false,
+              managedByLabelId: data.managedByLabelId ?? profileData?.managedByLabelId ?? null,
           };
 
           await setPublicProfile(user.uid, dataToSave, true);
@@ -193,11 +191,8 @@ export default function UserProfile() {
           setProfileData(dataToSave);
           console.log("handleUpdateProfile: Public profile updated successfully in Firestore and local state.");
 
-          // Only close modal if on the last step and update was successful without email change needing verification
-          // If email change is initiated, modal might stay open or have specific handling.
-          // For now, we assume if not an email change or if email change is non-blocking, we can proceed to next step or close.
 
-           if (!emailUpdateInitiated) { // Only toast success if no email verification is pending
+           if (!emailUpdateInitiated) { 
                toast({
                    title: "Profile Updated",
                    description: "Your profile information has been saved.",
@@ -266,9 +261,6 @@ export default function UserProfile() {
    // eslint-disable-next-line react-hooks/exhaustive-deps
    }, [isProfileModalOpen, user]);
 
-    // const handleMfaEnrollmentChange = (enrolled: boolean) => { // MFA state removed
-    //     setIsSmsMfaEnrolled(enrolled);
-    // };
 
   const getInitials = (name: string | undefined | null): string => {
     return name?.split(' ').map(n => n[0]).join('').toUpperCase() || 'U';
@@ -290,10 +282,6 @@ export default function UserProfile() {
   const handleNextProfileStep = () => {
     if (profileModalStep < PROFILE_MODAL_TOTAL_STEPS) {
         setProfileModalStep(profileModalStep + 1);
-    } else {
-        // This case should ideally be handled by the form's submit button
-        // Or trigger form submission here if needed.
-        // For now, if it's the last step, the "Save Changes" button in ProfileForm will handle closing.
     }
   };
 
@@ -304,7 +292,7 @@ export default function UserProfile() {
   };
 
   const openProfileModal = () => {
-    setProfileModalStep(1); // Reset to first step when opening
+    setProfileModalStep(1); 
     setIsProfileModalOpen(true);
   }
 
@@ -398,7 +386,6 @@ export default function UserProfile() {
                      </Alert>
                  )}
                 {profileData && !isProfileLoading ? (
-                    // Conditionally render form content based on step
                     profileModalStep === 1 ? (
                         <ProfileForm
                             key={user?.uid || 'profile-form'}
@@ -407,22 +394,13 @@ export default function UserProfile() {
                             onCancel={() => setIsProfileModalOpen(false)}
                             onSuccess={(updatedData) => {
                                  setProfileData(updatedData);
-                                 // Optionally move to next step or close modal based on logic
-                                 // For now, ProfileForm's save will handle its own success (e.g., may not close modal directly)
                             }}
-                            // onManageMfa={() => setIsMfaModalOpen(true)} // MFA removed
-                            // isSmsMfaEnrolled={isSmsMfaEnrolled} // MFA removed
                             className="bg-transparent shadow-none border-0 p-0 mt-2"
                         />
                     ) : profileModalStep === 2 ? (
                         <div className="p-6 space-y-6">
                              <h3 className="text-lg font-semibold text-foreground">Account Settings</h3>
-                             <p className="text-sm text-muted-foreground">
-                                 Additional account settings and preferences will be available here in the future.
-                                 For now, you can manage your password via the main profile dropdown.
-                             </p>
-                             {/* Example: Placeholder for future settings */}
-                              <div className="flex items-center justify-between rounded-lg border p-3 shadow-sm bg-background/50 dark:bg-background/30">
+                             <div className="flex items-center justify-between rounded-lg border p-3 shadow-sm bg-background/50 dark:bg-background/30">
                                  <div className="space-y-0.5">
                                      <FormLabel className="flex items-center gap-2"><Users className="h-4 w-4" /> Account Type</FormLabel>
                                      <FormDescription className="text-xs">
@@ -431,6 +409,10 @@ export default function UserProfile() {
                                      </FormDescription>
                                  </div>
                               </div>
+                              {/* Add more settings for step 2 here */}
+                             <p className="text-sm text-muted-foreground">
+                                 More account settings will be available here in the future.
+                             </p>
                         </div>
                     ) : null
                 ) : (
@@ -442,7 +424,6 @@ export default function UserProfile() {
                          </div>
                      </div>
                  )}
-                 {/* Footer for step navigation */}
                  <DialogFooter className="pt-4 border-t border-border/30">
                     <Button
                         type="button"
@@ -463,9 +444,6 @@ export default function UserProfile() {
                             Next
                         </Button>
                     ) : (
-                         // Save button is now part of ProfileForm for step 1
-                         // For step 2 or other final steps, a different "Done" or "Close" might be appropriate
-                         // Or if step 1 (ProfileForm) handles its own save & close:
                         <DialogClose asChild>
                             <Button type="button" variant="default" className="bg-primary hover:bg-primary/90 text-primary-foreground">
                                 Done
@@ -493,15 +471,7 @@ export default function UserProfile() {
         </DialogContent>
       </Dialog>
 
-        {/* MFA Modal Removed */}
-        {/*
-        <MfaManagementModal
-             isOpen={isMfaModalOpen}
-             onClose={() => setIsMfaModalOpen(false)}
-             phoneNumber={profileData?.phoneNumber}
-             onEnrollmentChange={handleMfaEnrollmentChange}
-        />
-        */}
     </div>
   );
 }
+
