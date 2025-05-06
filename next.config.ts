@@ -59,6 +59,12 @@ const nextConfig: NextConfig = {
         hostname: 'media.licdn.com',
         port: '',
         pathname: '/**',
+       },
+       { // Add i.scdn.co for Spotify artwork
+        protocol: 'https',
+        hostname: 'i.scdn.co',
+        port: '',
+        pathname: '/**',
        }
     ],
   },
