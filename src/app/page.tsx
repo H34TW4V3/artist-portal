@@ -50,7 +50,7 @@ const borderStyles = [
     "rounded-b-3xl rounded-t-lg", // Pill bottom
     "rounded-l-3xl rounded-r-lg", // Pill left
     "rounded-r-3xl rounded-l-lg", // Pill right
-    "rounded-full aspect-square", // Circle (adjust aspect ratio if content needs it)
+    "rounded-full", // Circle (aspect-square applied below will make it a circle)
 ];
 
 
@@ -204,7 +204,7 @@ export default function HomePage() {
                      <div className="max-w-6xl mx-auto w-full">
                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                              {Array.from({ length: navItems.length }).map((_, index) => (
-                                 <Skeleton key={index} className="aspect-[4/3.5] rounded-2xl bg-muted/60" />
+                                 <Skeleton key={index} className="aspect-square rounded-2xl bg-muted/60" />
                              ))}
                          </div>
                      </div>
@@ -285,7 +285,7 @@ export default function HomePage() {
                                 <button
                                     key={item.href}
                                     onClick={item.onClick}
-                                    className={cn("block group aspect-[4/3.5]", animationClass, activeStateClasses)}
+                                    className={cn("block group aspect-square", animationClass, activeStateClasses)} // Changed aspect-ratio
                                     style={{ animationDelay }}
                                 >
                                     {cardContent}
@@ -297,7 +297,7 @@ export default function HomePage() {
                             <a
                                 href={item.href}
                                 key={item.href}
-                                className={cn("block group aspect-[4/3.5]", animationClass, activeStateClasses)}
+                                className={cn("block group aspect-square", animationClass, activeStateClasses)} // Changed aspect-ratio
                                 style={{ animationDelay }}
                                 target="_blank"
                                 rel="noopener noreferrer"
@@ -305,7 +305,7 @@ export default function HomePage() {
                                 {cardContent}
                             </a>
                         ) : (
-                            <Link href={item.href} key={item.href} className={cn("block group aspect-[4/3.5]", animationClass, activeStateClasses)} style={{ animationDelay }}>
+                            <Link href={item.href} key={item.href} className={cn("block group aspect-square", animationClass, activeStateClasses)} style={{ animationDelay }}> {/* Changed aspect-ratio */}
                                 {cardContent}
                             </Link>
                         );
