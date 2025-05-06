@@ -2,17 +2,16 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { getAuth, sendEmailVerification, reload } from "firebase/auth"; // Import sendEmailVerification and reload
+import { getAuth, sendEmailVerification, reload } from "firebase/auth"; 
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { app } from "@/services/firebase-config";
 import { useAuth } from "@/context/auth-context";
-// Import getUserProfileByUid, setPublicProfile, and getUserMfaInfo
 import { getUserProfileByUid, setPublicProfile } from "@/services/user";
-// Import the new email verification and MFA service functions
-import { verifyBeforeUpdateEmail, sendVerificationEmail, getUserMfaInfo } from "@/services/auth";
+// Removed MFA related service imports: getUserMfaInfo
+import { verifyBeforeUpdateEmail, sendVerificationEmail } from "@/services/auth";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -27,12 +26,12 @@ import {
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogClose } from "@/components/ui/dialog";
 import { PasswordUpdateForm } from "@/components/profile/password-update-form";
 import { ProfileForm, type ProfileFormValues } from "@/components/profile/profile-form";
-import { MfaManagementModal } from "@/components/profile/mfa-management-modal"; // Import MFA modal
+import { MfaManagementModal } from "@/components/profile/mfa-management-modal"; 
 import { useToast } from "@/hooks/use-toast";
-import { LogOut, UserCog, KeyRound, Loader2, MailCheck } from "lucide-react"; // Added MailCheck
+import { LogOut, UserCog, KeyRound, Loader2, MailCheck } from "lucide-react"; 
 import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"; // Import Alert components
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"; 
 
 
 const profileSchema = z.object({
@@ -46,7 +45,6 @@ const profileSchema = z.object({
   imageUrl: z.string().url("Invalid URL.").optional().nullable(),
   hasCompletedTutorial: z.boolean().optional().default(false),
   emailLinkSignInEnabled: z.boolean().optional().default(false),
-  // smsMfaEnabled: z.boolean().optional().default(false), // Removed from schema, managed via state/API call
 });
 
 export default function UserProfile() {
@@ -59,31 +57,26 @@ export default function UserProfile() {
   const [isProfileLoading, setIsProfileLoading] = useState(true);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
-  const [isMfaModalOpen, setIsMfaModalOpen] = useState(false); // State for MFA modal
-  const [isSmsMfaEnrolled, setIsSmsMfaEnrolled] = useState(false); // Track MFA status
+  const [isMfaModalOpen, setIsMfaModalOpen] = useState(false); 
+  const [isSmsMfaEnrolled, setIsSmsMfaEnrolled] = useState(false); // Will default to false as MFA is removed
   const [isUpdating, setIsUpdating] = useState(false);
-  const [showEmailVerificationNotice, setShowEmailVerificationNotice] = useState(false); // State for verification notice
+  const [showEmailVerificationNotice, setShowEmailVerificationNotice] = useState(false); 
 
-  // Fetch profile data from Firestore using the service function
   useEffect(() => {
-    const fetchProfileAndMfaStatus = async () => {
+    const fetchProfile = async () => { // Renamed as MFA check is removed
       if (authLoading || !user?.uid) {
         setIsProfileLoading(false);
         setProfileData(null);
-        setIsSmsMfaEnrolled(false); // Reset MFA status if no user
+        setIsSmsMfaEnrolled(false); 
         return;
       }
 
-      // Check email verification status after auth state is confirmed
       setShowEmailVerificationNotice(!user.emailVerified);
-
       setIsProfileLoading(true);
       try {
-        // Fetch profile and MFA status in parallel
-        const [fetchedProfile, mfaInfo] = await Promise.all([
-            getUserProfileByUid(user.uid),
-            getUserMfaInfo(user) // Fetch MFA status
-        ]);
+        const fetchedProfile = await getUserProfileByUid(user.uid);
+        // MFA status check removed
+        // const mfaInfo = await getUserMfaInfo(user); 
 
         if (fetchedProfile) {
             setProfileData(fetchedProfile);
@@ -105,19 +98,18 @@ export default function UserProfile() {
           setProfileData(defaultData);
         }
 
-        // Update MFA enrollment state
-        const smsEnrolled = mfaInfo.some(info => info.factorId === 'phone');
-        setIsSmsMfaEnrolled(smsEnrolled);
-        console.log("UserProfile: MFA Status Check - SMS Enrolled =", smsEnrolled);
+        setIsSmsMfaEnrolled(false); // Always false as MFA is removed
+        // const smsEnrolled = mfaInfo.some(info => info.factorId === 'phone'); // Removed
+        // setIsSmsMfaEnrolled(smsEnrolled); // Removed
+        // console.log("UserProfile: MFA Status Check - SMS Enrolled =", smsEnrolled); // Removed
 
       } catch (error) {
-        console.error("Error fetching user profile or MFA status in UserProfile component:", error);
+        console.error("Error fetching user profile in UserProfile component:", error); // Updated error message
         toast({
-          title: "Error Loading Data",
-          description: "Could not load your profile or security data. Please try refreshing.",
+          title: "Error Loading Profile", // Updated toast title
+          description: "Could not load your profile data. Please try refreshing.",
           variant: "destructive",
         });
-        // Fallback display data
         setProfileData({
             name: user.displayName || "Error",
             email: user.email || "unknown",
@@ -127,14 +119,14 @@ export default function UserProfile() {
             hasCompletedTutorial: false,
             emailLinkSignInEnabled: false,
         });
-        setIsSmsMfaEnrolled(false); // Assume false on error
+        setIsSmsMfaEnrolled(false); 
       } finally {
         setIsProfileLoading(false);
       }
     };
 
-    fetchProfileAndMfaStatus();
-  }, [user, authLoading, toast]); // Include authLoading and toast
+    fetchProfile();
+  }, [user, authLoading, toast]); 
 
   const handleLogout = async () => {
     try {
@@ -146,7 +138,6 @@ export default function UserProfile() {
     }
   };
 
-  // Function to handle profile updates (passed to ProfileForm)
   const handleUpdateProfile = async (
       data: ProfileFormValues,
       newImageFile?: File
@@ -155,12 +146,11 @@ export default function UserProfile() {
       setIsUpdating(true);
 
       let newImageUrl = profileData?.imageUrl || null;
-      const currentAuthEmail = user.email; // Get currently authenticated email
-      const formEmail = data.email; // Get email submitted by the form
+      const currentAuthEmail = user.email; 
+      const formEmail = data.email; 
       let emailUpdateInitiated = false;
 
       try {
-          // 1. Handle Email Update (if formEmail is present and differs from currentAuthEmail)
           if (formEmail && currentAuthEmail !== formEmail) {
               console.log("Attempting to update email from", currentAuthEmail, "to", formEmail);
               try {
@@ -170,7 +160,7 @@ export default function UserProfile() {
                       title: "Verify New Email",
                       description: `A verification link has been sent to ${formEmail}. Please click the link to update your sign-in email. Your current email (${currentAuthEmail}) remains active until verification.`,
                       variant: "default",
-                      duration: 10000, // Longer duration for important notice
+                      duration: 10000, 
                   });
               } catch (emailError: any) {
                    toast({
@@ -179,12 +169,10 @@ export default function UserProfile() {
                        variant: "destructive",
                    });
                    setIsUpdating(false);
-                   throw emailError; // Re-throw to signal failure to ProfileForm
+                   throw emailError; 
               }
           }
-          // If email wasn't changed or verification started, proceed...
 
-          // 2. Handle Image Upload (if newImageFile exists)
           if (newImageFile) {
               console.log("Uploading new profile image...");
               const imageRef = ref(storage, `profileImages/${user.uid}/${newImageFile.name}`);
@@ -193,25 +181,20 @@ export default function UserProfile() {
               console.log("Image uploaded, URL:", newImageUrl);
           }
 
-          // 3. Prepare data for Firestore update
           const dataToSave: ProfileFormValues = {
-              ...data, // Includes name, bio, phone, emailLinkSignInEnabled
-              email: data.email, // Use the email from the form data for Firestore
-              imageUrl: newImageUrl, // Use the potentially new image URL
-              // Preserve hasCompletedTutorial status from current state if not in form data
+              ...data, 
+              email: data.email, 
+              imageUrl: newImageUrl, 
               hasCompletedTutorial: data.hasCompletedTutorial ?? profileData?.hasCompletedTutorial ?? false,
           };
 
-          // 4. Update Firestore Document using setPublicProfile (handles root doc email too)
-          await setPublicProfile(user.uid, dataToSave, true); // Merge=true
+          await setPublicProfile(user.uid, dataToSave, true); 
 
-          // 5. Update local state AFTER successful Firestore update
           setProfileData(dataToSave);
 
           console.log("Public profile updated successfully in Firestore.");
-          setIsProfileModalOpen(false); // Close modal on success
+          setIsProfileModalOpen(false); 
 
-          // Show general success toast ONLY if email wasn't changed
           if (!emailUpdateInitiated) {
                toast({
                    title: "Profile Updated",
@@ -221,20 +204,18 @@ export default function UserProfile() {
                });
            }
 
-          return { updatedData: dataToSave }; // Return the data that was saved
+          return { updatedData: dataToSave }; 
 
       } catch (error) {
           console.error("Error updating profile:", error);
-          // Error toast handling (re-throw unless it was the handled email error)
           if (!(error instanceof Error && error.message.includes("email"))) {
                 toast({
                     title: "Update Failed",
                     description: error instanceof Error ? error.message : "An unexpected error occurred.",
                     variant: "destructive",
                 });
-                throw error; // Signal failure to ProfileForm
+                throw error; 
           }
-           // If it was an email error already handled, return current/previous state gracefully
            return { updatedData: profileData || data };
       } finally {
           setIsUpdating(false);
@@ -244,7 +225,7 @@ export default function UserProfile() {
 
   const handleSendVerificationEmail = async () => {
         if (!user) return;
-        setIsUpdating(true); // Reuse updating state for loading indication
+        setIsUpdating(true); 
         try {
             await sendVerificationEmail();
             toast({
@@ -264,13 +245,10 @@ export default function UserProfile() {
         }
     };
 
-   // Check email verification status periodically or after user action
-   // Example: Check when profile modal is opened
    useEffect(() => {
      const checkVerification = async () => {
        if (user && !user.emailVerified) {
-         await reload(user); // Reload user data from Firebase
-         // Re-fetch user object to get the latest emailVerified status
+         await reload(user); 
          const refreshedUser = getAuth(app).currentUser;
          if (refreshedUser?.emailVerified) {
            setShowEmailVerificationNotice(false);
@@ -287,11 +265,10 @@ export default function UserProfile() {
        checkVerification();
      }
    // eslint-disable-next-line react-hooks/exhaustive-deps
-   }, [isProfileModalOpen, user]); // Check when modal opens or user object potentially changes
+   }, [isProfileModalOpen, user]); 
 
-    // Callback to update local state when MFA enrollment changes in the modal
     const handleMfaEnrollmentChange = (enrolled: boolean) => {
-        setIsSmsMfaEnrolled(enrolled);
+        setIsSmsMfaEnrolled(enrolled); // This will likely always be called with false now
     };
 
   const getInitials = (name: string | undefined | null): string => {
@@ -299,7 +276,6 @@ export default function UserProfile() {
   };
 
   const isLoading = authLoading || isProfileLoading;
-  // Prioritize Firestore profile data for display
   const displayName = profileData?.name || user?.displayName || (profileData?.email ? profileData.email.split('@')[0] : 'Artist');
   const displayEmail = profileData?.email || user?.email || 'Loading...';
   const displayImageUrl = profileData?.imageUrl || user?.photoURL || undefined;
@@ -315,14 +291,13 @@ export default function UserProfile() {
 
   return (
     <div className="flex items-center gap-2">
-        {/* Email Verification Notice */}
         {showEmailVerificationNotice && !isProfileModalOpen && (
              <Button
-                variant="ghost" // Or "destructive" if you prefer
+                variant="ghost" 
                 size="sm"
                 onClick={handleSendVerificationEmail}
                 disabled={isUpdating}
-                className="text-destructive hover:bg-destructive/10 h-auto px-2 py-1 mr-2 animate-pulse" // Subtle pulse animation
+                className="text-destructive hover:bg-destructive/10 h-auto px-2 py-1 mr-2 animate-pulse" 
                 title="Verify your email address"
             >
                  <MailCheck className="h-4 w-4 mr-1.5" />
@@ -352,7 +327,6 @@ export default function UserProfile() {
               <div className="flex flex-col space-y-1">
                 <p className="text-base font-medium leading-none text-foreground">{displayName}</p>
                 <p className="text-sm leading-none text-muted-foreground">{displayEmail}</p>
-                 {/* Show verification status based on current user state */}
                  {user && !user.emailVerified && (
                      <span className="text-xs text-destructive mt-1">(Email not verified)</span>
                  )}
@@ -376,7 +350,6 @@ export default function UserProfile() {
         </DropdownMenu>
       )}
 
-      {/* Profile Edit Modal */}
        <Dialog open={isProfileModalOpen} onOpenChange={setIsProfileModalOpen}>
            <DialogContent className="sm:max-w-md md:max-w-lg lg:max-w-xl bg-card/85 dark:bg-card/70 border-border/50">
                <DialogHeader>
@@ -385,7 +358,6 @@ export default function UserProfile() {
                        Update your personal details, profile picture, and sign-in preferences.
                    </DialogDescription>
                </DialogHeader>
-                {/* Email Verification Notice inside Modal */}
                 {showEmailVerificationNotice && (
                      <Alert variant="destructive" className="mt-4">
                           <MailCheck className="h-4 w-4" />
@@ -408,13 +380,13 @@ export default function UserProfile() {
                     <ProfileForm
                         key={user?.uid || 'profile-form'}
                         initialData={profileData}
-                        updateFunction={handleUpdateProfile} // Pass the correct update function
+                        updateFunction={handleUpdateProfile} 
                         onCancel={() => setIsProfileModalOpen(false)}
                          onSuccess={(updatedData) => {
                              setProfileData(updatedData);
                          }}
-                         onManageMfa={() => setIsMfaModalOpen(true)} // Pass handler to open MFA modal
-                         isSmsMfaEnrolled={isSmsMfaEnrolled} // Pass current enrollment status
+                         onManageMfa={() => setIsMfaModalOpen(true)} 
+                         isSmsMfaEnrolled={false} // MFA is removed, so always false
                          className="bg-transparent shadow-none border-0 p-0 mt-2"
                     />
                 ) : (
@@ -430,7 +402,6 @@ export default function UserProfile() {
        </Dialog>
 
 
-      {/* Change Password Modal */}
       <Dialog open={isPasswordModalOpen} onOpenChange={setIsPasswordModalOpen}>
         <DialogContent className="sm:max-w-md bg-card/85 dark:bg-card/70 border-border/50">
           <DialogHeader>
@@ -447,14 +418,12 @@ export default function UserProfile() {
         </DialogContent>
       </Dialog>
 
-       {/* MFA Management Modal */}
         <MfaManagementModal
              isOpen={isMfaModalOpen}
              onClose={() => setIsMfaModalOpen(false)}
-             phoneNumber={profileData?.phoneNumber} // Pass phone number from profile
-             onEnrollmentChange={handleMfaEnrollmentChange} // Pass callback to update status
+             phoneNumber={profileData?.phoneNumber} 
+             onEnrollmentChange={handleMfaEnrollmentChange} 
         />
     </div>
   );
 }
-
