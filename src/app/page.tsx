@@ -84,7 +84,7 @@ export default function HomePage() {
            title: "Spotify for Artists",
            href: SPOTIFY_FOR_ARTISTS_URL,
            imageSrc: "https://s29.q4cdn.com/175625835/files/images/S4A.jpeg",
-           description: "Access your Spotify profile",
+           description: "Access your Spotify profile", // Description won't be shown but good for data structure
            external: true
          },
       ];
@@ -250,42 +250,47 @@ export default function HomePage() {
                         const activeStateClasses = "active:scale-[0.97] active:opacity-90 transition-transform duration-100";
                         const currentBorderStyle = randomBorderStyles[index] || "rounded-2xl"; // Fallback
 
-                        const cardContent = (
+                        const cardContent = item.imageSrc ? (
+                            // For items with imageSrc (like Spotify), render only the image within the styled anchor
+                            <div className={cn(
+                                "relative w-full h-full overflow-hidden bg-card/60 dark:bg-card/50 border border-border/30 shadow-lg transition-all duration-300 ease-out cursor-pointer",
+                                "hover:shadow-xl hover:border-primary/60 hover:-translate-y-1.5 hover-glow",
+                                currentBorderStyle // Apply random border style to the image container
+                            )}>
+                                <Image
+                                    src={item.imageSrc}
+                                    alt={item.title}
+                                    layout="fill"
+                                    objectFit="cover" // Ensure image covers the area
+                                    className="transition-transform duration-300 group-hover:scale-105"
+                                    data-ai-hint="spotify for artists banner"
+                                    unoptimized
+                                />
+                            </div>
+                        ) : (
+                            // For other items, render the Card component with icon and text
                             <Card className={cn(
                                 "bg-card/60 dark:bg-card/50 border border-border/30 shadow-lg transition-all duration-300 ease-out cursor-pointer text-center h-full flex flex-col justify-center items-center p-6 overflow-hidden",
                                 "hover:shadow-xl hover:border-primary/60 hover:-translate-y-1.5 hover-glow",
                                 currentBorderStyle // Apply random border style
                             )}>
-                                {item.imageSrc ? (
-                                    <div className="relative w-full h-full">
-                                        <Image
-                                            src={item.imageSrc}
-                                            alt={item.title}
-                                            layout="fill"
-                                            objectFit="cover"
-                                            className={cn("transition-transform duration-300 group-hover:scale-105", currentBorderStyle)} // Apply border style to image too
-                                            data-ai-hint="spotify for artists banner"
-                                            unoptimized
-                                        />
+                                <CardContent className="flex flex-col items-center justify-center space-y-3 md:space-y-4 p-0">
+                                    <div className="p-3 md:p-4 rounded-2xl bg-primary/10 text-primary transition-colors group-hover:bg-primary/20 mb-2">
+                                        {item.icon}
                                     </div>
-                                ) : (
-                                    <CardContent className="flex flex-col items-center justify-center space-y-3 md:space-y-4 p-0">
-                                        <div className="p-3 md:p-4 rounded-2xl bg-primary/10 text-primary transition-colors group-hover:bg-primary/20 mb-2">
-                                            {item.icon}
-                                        </div>
-                                        <CardTitle className="text-lg md:text-xl font-semibold text-foreground">{item.title}</CardTitle>
-                                        <CardDescription className="text-sm md:text-base text-muted-foreground">{item.description}</CardDescription>
-                                    </CardContent>
-                                )}
+                                    <CardTitle className="text-lg md:text-xl font-semibold text-foreground">{item.title}</CardTitle>
+                                    <CardDescription className="text-sm md:text-base text-muted-foreground">{item.description}</CardDescription>
+                                </CardContent>
                             </Card>
                         );
+
 
                         if (item.onClick) {
                             return (
                                 <button
                                     key={item.href}
                                     onClick={item.onClick}
-                                    className={cn("block group aspect-square", animationClass, activeStateClasses)} // Changed aspect-ratio
+                                    className={cn("block group aspect-square", animationClass, activeStateClasses)}
                                     style={{ animationDelay }}
                                 >
                                     {cardContent}
@@ -297,7 +302,7 @@ export default function HomePage() {
                             <a
                                 href={item.href}
                                 key={item.href}
-                                className={cn("block group aspect-square", animationClass, activeStateClasses)} // Changed aspect-ratio
+                                className={cn("block group aspect-square", animationClass, activeStateClasses)}
                                 style={{ animationDelay }}
                                 target="_blank"
                                 rel="noopener noreferrer"
@@ -305,7 +310,7 @@ export default function HomePage() {
                                 {cardContent}
                             </a>
                         ) : (
-                            <Link href={item.href} key={item.href} className={cn("block group aspect-square", animationClass, activeStateClasses)} style={{ animationDelay }}> {/* Changed aspect-ratio */}
+                            <Link href={item.href} key={item.href} className={cn("block group aspect-square", animationClass, activeStateClasses)} style={{ animationDelay }}>
                                 {cardContent}
                             </Link>
                         );
