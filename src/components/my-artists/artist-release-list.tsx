@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -40,7 +41,7 @@ export function ArtistReleaseList({ artistId, artistName, className }: ArtistRel
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [isAddExistingModalOpen, setIsAddExistingModalOpen] = useState(false);
   const { toast } = useToast();
-  const placeholderArtwork = "/placeholder-artwork.png";
+  const placeholderArtwork = "https://picsum.photos/seed/placeholder/50/50";
 
   const fetchArtistReleases = async () => {
     if (!artistId) {
@@ -163,7 +164,7 @@ export function ArtistReleaseList({ artistId, artistName, className }: ArtistRel
                           height={48}
                           src={release.artworkUrl || placeholderArtwork}
                           width={48}
-                          onError={(e) => { e.currentTarget.src = placeholderArtwork; e.currentTarget.srcset = ""; }}
+                          onError={(e) => { (e.target as HTMLImageElement).srcset = placeholderArtwork; (e.target as HTMLImageElement).src = placeholderArtwork; }}
                           data-ai-hint="album artwork cover"
                         />
                       </TableCell>

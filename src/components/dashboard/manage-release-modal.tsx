@@ -80,7 +80,7 @@ export function ManageReleaseModal({ isOpen, onClose, releaseData, onSuccess, on
   const [artworkPreviewUrl, setArtworkPreviewUrl] = useState<string | null>(null);
   const [currentArtworkUrl, setCurrentArtworkUrl] = useState<string | null>(null);
   const artworkInputRef = useRef<HTMLInputElement>(null);
-  const placeholderArtwork = "/placeholder-artwork.png";
+  const placeholderArtwork = "https://picsum.photos/seed/placeholder/120/120";
   const [userProfile, setUserProfile] = useState<ProfileFormValues | null>(null);
   const [isCreateArtistModalOpen, setIsCreateArtistModalOpen] = useState(false);
   const [availableArtistNames, setAvailableArtistNames] = useState<string[]>([]);
@@ -375,7 +375,7 @@ export function ManageReleaseModal({ isOpen, onClose, releaseData, onSuccess, on
                              width={120}
                              height={120}
                              className="rounded-md object-cover aspect-square border border-border bg-muted/20"
-                             onError={(e) => { e.currentTarget.src = placeholderArtwork; e.currentTarget.srcset = ""; }}
+                             onError={(e) => { (e.target as HTMLImageElement).srcset = placeholderArtwork; (e.target as HTMLImageElement).src = placeholderArtwork; }}
                              unoptimized
                              priority={false}
                              data-ai-hint="album artwork"

@@ -52,7 +52,7 @@ export function ReleaseList({ className }: ReleaseListProps) {
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [isAddExistingModalOpen, setIsAddExistingModalOpen] = useState(false); 
   const { toast } = useToast();
-  const placeholderArtwork = "/placeholder-artwork.png"; 
+  const placeholderArtwork = "https://picsum.photos/seed/placeholder/50/50"; 
 
   
   const fetchReleases = async () => {
@@ -364,8 +364,8 @@ export function ReleaseList({ className }: ReleaseListProps) {
                                         height={48}
                                         src={release.artworkUrl || placeholderArtwork}
                                         width={48}
-                                        onError={(e) => { e.currentTarget.src = placeholderArtwork; e.currentTarget.srcset = ""; }}
-                                         data-ai-hint="album artwork cover"
+                                        onError={(e) => { (e.target as HTMLImageElement).srcset = placeholderArtwork; (e.target as HTMLImageElement).src = placeholderArtwork; }}
+                                        data-ai-hint="album artwork cover"
                                     />
                                 </TableCell>
                                 <TableCell className="font-medium text-foreground p-2 align-middle">{release.title}</TableCell>
