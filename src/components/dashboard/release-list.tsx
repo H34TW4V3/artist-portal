@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
-import { Loader2, UploadCloud, PlusCircle } from "lucide-react";
+import { Loader2, UploadCloud, PlusCircle, Wand2 } from "lucide-react"; // Added Wand2 for test release
 import { Timestamp } from "firebase/firestore"; 
 
 import { Button } from "@/components/ui/button";
@@ -22,7 +22,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { UploadReleaseModal } from './upload-release-modal'; 
 import { AddExistingReleaseModal } from './add-existing-release-modal'; 
 import type { ReleaseWithId, ReleaseMetadata } from '@/services/music-platform'; 
-import { removeRelease, getReleases } from '@/services/music-platform'; 
+// Import addTestRelease
+import { removeRelease, getReleases, addTestRelease } from '@/services/music-platform'; 
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton'; 
 import { cn } from '@/lib/utils';
@@ -45,6 +46,7 @@ export function ReleaseList({ className }: ReleaseListProps) {
   const { user } = useAuth(); 
   const [releases, setReleases] = useState<ReleaseWithId[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingTestRelease, setIsLoadingTestRelease] = useState(false);
   const [selectedRelease, setSelectedRelease] = useState<ReleaseWithId | null>(null); 
   const [isManageModalOpen, setIsManageModalOpen] = useState(false); 
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
@@ -110,6 +112,31 @@ export function ReleaseList({ className }: ReleaseListProps) {
       await fetchReleases(); 
   }
 
+  const handleAddTestRelease = async () => {
+    if (!user) return;
+    setIsLoadingTestRelease(true);
+    try {
+        const newReleaseId = await addTestRelease();
+        if (newReleaseId) {
+            toast({
+                title: "Test Release Added!",
+                description: "A sample release has been added to your list.",
+                variant: "default"
+            });
+            await fetchReleases(); // Refresh the list
+        }
+    } catch (error) {
+        console.error("Error adding test release:", error);
+        toast({
+            title: "Failed to Add Test Release",
+            description: error instanceof Error ? error.message : "Could not add the sample release.",
+            variant: "destructive",
+        });
+    } finally {
+        setIsLoadingTestRelease(false);
+    }
+  };
+
 
   
 
@@ -167,28 +194,43 @@ export function ReleaseList({ className }: ReleaseListProps) {
                 <CardTitle className="text-xl font-semibold text-primary">Manage Releases</CardTitle>
                 <CardDescription className="text-muted-foreground">View or edit your releases.</CardDescription> 
             </div>
-             <DropdownMenu>
-                 <DropdownMenuTrigger asChild>
-                     <Button 
-                        className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-md ml-auto"
-                        disabled={!user} // Disable button if user is not logged in
-                      >
-                         <PlusCircle className="mr-2 h-4 w-4" /> Add Release
-                     </Button>
-                 </DropdownMenuTrigger>
-                 {user && ( // Only render DropdownMenuContent if user is logged in
-                    <DropdownMenuContent align="end" className="bg-popover border-border">
-                        <DropdownMenuItem onClick={() => setIsUploadModalOpen(true)} className="cursor-pointer focus:bg-accent focus:text-accent-foreground">
-                            <UploadCloud className="mr-2 h-4 w-4" />
-                            <span>Upload New Release</span>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => setIsAddExistingModalOpen(true)} className="cursor-pointer focus:bg-accent focus:text-accent-foreground">
-                            <PlusCircle className="mr-2 h-4 w-4" />
-                            <span>Add Existing Release</span>
-                        </DropdownMenuItem>
-                    </DropdownMenuContent>
-                 )}
-             </DropdownMenu>
+            <div className="flex gap-2 ml-auto">
+                <Button
+                    onClick={handleAddTestRelease}
+                    variant="outline"
+                    disabled={!user || isLoadingTestRelease}
+                    className="border-accent text-accent hover:bg-accent/10 hover:text-accent/90"
+                >
+                    {isLoadingTestRelease ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                        <Wand2 className="mr-2 h-4 w-4" />
+                    )}
+                    Add Test Release
+                </Button>
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button 
+                            className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-md"
+                            disabled={!user} // Disable button if user is not logged in
+                        >
+                            <PlusCircle className="mr-2 h-4 w-4" /> Add Release
+                        </Button>
+                    </DropdownMenuTrigger>
+                    {user && ( // Only render DropdownMenuContent if user is logged in
+                        <DropdownMenuContent align="end" className="bg-popover border-border">
+                            <DropdownMenuItem onClick={() => setIsUploadModalOpen(true)} className="cursor-pointer focus:bg-accent focus:text-accent-foreground">
+                                <UploadCloud className="mr-2 h-4 w-4" />
+                                <span>Upload New Release</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => setIsAddExistingModalOpen(true)} className="cursor-pointer focus:bg-accent focus:text-accent-foreground">
+                                <PlusCircle className="mr-2 h-4 w-4" />
+                                <span>Add Existing Release</span>
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    )}
+                </DropdownMenu>
+             </div>
         </CardHeader>
         <CardContent>
              {!user && (
@@ -303,4 +345,3 @@ export function ReleaseList({ className }: ReleaseListProps) {
     </>
   );
 }
-

@@ -500,3 +500,45 @@ import {
     }
   }
 
+  /**
+ * Adds a sample test release to the current user's releases.
+ */
+export async function addTestRelease(): Promise<string | null> {
+    const userId = getCurrentUserId();
+    if (!userId) {
+        console.error("Cannot add test release: User not authenticated.");
+        return null;
+    }
+
+    const userProfile = await getUserProfileByUid(userId);
+    const auth = getAuth(app);
+    const artistName = userProfile?.name || auth.currentUser?.displayName || auth.currentUser?.email?.split('@')[0] || "Test Artist";
+
+    const testReleaseData: Omit<ReleaseMetadata, 'id' | 'userId' | 'createdAt' | 'zipUrl'> = {
+        title: "My Awesome Test EP",
+        artist: artistName,
+        releaseDate: formatDateToString(new Date(new Date().setDate(new Date().getDate() + 7))), // Release in 7 days
+        artworkUrl: "https://picsum.photos/seed/testrelease/300/300", // Placeholder artwork
+        status: 'existing',
+        tracks: [
+            { name: "Test Track 1 (Sunrise Mix)" },
+            { name: "Another Test Vibe" },
+            { name: "The Test Outro" },
+        ],
+        spotifyLink: "https://open.spotify.com/album/0sNOF9WDwhWunNAHPD3qYc", // Example Spotify link
+    };
+
+    const releasesRef = collection(db, "users", userId, "releases");
+    try {
+        const docRef = await addDoc(releasesRef, {
+            ...testReleaseData,
+            userId: userId,
+            createdAt: serverTimestamp(),
+        });
+        console.log("Test release added successfully with ID:", docRef.id);
+        return docRef.id;
+    } catch (error) {
+        console.error("Error adding test release:", error);
+        throw new Error("Failed to add test release.");
+    }
+}
