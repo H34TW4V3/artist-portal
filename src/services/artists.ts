@@ -33,108 +33,76 @@ async function getCurrentLabelUserProfile(labelUserId: string): Promise<ProfileF
 
 
 /**
- * Fetches a list of artists potentially managed by the current label user.
+ * Fetches a list of artists managed by the current label user.
+ * This function now queries based on the `managedByLabelId` field in the artist's `publicProfile/profile`.
  *
- * IMPORTANT: This function currently queries a limited set of *all* users and then filters them.
- * This is NOT scalable or performant for a large user base.
- * For production, a more direct linking mechanism between labels and artists is essential, such as:
- *   - An 'artists' subcollection under the label's user document.
- *   - A 'managedByLabelId' field in each artist's profile.
+ * Firestore Rules Prerequisite:
+ * The Firestore security rules MUST allow the label user (request.auth.uid) to query the
+ * `users/{artistId}/publicProfile/profile` collection where `managedByLabelId == request.auth.uid`.
  *
- * The Firestore security rules should be updated to support this:
- *
- * rules_version = '2';
- * service cloud.firestore {
- *   match /databases/{database}/documents {
- *
- *     // Rule for the root user document
- *     match /users/{userId} {
- *       allow get: if request.auth != null; // Allows fetching a user doc by ID (e.g., to check if they are a label)
- *       allow list: if false; // IMPORTANT: Disallow listing all users for security & performance
- *       allow create, update, delete: if request.auth != null && request.auth.uid == userId;
- *     }
- *
- *     // Rule for the publicProfile subcollection
- *     match /users/{targetUserId}/publicProfile/profile {
- *       // Allow owner to read/write their own profile
- *       allow read, write: if request.auth != null && request.auth.uid == targetUserId;
- *
- *       // Allow an authenticated user (the label) to READ an artist's profile IF:
- *       // 1. The requesting user (label) has `isLabel == true` in their own publicProfile.
- *       // 2. The target user (artist) has `isLabel == false` (or isLabel does not exist) in their publicProfile.
- *       allow get: if request.auth != null &&
- *                    get(/databases/$(database)/documents/users/$(request.auth.uid)/publicProfile/profile).data.isLabel == true &&
- *                    (resource.data.isLabel == false || !('isLabel' in resource.data));
- *     }
- *
- *     // Example: Rule for a dedicated 'managedArtists' subcollection under a label's document
- *     // match /users/{labelUserId}/managedArtists/{artistDocId} {
- *     //   allow read, write: if request.auth != null && request.auth.uid == labelUserId &&
- *     //                        get(/databases/$(database)/documents/users/$(request.auth.uid)/publicProfile/profile).data.isLabel == true;
- *     // }
- *
- *     match /users/{userId}/releases/{releaseId} {
- *       allow read, write: if request.auth != null && request.auth.uid == userId;
- *     }
- *
- *     match /users/{userId}/events/{eventId} {
- *       allow read, write: if request.auth != null && request.auth.uid == userId;
- *     }
- *   }
- * }
+ * Example relevant rule for `/users/{targetUserId}/publicProfile/profile`:
+ *   allow list: if request.auth != null &&
+ *                 get(/databases/$(database)/documents/users/$(request.auth.uid)/publicProfile/profile).data.isLabel == true;
+ *   // (This allows a label to list profiles, which is needed for the `where` clause on `managedByLabelId`.
+ *   //  Further refinement can be done to only allow listing if the query contains `managedByLabelId == request.auth.uid`)
+ *   allow get: if request.auth != null && (
+ *                request.auth.uid == targetUserId ||
+ *                (get(/databases/$(database)/documents/users/$(request.auth.uid)/publicProfile/profile).data.isLabel == true &&
+ *                 resource.data.managedByLabelId == request.auth.uid &&
+ *                 (resource.data.isLabel == false || !('isLabel' in resource.data)))
+ *              );
  */
 export async function getManagedArtists(labelUserId: string): Promise<ManagedArtist[]> {
     console.log("Fetching managed artists for label:", labelUserId);
 
-    // First, verify the requesting user is indeed a label
     const labelProfile = await getCurrentLabelUserProfile(labelUserId);
     if (!labelProfile || !labelProfile.isLabel) {
         console.warn(`User ${labelUserId} is not a label or profile not found. Cannot fetch managed artists.`);
         return [];
     }
 
-    // Query for potential artists (THIS IS THE INEFFICIENT PART that needs a data model change for production)
-    // For now, we fetch a limited number of all users and then filter.
-    // This query WILL LIKELY FAIL if Firestore rules disallow listing /users collection.
-    // The permission error likely comes from trying to read the publicProfile of these listed users.
-    const usersRef = collection(db, "users");
-    const q = query(usersRef, limit(20)); // Limiting for now
+    // Query the `publicProfile` subcollection across all users, filtering by `managedByLabelId`.
+    // This requires a collection group index on `publicProfile` collection for the `managedByLabelId` field.
+    // In Firebase console: Firestore Database > Indexes > Composite > Add Index
+    // Collection ID: publicProfile, Fields: managedByLabelId (Ascending), Query scope: Collection group
+    const profilesRef = collectionGroup(db, "publicProfile");
+    const q = query(profilesRef, where("managedByLabelId", "==", labelUserId), where("isLabel", "==", false));
 
     try {
         const querySnapshot = await getDocs(q);
         const artists: ManagedArtist[] = [];
 
-        for (const userDoc of querySnapshot.docs) {
-            // Don't list the label itself as a managed artist
-            if (userDoc.id === labelUserId) continue;
+        querySnapshot.forEach((profileDoc) => {
+            const artistProfileData = profileDoc.data() as ProfileFormValues;
+            // The parent document's ID is the artist's UID
+            const artistUid = profileDoc.ref.parent.parent?.id;
 
-            // Fetch the publicProfile for each potential artist
-            // This is where the permission error might occur if rules are not set up correctly.
-            const artistProfileDocRef = doc(db, "users", userDoc.id, "publicProfile", "profile");
-            const artistProfileSnap = await getDoc(artistProfileDocRef);
-
-            if (artistProfileSnap.exists()) {
-                const artistProfileData = artistProfileSnap.data() as ProfileFormValues;
-                // Only add if the user is NOT a label (i.e., they are an artist)
-                if (artistProfileData.isLabel === undefined || artistProfileData.isLabel === false) {
-                    artists.push({
-                        id: userDoc.id,
-                        name: artistProfileData.name || userDoc.id, // Fallback to ID if name is missing
-                        email: artistProfileData.email || "N/A",   // Fallback for email
-                    });
-                }
+            if (artistUid) {
+                artists.push({
+                    id: artistUid,
+                    name: artistProfileData.name || artistUid, // Fallback to ID if name is missing
+                    email: artistProfileData.email || "N/A",   // Fallback for email
+                });
             } else {
-                // If no publicProfile, we can't determine if they are an artist or their details. Skip.
-                console.log(`No publicProfile found for user ${userDoc.id}. Skipping.`);
+                console.warn("Found a profile managed by label but could not determine artist UID:", profileDoc.id, artistProfileData);
             }
-        }
+        });
+
         console.log(`Fetched ${artists.length} managed artists for label ${labelUserId}.`);
         return artists;
     } catch (error) {
         console.error("Error fetching managed artists:", error);
         if ((error as any).code === 'permission-denied') {
-            console.error("Firestore Permission Denied: This likely means the security rules do not allow the label account to read the publicProfile of other users, or to list the /users collection itself. Review the rules in artists.ts comments.");
+            console.error("Firestore Permission Denied: This likely means the security rules do not allow the label account to query the 'publicProfile' collection group with the specified 'managedByLabelId' and 'isLabel' filters, or to read the resulting documents. Ensure collection group indexes are set up and rules are correct.");
+        } else if ((error as any).code === 'failed-precondition') {
+            console.error("Firestore Query Error (Failed Precondition): This often means a required composite index is missing. Please check your Firestore indexes for a collection group 'publicProfile' with fields 'managedByLabelId' (Ascending) AND 'isLabel' (Ascending).");
         }
-        throw new Error("Failed to fetch managed artists. Check console for details and Firestore security rules.");
+        throw new Error("Failed to fetch managed artists. Check console for details, Firestore security rules, and indexes.");
     }
 }
+
+
+// Helper function to get the 'publicProfile' collection group reference
+// This is needed because collectionGroup query is not directly available in the modular SDK's main 'collection' function.
+// We need to import it specifically.
+import { collectionGroup } from "firebase/firestore";

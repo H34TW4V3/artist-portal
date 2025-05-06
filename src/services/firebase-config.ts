@@ -66,96 +66,123 @@ if (!firebaseConfig.appId) {
     console.error("Firebase Error: NEXT_PUBLIC_FIREBASE_APP_ID is not defined. Check your .env.local file.");
 }
 
-// Important Note on Storage Rules:
-// Ensure your Firebase Storage security rules allow users to upload to their specific paths (e.g., `releases/{userId}/{fileName}`).
-// A typical rule might look like:
+// Important Note on Security Rules:
+// Review and adjust these rules according to your application's security needs.
 //
+// Firestore Rules Example:
 // rules_version = '2';
 // service cloud.firestore {
 //   match /databases/{database}/documents {
 //
-//     // Root user document:
-//     // - Authenticated users can get their own document or other user documents (e.g., to check isLabel).
-//     // - Labels can create new user documents (for onboarding artists).
-//     // - Users can update/delete their own root document.
+//     // Users collection
 //     match /users/{userId} {
+//       // Allow authenticated users to read limited fields (email, uid) from any user document.
+//       // Allow users to write to their own document.
+//       // Allow labels to create new user documents (for artists).
 //       allow get: if request.auth != null;
-//       allow list: if false; // Generally, disallow listing all users for security/performance
+//       allow list: if false; // Prevent listing all users for security
 //       allow create: if request.auth != null &&
 //                       get(/databases/$(database)/documents/users/$(request.auth.uid)/publicProfile/profile).data.isLabel == true;
 //       allow update, delete: if request.auth != null && request.auth.uid == userId;
 //     }
 //
-//     // Public profile subcollection:
-//     // - Owner has full access.
-//     // - Labels can manage profiles of artists linked to them.
+//     // publicProfile subcollection
 //     match /users/{targetUserId}/publicProfile/profile {
-//       // Owner access
+//       // Owner has full read/write access.
 //       allow read, write: if request.auth != null && request.auth.uid == targetUserId;
 //
-//       // Label Read Access to Managed Artist Profile
+//       // Labels can read profiles of artists they manage.
 //       allow get: if request.auth != null &&
 //                     get(/databases/$(database)/documents/users/$(request.auth.uid)/publicProfile/profile).data.isLabel == true &&
 //                     resource.data.managedByLabelId == request.auth.uid &&
-//                     (resource.data.isLabel == false || !('isLabel' in resource.data)); // Ensure target is an artist
+//                     (resource.data.isLabel == false || !('isLabel' in resource.data));
 //
-//       // Label Create Access for New Artist Profile
-//       // (Assumes 'managedByLabelId' and 'isLabel: false' are set in the incoming data by the label)
+//       // Labels can create profiles for new artists they manage.
+//       // (Assumes 'managedByLabelId' and 'isLabel: false' are set by the label during creation)
 //       allow create: if request.auth != null &&
 //                       get(/databases/$(database)/documents/users/$(request.auth.uid)/publicProfile/profile).data.isLabel == true &&
 //                       request.resource.data.managedByLabelId == request.auth.uid &&
 //                       request.resource.data.isLabel == false;
 //
-//       // Label Update Access to Managed Artist Profile
+//       // Labels can update profiles of artists they manage.
 //       allow update: if request.auth != null &&
 //                       get(/databases/$(database)/documents/users/$(request.auth.uid)/publicProfile/profile).data.isLabel == true &&
 //                       resource.data.managedByLabelId == request.auth.uid &&
 //                       (resource.data.isLabel == false || !('isLabel' in resource.data)) &&
-//                       // Prevent label from changing an artist to a label or changing the manager via this rule
+//                       // Prevent label from changing critical fields like 'isLabel' or 'managedByLabelId' of the artist via this rule.
 //                       (!('isLabel' in request.resource.data) || request.resource.data.isLabel == false) &&
 //                       (!('managedByLabelId' in request.resource.data) || request.resource.data.managedByLabelId == request.auth.uid);
 //
-//       // Label Delete Access to Managed Artist Profile
+//       // Labels can delete profiles of artists they manage (use with caution).
 //       allow delete: if request.auth != null &&
 //                       get(/databases/$(database)/documents/users/$(request.auth.uid)/publicProfile/profile).data.isLabel == true &&
 //                       resource.data.managedByLabelId == request.auth.uid &&
 //                       (resource.data.isLabel == false || !('isLabel' in resource.data));
+//
+//       // Allow any authenticated user to list profiles if querying by managedByLabelId (for the label dashboard)
+//       // This requires a composite index on managedByLabelId and isLabel.
+//       allow list: if request.auth != null &&
+//                     get(/databases/$(database)/documents/users/$(request.auth.uid)/publicProfile/profile).data.isLabel == true &&
+//                     request.query.resource.data.managedByLabelId == request.auth.uid &&
+//                     request.query.resource.data.isLabel == false;
 //     }
 //
-//     // Releases and Events subcollections: Full access for the owner (artist or label for their own direct releases/events)
-//     match /users/{userId}/releases/{releaseId} {
-//       allow read, write: if request.auth != null && request.auth.uid == userId;
-//       // Add rule for labels to manage releases of their artists if needed:
-//       // allow read, write: if request.auth != null &&
-//       //                      get(/databases/$(database)/documents/users/$(request.auth.uid)/publicProfile/profile).data.isLabel == true &&
-//       //                      get(/databases/$(database)/documents/users/$(userId)/publicProfile/profile).data.managedByLabelId == request.auth.uid;
+//     // Releases and Events subcollections
+//     match /users/{ownerUserId}/releases/{releaseId} {
+//       // Owner (artist or label for their direct releases) has full access.
+//       allow read, write: if request.auth != null && request.auth.uid == ownerUserId;
+//
+//       // Labels can read/write releases of artists they manage.
+//       allow read, write: if request.auth != null &&
+//                             get(/databases/$(database)/documents/users/$(request.auth.uid)/publicProfile/profile).data.isLabel == true &&
+//                             get(/databases/$(database)/documents/users/$(ownerUserId)/publicProfile/profile).data.managedByLabelId == request.auth.uid;
 //     }
-//     match /users/{userId}/events/{eventId} {
-//       allow read, write: if request.auth != null && request.auth.uid == userId;
-//       // Add rule for labels to manage events of their artists if needed (similar to releases)
+//     match /users/{ownerUserId}/events/{eventId} {
+//       // Owner (artist or label for their direct events) has full access.
+//       allow read, write: if request.auth != null && request.auth.uid == ownerUserId;
+//
+//       // Labels can read/write events of artists they manage.
+//       allow read, write: if request.auth != null &&
+//                             get(/databases/$(database)/documents/users/$(request.auth.uid)/publicProfile/profile).data.isLabel == true &&
+//                             get(/databases/$(database)/documents/users/$(ownerUserId)/publicProfile/profile).data.managedByLabelId == request.auth.uid;
 //     }
 //   }
 // }
 //
-// // Corresponding Storage Rules:
+// // Firebase Storage Rules Example:
 // service firebase.storage {
 //   match /b/{bucket}/o {
+//     // Profile Images
 //     match /profileImages/{userId}/{allPaths=**} {
-//       allow read: if request.auth != null; // Or more restrictive if needed
-//       allow write: if request.auth != null && request.auth.uid == userId;
-//       // Add rule for labels to write to their artists' profileImages if needed
-//       // allow write: if request.auth != null &&
-//       //                get(/databases/$(database)/documents/users/$(request.auth.uid)/publicProfile/profile).data.isLabel == true &&
-//       //                get(/databases/$(database)/documents/users/$(userId)/publicProfile/profile).data.managedByLabelId == request.auth.uid;
+//       // Allow read by anyone (if public profiles).
+//       // Allow write only by the owner or a managing label.
+//       allow read: if true; // Or request.auth != null for authenticated users only
+//       allow write: if request.auth != null &&
+//                       (request.auth.uid == userId ||
+//                        (get(/databases/$(database)/documents/users/$(request.auth.uid)/publicProfile/profile).data.isLabel == true &&
+//                         get(/databases/$(database)/documents/users/$(userId)/publicProfile/profile).data.managedByLabelId == request.auth.uid));
 //     }
-//     match /releases/{userId}/{allPaths=**} {
-//       allow read, write: if request.auth != null && request.auth.uid == userId;
-//       // Add rule for labels (similar to above)
+//     // Release Artwork
+//     match /releaseArtwork/{ownerUserId}/{allPaths=**} {
+//       // Allow read by anyone (if public releases).
+//       // Allow write by the owner or a managing label.
+//       allow read: if true; // Or request.auth != null
+//       allow write: if request.auth != null &&
+//                       (request.auth.uid == ownerUserId ||
+//                        (get(/databases/$(database)/documents/users/$(request.auth.uid)/publicProfile/profile).data.isLabel == true &&
+//                         get(/databases/$(database)/documents/users/$(ownerUserId)/publicProfile/profile).data.managedByLabelId == request.auth.uid));
 //     }
-//     match /releaseArtwork/{userId}/{allPaths=**} {
-//       allow read, write: if request.auth != null && request.auth.uid == userId;
-//       // Add rule for labels (similar to above)
+//     // Release ZIP Files
+//     match /releases/{ownerUserId}/{allPaths=**} {
+//       // Allow read and write only by the owner or a managing label.
+//       allow read, write: if request.auth != null &&
+//                             (request.auth.uid == ownerUserId ||
+//                              (get(/databases/$(database)/documents/users/$(request.auth.uid)/publicProfile/profile).data.isLabel == true &&
+//                               get(/databases/$(database)/documents/users/$(ownerUserId)/publicProfile/profile).data.managedByLabelId == request.auth.uid));
 //     }
 //   }
 // }
-// Review and adjust these rules according to your application's security needs.
+// These are example rules. Adjust them based on your exact security requirements.
+// The key is to ensure that get() calls correctly point to the `publicProfile/profile` document
+// when checking `isLabel` or `managedByLabelId`.
+// Make sure to test these rules thoroughly in the Firebase console.
