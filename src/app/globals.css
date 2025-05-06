@@ -10,42 +10,42 @@ body {
 @layer base {
   :root {
     /* Light Mode - Material You Inspired */
-    --background: 210 20% 98%; /* Lighter, slightly cool off-white */
-    --foreground: 224 71% 4%; /* Very dark blue, near black */
+    --background: 210 40% 98%; /* Lighter, slightly cool off-white */
+    --foreground: 224 71% 4%; /* Very dark blue, near black for high contrast */
 
-    --card: 210 20% 100%; /* White card background */
+    --card: 210 30% 100%; /* Pure white card background for clean look */
     --card-foreground: 224 71% 4%; /* Dark text on card */
 
-    --popover: 210 20% 100%; /* White popover background */
+    --popover: 210 30% 100%; /* Pure white popover background */
     --popover-foreground: 224 71% 4%; /* Dark text on popover */
 
-    --primary: 262 85% 60%; /* Material You-esque Vibrant Purple */
-    --primary-foreground: 0 0% 100%; /* White text on primary */
+    --primary: 262 85% 56%; /* Material You-esque Vibrant Purple, slightly deeper */
+    --primary-foreground: 0 0% 100%; /* White text on primary for good contrast */
 
-    --secondary: 220 15% 93%; /* Lighter gray for secondary elements */
-    --secondary-foreground: 224 71% 15%; /* Darker text on secondary */
+    --secondary: 220 25% 94%; /* Slightly more saturated light gray */
+    --secondary-foreground: 224 71% 10%; /* Darker text on secondary */
 
-    --muted: 220 15% 96.5%; /* Even lighter gray for muted backgrounds */
-    --muted-foreground: 220 9% 46%; /* Softer gray for muted text */
+    --muted: 220 20% 96.5%; /* Lighter gray for muted backgrounds */
+    --muted-foreground: 220 10% 40%; /* Softer gray for muted text */
 
-    --accent: 32 95% 55%; /* Material You-esque Vibrant Orange */
+    --accent: 32 95% 58%; /* Material You-esque Vibrant Orange, slightly deeper */
     --accent-foreground: 0 0% 100%; /* White text on accent */
 
-    --destructive: 0 84.2% 60.2%; /* Default Red */
+    --destructive: 0 84.2% 60.2%; /* Standard Red */
     --destructive-foreground: 0 0% 98%;
 
-    --border: 220 13% 91%; /* Softer border color */
-    --input: 220 13% 91%; /* Softer input border */
-    --ring: 262 85% 66%; /* Primary color for focus rings */
+    --border: 220 15% 88%; /* Softer, less prominent border */
+    --input: 220 15% 88%; /* Input border matching general border */
+    --ring: 262 85% 62%; /* Primary color for focus rings, slightly lighter */
 
     --radius: 0.75rem; /* Increased radius for more rounded corners */
 
     /* Chart colors for light mode - Material You inspired */
-    --chart-1: 262 70% 65%; /* Lighter Purple */
-    --chart-2: 190 70% 50%; /* Cyan/Teal */
-    --chart-3: 30 90% 60%;  /* Peach/Orange */
-    --chart-4: 130 60% 55%; /* Soft Green */
-    --chart-5: 340 80% 70%; /* Pink */
+    --chart-1: 262 70% 60%; /* Lighter Purple */
+    --chart-2: 190 75% 45%; /* Cyan/Teal */
+    --chart-3: 30 90% 55%;  /* Peach/Orange */
+    --chart-4: 130 65% 50%; /* Soft Green */
+    --chart-5: 340 80% 65%; /* Pink */
 
     --sidebar-background: 210 18% 95%;
     --sidebar-foreground: 224 71% 4%;
@@ -59,42 +59,42 @@ body {
 
   .dark {
     /* Dark Mode - Material You Inspired */
-    --background: 224 71% 10%; /* Dark blue, near black */
-    --foreground: 210 20% 96%; /* Light, slightly cool off-white */
+    --background: 224 71% 9%; /* Very dark blue, near black */
+    --foreground: 210 30% 96%; /* Light, slightly cool off-white */
 
-    --card: 224 71% 13%; /* Slightly lighter dark blue for cards */
-    --card-foreground: 210 20% 96%; /* Light text on card */
+    --card: 224 71% 12%; /* Slightly lighter dark blue for cards */
+    --card-foreground: 210 30% 96%; /* Light text on card */
 
-    --popover: 224 71% 13%; /* Popover background */
-    --popover-foreground: 210 20% 96%; /* Popover text */
+    --popover: 224 71% 12%; /* Popover background */
+    --popover-foreground: 210 30% 96%; /* Popover text */
 
-    --primary: 262 90% 75%; /* Lighter, vibrant purple for dark mode */
-    --primary-foreground: 224 71% 5%; /* Dark text on primary */
+    --primary: 262 90% 70%; /* Lighter, vibrant purple for dark mode */
+    --primary-foreground: 224 71% 8%; /* Dark text on primary */
 
-    --secondary: 220 14% 20%; /* Darker gray for secondary */
-    --secondary-foreground: 210 20% 93%; /* Lighter text on secondary */
+    --secondary: 220 15% 18%; /* Darker gray for secondary */
+    --secondary-foreground: 210 30% 93%; /* Lighter text on secondary */
 
-    --muted: 220 14% 17%; /* Even darker gray for muted backgrounds */
-    --muted-foreground: 220 10% 65%; /* Softer light gray for muted text */
+    --muted: 220 15% 15%; /* Even darker gray for muted backgrounds */
+    --muted-foreground: 220 10% 60%; /* Softer light gray for muted text */
 
-    --accent: 32 100% 70%; /* Brighter, vibrant orange for dark mode */
-    --accent-foreground: 224 71% 5%; /* Dark text on accent */
+    --accent: 32 100% 65%; /* Brighter, vibrant orange for dark mode */
+    --accent-foreground: 224 71% 8%; /* Dark text on accent */
 
-    --destructive: 0 70% 55%;
+    --destructive: 0 70% 50%; /* Slightly deeper red for dark mode */
     --destructive-foreground: 0 0% 98%;
 
-    --border: 220 15% 25%; /* Darker border */
-    --input: 220 15% 25%; /* Darker input border */
-    --ring: 262 90% 78%; /* Brighter primary for focus rings */
+    --border: 220 15% 22%; /* Darker, but not too stark border */
+    --input: 220 15% 22%; /* Input border matching general border */
+    --ring: 262 90% 75%; /* Brighter primary for focus rings */
 
     --radius: 0.75rem; /* Consistent increased radius */
 
     /* Chart colors for dark mode - Brighter and Material You inspired */
-    --chart-1: 262 80% 78%; /* Bright Purple */
-    --chart-2: 190 80% 65%; /* Bright Cyan/Teal */
-    --chart-3: 30 95% 70%;  /* Bright Peach/Orange */
-    --chart-4: 130 70% 65%; /* Bright Soft Green */
-    --chart-5: 340 85% 75%; /* Bright Pink */
+    --chart-1: 262 80% 75%; /* Bright Purple */
+    --chart-2: 190 80% 60%; /* Bright Cyan/Teal */
+    --chart-3: 30 95% 68%;  /* Bright Peach/Orange */
+    --chart-4: 130 70% 60%; /* Bright Soft Green */
+    --chart-5: 340 85% 73%; /* Bright Pink */
 
     --sidebar-background: 224 71% 8%;
     --sidebar-foreground: 210 20% 96%;
@@ -185,3 +185,4 @@ body {
        animation: sway-fall ease-in-out infinite;
   }
 }
+

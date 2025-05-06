@@ -41,18 +41,7 @@ const greetings = [
     "Yo, {{name}}!",
 ];
 
-// Geometric border styles
-const borderStyles = [
-    "rounded-2xl", // Standard Material You
-    "rounded-tl-3xl rounded-br-3xl rounded-tr-lg rounded-bl-lg", // Asymmetric
-    "rounded-tl-none rounded-br-none rounded-tr-3xl rounded-bl-3xl", // Opposite Asymmetric
-    "rounded-t-3xl rounded-b-lg", // Pill top
-    "rounded-b-3xl rounded-t-lg", // Pill bottom
-    "rounded-l-3xl rounded-r-lg", // Pill left
-    "rounded-r-3xl rounded-l-lg", // Pill right
-    "rounded-full", // Circle (aspect-square applied below will make it a circle)
-];
-
+// Removed borderStyles array
 
 export default function HomePage() {
     const { user, loading: authLoading } = useAuth();
@@ -61,7 +50,7 @@ export default function HomePage() {
     const [profileData, setProfileData] = useState<ProfileFormValues | null | undefined>(undefined);
     const [profileLoading, setProfileLoading] = useState(true);
     const [clientGreeting, setClientGreeting] = useState("");
-    const [randomBorderStyles, setRandomBorderStyles] = useState<string[]>([]);
+    // Removed randomBorderStyles state
     const [isDashboardModalOpen, setIsDashboardModalOpen] = useState(false);
 
     const navItems = [
@@ -91,11 +80,7 @@ export default function HomePage() {
 
 
     useEffect(() => {
-        // Generate random border styles for each item on client mount
-        if (typeof window !== 'undefined') {
-             const styles = navItems.map(() => borderStyles[Math.floor(Math.random() * borderStyles.length)]);
-             setRandomBorderStyles(styles);
-        }
+        // Removed random border style generation
 
         const fetchProfileData = async () => {
             if (authLoading || !user?.uid) {
@@ -178,7 +163,7 @@ export default function HomePage() {
     const isLoading = authLoading || profileLoading;
     const displayName = profileData?.name || user?.displayName || (user?.email ? user.email.split('@')[0] : 'Artist');
 
-     if (isLoading || profileData === undefined || randomBorderStyles.length === 0) { // Check for randomBorderStyles too
+     if (isLoading || profileData === undefined ) { // Removed randomBorderStyles.length check
         return (
              <div className="flex min-h-screen w-full flex-col bg-transparent">
                  <main className="relative z-10 flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
@@ -248,14 +233,14 @@ export default function HomePage() {
                         const animationClass = "opacity-0 animate-fade-in-up";
                         const animationDelay = `${index * 120}ms`;
                         const activeStateClasses = "active:scale-[0.97] active:opacity-90 transition-transform duration-100";
-                        const currentBorderStyle = randomBorderStyles[index] || "rounded-2xl"; // Fallback
+                        // Removed currentBorderStyle, cards will use their default styling or specific styling below
 
                         const cardContent = item.imageSrc ? (
                             // For items with imageSrc (like Spotify), render only the image within the styled anchor
                             <div className={cn(
                                 "relative w-full h-full overflow-hidden bg-card/60 dark:bg-card/50 border border-border/30 shadow-lg transition-all duration-300 ease-out cursor-pointer",
                                 "hover:shadow-xl hover:border-primary/60 hover:-translate-y-1.5 hover-glow",
-                                currentBorderStyle // Apply random border style to the image container
+                                "rounded-xl" // Consistent rounded corners for Material You
                             )}>
                                 <Image
                                     src={item.imageSrc}
@@ -272,7 +257,7 @@ export default function HomePage() {
                             <Card className={cn(
                                 "bg-card/60 dark:bg-card/50 border border-border/30 shadow-lg transition-all duration-300 ease-out cursor-pointer text-center h-full flex flex-col justify-center items-center p-6 overflow-hidden",
                                 "hover:shadow-xl hover:border-primary/60 hover:-translate-y-1.5 hover-glow",
-                                currentBorderStyle // Apply random border style
+                                "rounded-xl" // Consistent rounded corners for Material You
                             )}>
                                 <CardContent className="flex flex-col items-center justify-center space-y-3 md:space-y-4 p-0">
                                     <div className="p-3 md:p-4 rounded-2xl bg-primary/10 text-primary transition-colors group-hover:bg-primary/20 mb-2">

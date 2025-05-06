@@ -11,7 +11,7 @@ const Card = React.forwardRef<
     ref={ref}
     className={cn(
       // Updated for Material You: more rounded, potentially lighter/more translucent backgrounds
-      "rounded-xl border border-border bg-card/80 text-card-foreground shadow-lg transition-all duration-200 ease-in-out", // Increased roundedness, adjusted opacity
+      "rounded-xl border border-border bg-card/80 text-card-foreground shadow-lg transition-all duration-200 ease-in-out", // Changed to rounded-xl
       className
     )}
     {...props}
