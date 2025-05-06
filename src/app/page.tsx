@@ -52,6 +52,18 @@ const greetings = [
     "Yo, {{name}}!",
 ];
 
+// Geometric border styles
+const borderStyles = [
+    "rounded-2xl", // Standard Material You
+    "rounded-tl-3xl rounded-br-3xl rounded-tr-lg rounded-bl-lg", // Asymmetric
+    "rounded-tl-none rounded-br-none rounded-tr-3xl rounded-bl-3xl", // Opposite Asymmetric
+    "rounded-t-3xl rounded-b-lg", // Pill top
+    "rounded-b-3xl rounded-t-lg", // Pill bottom
+    "rounded-l-3xl rounded-r-lg", // Pill left
+    "rounded-r-3xl rounded-l-lg", // Pill right
+    "rounded-full aspect-square", // Circle (adjust aspect ratio if content needs it)
+];
+
 
 export default function HomePage() {
     const { user, loading: authLoading } = useAuth();
@@ -60,8 +72,16 @@ export default function HomePage() {
     const [profileData, setProfileData] = useState<ProfileFormValues | null | undefined>(undefined);
     const [profileLoading, setProfileLoading] = useState(true);
     const [clientGreeting, setClientGreeting] = useState("");
+    const [randomBorderStyles, setRandomBorderStyles] = useState<string[]>([]);
+
 
     useEffect(() => {
+        // Generate random border styles for each item on client mount
+        if (typeof window !== 'undefined') {
+             const styles = navItems.map(() => borderStyles[Math.floor(Math.random() * borderStyles.length)]);
+             setRandomBorderStyles(styles);
+        }
+
         const fetchProfileData = async () => {
             if (authLoading || !user?.uid) {
                 setProfileLoading(false);
@@ -107,7 +127,7 @@ export default function HomePage() {
     }, [user, authLoading, toast]);
 
     const getRandomGreeting = (name: string) => {
-        if (typeof window === 'undefined') return `Welcome, ${name}!`;
+        if (typeof window === 'undefined') return `Welcome, ${name}!`; // SSR fallback
         const randomIndex = Math.floor(Math.random() * greetings.length);
         return greetings[randomIndex].replace("{{name}}", name);
     };
@@ -143,7 +163,7 @@ export default function HomePage() {
     const isLoading = authLoading || profileLoading;
     const displayName = profileData?.name || user?.displayName || (user?.email ? user.email.split('@')[0] : 'Artist');
 
-     if (isLoading || profileData === undefined) {
+     if (isLoading || profileData === undefined || randomBorderStyles.length === 0) { // Check for randomBorderStyles too
         return (
              <div className="flex min-h-screen w-full flex-col bg-transparent">
                  <main className="relative z-10 flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
@@ -213,19 +233,21 @@ export default function HomePage() {
                         const animationClass = "opacity-0 animate-fade-in-up";
                         const animationDelay = `${index * 120}ms`;
                         const activeStateClasses = "active:scale-[0.97] active:opacity-90 transition-transform duration-100";
+                        const currentBorderStyle = randomBorderStyles[index] || "rounded-2xl"; // Fallback
 
                         if (item.imageSrc) {
                             const cardContent = (
                                 <Card className={cn(
-                                    "bg-card/60 dark:bg-card/50 border border-border/30 shadow-lg rounded-2xl transition-all duration-300 ease-out cursor-pointer text-center h-full flex flex-col justify-center items-center overflow-hidden",
-                                    "hover:shadow-xl hover:border-primary/60 hover:-translate-y-1.5 hover-glow"
+                                    "bg-card/60 dark:bg-card/50 border border-border/30 shadow-lg transition-all duration-300 ease-out cursor-pointer text-center h-full flex flex-col justify-center items-center overflow-hidden",
+                                    "hover:shadow-xl hover:border-primary/60 hover:-translate-y-1.5 hover-glow",
+                                    currentBorderStyle // Apply random border style
                                 )}>
                                     <Image
                                         src={item.imageSrc}
                                         alt={item.title}
                                         layout="fill"
                                         objectFit="cover"
-                                        className="transition-transform duration-300 group-hover:scale-105 rounded-2xl"
+                                        className="transition-transform duration-300 group-hover:scale-105" // Removed explicit rounding
                                         data-ai-hint="spotify for artists banner"
                                         unoptimized
                                     />
@@ -246,8 +268,9 @@ export default function HomePage() {
                         } else {
                             const cardContent = (
                                 <Card className={cn(
-                                    "bg-card/60 dark:bg-card/50 border border-border/30 shadow-lg rounded-2xl transition-all duration-300 ease-out cursor-pointer text-center h-full flex flex-col justify-center items-center p-6",
-                                    "hover:shadow-xl hover:border-primary/60 hover:-translate-y-1.5 hover-glow"
+                                    "bg-card/60 dark:bg-card/50 border border-border/30 shadow-lg transition-all duration-300 ease-out cursor-pointer text-center h-full flex flex-col justify-center items-center p-6 overflow-hidden", // Added overflow-hidden
+                                    "hover:shadow-xl hover:border-primary/60 hover:-translate-y-1.5 hover-glow",
+                                    currentBorderStyle // Apply random border style
                                 )}>
                                     <CardContent className="flex flex-col items-center justify-center space-y-3 md:space-y-4 p-0">
                                         <div className="p-3 md:p-4 rounded-2xl bg-primary/10 text-primary transition-colors group-hover:bg-primary/20 mb-2">
@@ -282,3 +305,4 @@ export default function HomePage() {
         </div>
     );
 }
+
