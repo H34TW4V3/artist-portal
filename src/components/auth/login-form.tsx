@@ -5,9 +5,9 @@ import React, { useState, useEffect, useRef } from "react"; // Add React import
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
-import { getAuth, type RecaptchaVerifier, reload } from "firebase/auth"; // Import reload, removed MFA specific imports
-import { app } from '@/services/firebase-config'; // Import Firebase config
-import { Loader2, ArrowLeft, ArrowRight, Mail, KeyRound, MailCheck, LogIn, RefreshCcw, AlertCircle, Briefcase } from "lucide-react"; // Removed Phone, MessageSquare, ListChecks, Added Briefcase
+import { getAuth, type RecaptchaVerifier, reload } from "firebase/auth";
+import { app } from '@/services/firebase-config';
+import { Loader2, ArrowLeft, ArrowRight, Mail, KeyRound, MailCheck, LogIn, RefreshCcw, AlertCircle, Briefcase } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
@@ -27,35 +27,29 @@ import { getUserProfileByUid } from "@/services/user";
 import type { ProfileFormValues } from "@/components/profile/profile-form";
 import {
     login,
-    initializeRecaptchaVerifier, // Keep for potential future use or other security features
+    initializeRecaptchaVerifier,
     clearGlobalRecaptchaVerifier,
-    // Removed MFA specific service imports: sendSmsVerificationCode, completeMfaSignIn
-    sendSignInLinkToEmail,
-    isSignInWithEmailLink,
-    signInWithEmailLink,
-    sendVerificationEmail,
+    sendVerificationEmail, // Keep for password login if email not verified
 } from '@/services/auth';
 import { SplashScreen } from '@/components/common/splash-screen';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
+import { ForgotPasswordModal } from "./forgot-password-modal";
 
 
-// Schema updated - password optional, verificationCode removed as it was for MFA
+// Schema updated - password required
 const loginSchema = z.object({
   artistId: z.string().email({ message: "Please enter a valid email address." }),
-  password: z.string().optional(),
-  // verificationCode: z.string().optional(), // Removed
+  password: z.string().min(1, { message: "Password is required."}), // Password is now required
 });
 
 type LoginFormValues = z.infer<typeof loginSchema>;
 
-// Define steps - Simplified, removed MFA steps
+// Define steps - Simplified to Email -> Password -> (Optional) Verify Email
 const STEPS = [
   { id: 1, name: "Artist ID", icon: Mail },
-  { id: 2, name: "Choose Method", icon: LogIn },
-  { id: 3, name: "Password", icon: KeyRound }, // Only shown if password method chosen
-  { id: 4, name: "Check Your Email", icon: MailCheck }, // Email Link Sent Step
-  { id: 5, name: "Verify Your Email", icon: MailCheck }, // Email Verification Step
+  { id: 2, name: "Password", icon: KeyRound },
+  { id: 3, name: "Verify Your Email", icon: MailCheck }, // Email Verification Step if needed after password login
 ];
 
 
@@ -68,17 +62,12 @@ export function LoginForm({ className }: { className?: string }) {
   const [splashLoadingText, setSplashLoadingText] = useState("Logging in...");
   const [splashUserImageUrl, setSplashUserImageUrl] = useState<string | null>(null);
   const [splashUserName, setSplashUserName] = useState<string | null>(null);
-  const [loginMethod, setLoginMethod] = useState<'password' | 'emailLink' | null>(null);
-  const [isProcessingEmailLink, setIsProcessingEmailLink] = useState(false);
   const [unverifiedUser, setUnverifiedUser] = useState<any | null>(null);
   const [profileData, setProfileData] = useState<ProfileFormValues | null>(null);
+  const [isForgotPasswordModalOpen, setIsForgotPasswordModalOpen] = useState(false);
 
 
-  // MFA related state - REMOVED
-  // const [mfaResolver, setMfaResolver] = useState<any>(null);
-  // const [mfaHints, setMfaHints] = useState<any[]>([]);
-  // const [verificationId, setVerificationId] = useState<string | null>(null);
-  const [recaptchaVerifier, setRecaptchaVerifier] = useState<RecaptchaVerifier | null>(null); // Keep if other features use it
+  const [recaptchaVerifier, setRecaptchaVerifier] = useState<RecaptchaVerifier | null>(null);
   const recaptchaContainerRef = useRef<HTMLDivElement>(null);
 
   const router = useRouter();
@@ -89,14 +78,13 @@ export function LoginForm({ className }: { className?: string }) {
     defaultValues: {
       artistId: "",
       password: "",
-      // verificationCode: "", // Removed
     },
     mode: "onChange",
   });
 
    // Initialize reCAPTCHA (kept for now, might be used for other non-MFA security checks or if re-enabled)
    useEffect(() => {
-     if (typeof window !== 'undefined' && recaptchaContainerRef.current && !recaptchaVerifier && currentStep <= 2) { // Adjusted step condition
+     if (typeof window !== 'undefined' && recaptchaContainerRef.current && !recaptchaVerifier && currentStep === 1) {
          const containerId = `recaptcha-container-${Date.now()}`;
          recaptchaContainerRef.current.id = containerId;
          console.log(`Preparing to initialize reCAPTCHA on container: ${containerId}`);
@@ -110,7 +98,7 @@ export function LoginForm({ className }: { className?: string }) {
          }
      }
      return () => {
-          if (recaptchaVerifier && currentStep > 2) {
+          if (recaptchaVerifier && currentStep > 1) { // Clear if moving past email step
             try {
                clearGlobalRecaptchaVerifier();
                console.log("Cleared reCAPTCHA verifier as it's no longer needed.");
@@ -124,85 +112,28 @@ export function LoginForm({ className }: { className?: string }) {
    }, [currentStep]);
 
 
-   // --- Effect to handle email link sign-in ---
-   useEffect(() => {
-    const processEmailLink = async () => {
-        const currentUrl = window.location.href;
-        if (isSignInWithEmailLink(currentUrl)) {
-            setIsProcessingEmailLink(true);
-            setSplashLoadingText("Verifying sign-in link...");
-            setShowSplash(true);
-            try {
-                const emailFromStorage = localStorage.getItem('emailForSignIn'); // Retrieve email
-                const user = await signInWithEmailLink(currentUrl, emailFromStorage);
-
-                if (!user.emailVerified) {
-                     console.log("Email link sign-in successful, but email not yet verified. Sending verification email...");
-                     setUnverifiedUser(user);
-                     try {
-                         await sendVerificationEmail();
-                         toast({ title: "Verification Required", description: `A verification link has been sent to ${user.email}. Please check your inbox and click the link.`, duration: 7000 });
-                     } catch (verificationError) {
-                          toast({ title: "Verification Error", description: "Could not send verification email. Please try resending.", variant: "destructive" });
-                     }
-                     setShowSplash(false);
-                     setIsProcessingEmailLink(false);
-                     goToStep(STEPS.find(step => step.name === "Verify Your Email")!.id); // Go to email verification step
-                     return;
-                }
-
-                 console.log("LoginForm: Email Link Sign-in successful and verified. User UID:", user.uid);
-                if (user.uid) {
-                     try {
-                        const profile = await getUserProfileByUid(user.uid);
-                        setSplashUserName(profile?.name || user.email?.split('@')[0] || 'User');
-                        setSplashUserImageUrl(profile?.imageUrl || user.photoURL || null);
-                     } catch (profileError) {
-                         console.error("Error fetching profile after email link sign-in:", profileError);
-                         setSplashUserName(user.email?.split('@')[0] || 'User');
-                         setSplashUserImageUrl(user.photoURL || null);
-                     }
-                }
-                setSplashLoadingText("Sign-in successful!");
-                window.history.replaceState(null, '', window.location.pathname);
-                localStorage.removeItem('emailForSignIn'); // Clear stored email
-            } catch (error) {
-                console.error("Email link sign-in error:", error);
-                setShowSplash(false);
-                setIsProcessingEmailLink(false);
-                toast({
-                    title: "Sign-in Link Error",
-                    description: error instanceof Error ? error.message : "Could not complete sign-in.",
-                    variant: "destructive",
-                    duration: 5000,
-                });
-                router.replace('/login');
-            }
-        }
-    };
-    if (typeof window !== 'undefined') {
-        processEmailLink();
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-
   const fetchProfileForPasswordStep = async (email: string) => {
      console.log("Fetching profile for password step, email:", email);
      try {
-        // Attempt to fetch profile using UID if available from a broader context or previous step.
-        // For now, we'll stick to a simplified approach based on email.
-        const fetchedProfile = await getUserProfileByUid(auth.currentUser?.uid || ''); // This will likely fail if uid is not available here.
+        const authUser = getAuth(app).currentUser;
+        let fetchedProfile: ProfileFormValues | null = null;
+        if (authUser?.email === email) { // Try to get UID from current auth user if email matches
+            fetchedProfile = await getUserProfileByUid(authUser.uid);
+        } else {
+            // If no current auth user or email mismatch, this part might be problematic
+            // without a direct email-to-UID lookup.
+            // For now, we'll rely on email for fallback display.
+            console.warn("Cannot reliably fetch profile by UID for password step if current auth user doesn't match input email.");
+        }
+
         if (fetchedProfile) {
             setProfileData(fetchedProfile);
         } else {
-             // Fallback if no profile document or UID not readily available at this stage.
             console.warn("getUserProfileByUid returned null or profile not found for password step. Using email as fallback for display.");
             setProfileData({ name: email.split('@')[0] || "User", email: email, imageUrl: null, bio: null, phoneNumber: null, hasCompletedTutorial: false, emailLinkSignInEnabled: false });
         }
      } catch (error) {
          console.error("Error fetching profile data for password step:", error);
-         // Fallback on error: use email for display.
          setProfileData({ name: email.split('@')[0] || "User", email: email, imageUrl: null, bio: null, phoneNumber: null, hasCompletedTutorial: false, emailLinkSignInEnabled: false });
      }
    };
@@ -239,7 +170,7 @@ export function LoginForm({ className }: { className?: string }) {
   const validateStep = async (step: number): Promise<boolean> => {
     let fieldsToValidate: (keyof LoginFormValues)[] = [];
     if (step === 1) fieldsToValidate = ["artistId"];
-    else if (step === 3 && loginMethod === 'password') fieldsToValidate = ["password"];
+    else if (step === 2) fieldsToValidate = ["password"]; // Step 2 is now password
 
      if (fieldsToValidate.length === 0) return true;
 
@@ -256,22 +187,15 @@ export function LoginForm({ className }: { className?: string }) {
 
   const handleNext = async () => {
      if (await validateStep(currentStep)) {
-         if (currentStep === 1) {
-             goToStep(2);
-         } else if (currentStep === 2) {
-             if (loginMethod === 'password') {
-                  const email = form.getValues("artistId");
-                  if (email) {
-                       await fetchProfileForPasswordStep(email);
-                       goToStep(3);
-                  } else {
-                        toast({ title: "Error", description: "Email not found.", variant: "destructive" });
-                        goToStep(1);
-                  }
+         if (currentStep === 1) { // After Artist ID
+             const email = form.getValues("artistId");
+             if (email) {
+                  await fetchProfileForPasswordStep(email);
+                  goToStep(2); // Go to Password step
+             } else {
+                   toast({ title: "Error", description: "Email not found.", variant: "destructive" });
              }
-             else if (loginMethod === 'emailLink') await handleSendEmailLink();
-             else toast({ title: "Choose Method", description: "Please select a sign-in method.", variant: "destructive" });
-         } else if (currentStep === 3 && loginMethod === 'password') {
+         } else if (currentStep === 2) { // After Password
              await form.handleSubmit(onSubmit)();
          }
      }
@@ -280,22 +204,17 @@ export function LoginForm({ className }: { className?: string }) {
   const handlePrevious = () => {
     if (currentStep > 1) {
         if (currentStep === STEPS.find(step => step.name === "Verify Your Email")!.id) {
-             setUnverifiedUser(null);
-             goToStep(3);
-        } else if (currentStep === 3 || currentStep === STEPS.find(step => step.name === "Check Your Email")!.id) {
-            setLoginMethod(null);
-            setProfileData(null);
-            goToStep(2);
-        } else if (currentStep === 2) {
-            goToStep(1);
-        } else {
-             goToStep(currentStep - 1);
+             setUnverifiedUser(null); // Clear unverified user state
+             goToStep(2); // Go back to password step
+        } else if (currentStep === 2) { // If on password step
+            setProfileData(null); // Clear profile data loaded for password step
+            goToStep(1); // Go back to Artist ID step
         }
     }
   };
 
    async function onSubmit(values: LoginFormValues) {
-     if (loginMethod === 'password' && !values.password) {
+     if (!values.password) { // Should be caught by validation, but good to double check
           toast({ title: "Missing Password", description: "Please enter your password.", variant: "destructive" });
           return;
      }
@@ -306,7 +225,6 @@ export function LoginForm({ className }: { className?: string }) {
       setShowSplash(true);
 
      try {
-       // MFA path removed, directly expect User object or error
        const user = await login(values.artistId, values.password!);
 
        if (!user.emailVerified) {
@@ -326,6 +244,7 @@ export function LoginForm({ className }: { className?: string }) {
 
         console.log("LoginForm: Login successful via service. User UID:", user.uid);
         setSplashLoadingText(`Welcome, ${profileData?.name || user.displayName || user.email?.split('@')[0]}!`);
+        // Splash screen will handle redirect after duration
 
      } catch (error) {
        console.error("Login failed:", error);
@@ -339,8 +258,6 @@ export function LoginForm({ className }: { className?: string }) {
      }
    }
 
-   // --- MFA Handlers REMOVED ---
-   // handleSendSmsCode, handleSendMfaEmailLink, handleVerifyMfaCode
 
    const handleCheckVerification = async () => {
        if (!unverifiedUser) return;
@@ -358,6 +275,7 @@ export function LoginForm({ className }: { className?: string }) {
                 setSplashUserName(profile?.name || refreshedUser.email?.split('@')[0] || 'User');
                 setSplashUserImageUrl(profile?.imageUrl || refreshedUser.photoURL || null);
                setSplashLoadingText(`Welcome, ${splashUserName}!`);
+               // Splash screen handles redirect
            } else {
                setShowSplash(false);
                toast({ title: "Still Waiting", description: "Email not verified yet. Please check your inbox and click the link.", variant: "default" });
@@ -374,7 +292,7 @@ export function LoginForm({ className }: { className?: string }) {
        if (!unverifiedUser) return;
         setIsSubmitting(true);
         try {
-            await sendVerificationEmail();
+            await sendVerificationEmail(); // This uses the currently authenticated user (unverifiedUser)
             toast({ title: "Verification Email Resent", description: `Check ${unverifiedUser.email} for the link.`, duration: 5000 });
         } catch (error: any) {
             toast({ title: "Resend Failed", description: error.message || "Could not resend verification email.", variant: "destructive" });
@@ -384,45 +302,7 @@ export function LoginForm({ className }: { className?: string }) {
     };
 
 
-   const handleSendEmailLink = async () => {
-      const email = form.getValues("artistId");
-      if (!email) {
-          toast({ title: "Missing Email", description: "Please enter your email first.", variant: "destructive" });
-          goToStep(1);
-          return;
-      }
-      setIsSubmitting(true);
-      setSplashLoadingText("Sending sign-in link...");
-       setSplashUserName(email.split('@')[0]);
-       setSplashUserImageUrl(null);
-       setShowSplash(true);
-
-
-      try {
-          const redirectUrl = window.location.origin + window.location.pathname;
-          await sendSignInLinkToEmail(email, redirectUrl);
-          setShowSplash(false);
-          toast({
-              title: "Check Your Email!",
-              description: `A sign-in link has been sent to ${email}.`,
-              duration: 5000,
-          });
-          goToStep(STEPS.find(step => step.name === "Check Your Email")!.id);
-      } catch (error) {
-          setShowSplash(false);
-          console.error("Error sending email link:", error);
-          toast({
-              title: "Email Link Failed",
-              description: error instanceof Error ? error.message : "Could not send sign-in link.",
-              variant: "destructive",
-          });
-      } finally {
-          setIsSubmitting(false);
-      }
-   };
-
-
-  if (showSplash || isProcessingEmailLink) {
+  if (showSplash) { // Removed isProcessingEmailLink as email link flow is gone
       return (
          <div className={cn("flex flex-col h-full items-center justify-center", className)}>
              <SplashScreen
@@ -430,6 +310,7 @@ export function LoginForm({ className }: { className?: string }) {
                  userImageUrl={splashUserImageUrl}
                  userName={splashUserName}
                  className="bg-transparent border-none shadow-none p-0"
+                 // duration={4000} // Optional: set duration for auto-redirect
              />
          </div>
       );
@@ -437,6 +318,7 @@ export function LoginForm({ className }: { className?: string }) {
 
 
   return (
+    <>
     <div className={cn("flex flex-col h-full", className)}>
       <Form {...form}>
            <div className="relative overflow-hidden flex-grow min-h-[350px]">
@@ -448,49 +330,46 @@ export function LoginForm({ className }: { className?: string }) {
                 className="h-full"
                 aria-live="polite"
              >
-                {/* Step 1: Artist ID */}
+                 {/* Step 1: Artist ID */}
                  <div className={cn("space-y-4 h-full flex flex-col", getAnimationClasses(1))} aria-hidden={currentStep !== 1}>
-                 </div>
-
-                 {/* Step 2: Choose Method */}
-                <div className={cn("space-y-4 h-full flex flex-col items-center", getAnimationClasses(2))} aria-hidden={currentStep !== 2}>
-                   {currentStep === 2 && (
-                       <>
-                           <div className="flex flex-col items-center text-center p-6 border-b border-border/30 w-full">
-                               <LogIn className="h-16 w-16 mb-4 text-primary" />
-                               <h3 className="text-xl font-semibold tracking-tight text-foreground">How would you like to sign in?</h3>
-                               <p className="text-muted-foreground text-sm mt-1">Choose your preferred method below.</p>
+                       <div className="flex flex-col items-center text-center p-6 border-b border-border/30">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 100 100" className="h-20 w-20 mb-3 text-primary">
+                                <defs>
+                                    <linearGradient id="oxygenGradientLogin" x1="0%" y1="0%" x2="100%" y2="100%">
+                                    <stop offset="0%" style={{stopColor: 'hsl(180, 100%, 70%)', stopOpacity: 1}} />
+                                    <stop offset="50%" style={{stopColor: 'hsl(300, 100%, 80%)', stopOpacity: 1}} />
+                                    <stop offset="100%" style={{stopColor: 'hsl(35, 100%, 75%)', stopOpacity: 1}} />
+                                    </linearGradient>
+                                </defs>
+                                <circle cx="50" cy="50" r="45" fill="none" stroke="url(#oxygenGradientLogin)" strokeWidth="3" />
+                                <path d="M30 30 L70 70 M70 30 L30 70" stroke="url(#oxygenGradientLogin)" strokeWidth="10" strokeLinecap="round" fill="none" />
+                            </svg>
+                            <h3 className="text-xl font-semibold tracking-tight text-primary">Artist Hub Login</h3>
+                            <p className="text-muted-foreground text-sm mt-1">Enter your Artist ID (email) to begin.</p>
+                        </div>
+                        <div className="flex-grow p-6 space-y-4">
+                            {currentStep === 1 && (
+                                <FormField control={form.control} name="artistId" render={({ field }) => ( <FormItem><FormLabel className="sr-only">Artist ID (Email)</FormLabel><FormControl><div className="relative"><Mail className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input type="email" placeholder="your.email@example.com" autoComplete="email" {...field} disabled={isSubmitting} className="pl-8 text-base"/></div></FormControl><FormMessage /></FormItem> )} />
+                            )}
+                        </div>
+                           <div className="px-6 pb-2">
+                             <Separator className="my-3 bg-border/40" />
+                             <Button
+                               type="button"
+                               variant="outline"
+                               className="w-full justify-center"
+                               onClick={() => { toast({ title: "Coming Soon!", description: "Partner Portal login will be available soon."}) }}
+                               disabled={isSubmitting}
+                             >
+                               <Briefcase className="mr-2 h-4 w-4" />
+                               Partner Portal Login
+                             </Button>
                            </div>
-                           <div className="flex-grow p-6 space-y-4 w-full flex flex-col items-center justify-center">
-                               <Button
-                                   type="button"
-                                   variant={loginMethod === 'password' ? 'default' : 'outline'}
-                                   size="lg"
-                                   className="w-full sm:w-3/4 justify-start"
-                                   onClick={() => setLoginMethod('password')}
-                                   disabled={isSubmitting}
-                               >
-                                   <KeyRound className="mr-3 h-5 w-5" /> Sign in with Password
-                               </Button>
-                               <Button
-                                   type="button"
-                                   variant={loginMethod === 'emailLink' ? 'default' : 'outline'}
-                                   size="lg"
-                                   className="w-full sm:w-3/4 justify-start"
-                                   onClick={() => setLoginMethod('emailLink')}
-                                   disabled={isSubmitting}
-                               >
-                                   <MailCheck className="mr-3 h-5 w-5" /> Email me a sign-in link
-                               </Button>
-                           </div>
-                       </>
-                   )}
-                </div>
+                  </div>
 
-
-                {/* Step 3: Password */}
-                 <div className={cn("space-y-4 h-full flex flex-col", getAnimationClasses(3))} aria-hidden={currentStep !== 3}>
-                      {currentStep === 3 && loginMethod === 'password' && (
+                {/* Step 2: Password */}
+                 <div className={cn("space-y-4 h-full flex flex-col", getAnimationClasses(2))} aria-hidden={currentStep !== 2}>
+                      {currentStep === 2 && (
                           <>
                               <div className="flex flex-col items-center text-center pt-6 px-6">
                                    <Avatar className="h-20 w-20 mb-3 border-2 border-primary/40">
@@ -501,29 +380,16 @@ export function LoginForm({ className }: { className?: string }) {
                                     <p className="text-sm text-muted-foreground">{form.watch("artistId")}</p>
                               </div>
                                <div className="flex-grow p-6 space-y-4">
-                                    <FormField control={form.control} name="password" render={({ field }) => ( <FormItem><FormLabel className="sr-only">Password</FormLabel><FormControl><div className="relative"><KeyRound className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input type="password" placeholder="Enter your password" autoComplete="current-password" {...field} disabled={isSubmitting} className="pl-8 text-base"/></div></FormControl><FormMessage /><div className="text-right"><Button type="button" variant="link" className="text-xs text-muted-foreground h-auto p-0" /* onClick={() => setIsForgotPasswordModalOpen(true)} */>Forgot Password?</Button></div></FormItem> )} />
+                                    <FormField control={form.control} name="password" render={({ field }) => ( <FormItem><FormLabel className="sr-only">Password</FormLabel><FormControl><div className="relative"><KeyRound className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input type="password" placeholder="Enter your password" autoComplete="current-password" {...field} disabled={isSubmitting} className="pl-8 text-base"/></div></FormControl><FormMessage /><div className="text-right"><Button type="button" variant="link" className="text-xs text-muted-foreground h-auto p-0" onClick={() => setIsForgotPasswordModalOpen(true)}>Forgot Password?</Button></div></FormItem> )} />
                               </div>
                          </>
                       )}
                 </div>
 
-                {/* Step 4: Email Link Sent Confirmation (was step 6) */}
-                <div className={cn("space-y-4 h-full flex flex-col items-center justify-center text-center", getAnimationClasses(4))} aria-hidden={currentStep !== 4}>
-                    {currentStep === 4 && (
-                        <>
-                            <MailCheck className="h-20 w-20 mb-6 text-green-500" />
-                            <h3 className="text-xl font-semibold tracking-tight text-foreground">Check Your Inbox!</h3>
-                            <p className="text-muted-foreground text-sm max-w-xs">
-                                We've sent a secure sign-in link to <span className="font-medium text-foreground">{form.getValues("artistId")}</span>. Click the link in the email to complete your sign-in.
-                            </p>
-                            <p className="text-xs text-muted-foreground mt-4">(You can close this window)</p>
-                        </>
-                     )}
-                </div>
 
-                 {/* Step 5: Verify Email Address (was step 7) */}
-                 <div className={cn("space-y-4 h-full flex flex-col items-center justify-center text-center", getAnimationClasses(5))} aria-hidden={currentStep !== 5}>
-                     {currentStep === 5 && unverifiedUser && (
+                 {/* Step 3: Verify Email Address */}
+                 <div className={cn("space-y-4 h-full flex flex-col items-center justify-center text-center", getAnimationClasses(3))} aria-hidden={currentStep !== 3}>
+                     {currentStep === 3 && unverifiedUser && (
                          <>
                              <MailCheck className="h-20 w-20 mb-6 text-primary" />
                              <h3 className="text-xl font-semibold tracking-tight text-foreground">Verify Your Email</h3>
@@ -558,49 +424,12 @@ export function LoginForm({ className }: { className?: string }) {
                      )}
                  </div>
 
-                  <div className={cn("space-y-4 h-full flex flex-col", getAnimationClasses(1))} aria-hidden={currentStep !== 1}>
-                       <div className="flex flex-col items-center text-center p-6 border-b border-border/30">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 100 100" className="h-20 w-20 mb-3 text-primary">
-                                <defs>
-                                    <linearGradient id="oxygenGradientLogin" x1="0%" y1="0%" x2="100%" y2="100%">
-                                    <stop offset="0%" style={{stopColor: 'hsl(180, 100%, 70%)', stopOpacity: 1}} />
-                                    <stop offset="50%" style={{stopColor: 'hsl(300, 100%, 80%)', stopOpacity: 1}} />
-                                    <stop offset="100%" style={{stopColor: 'hsl(35, 100%, 75%)', stopOpacity: 1}} />
-                                    </linearGradient>
-                                </defs>
-                                <circle cx="50" cy="50" r="45" fill="none" stroke="url(#oxygenGradientLogin)" strokeWidth="3" />
-                                <path d="M30 30 L70 70 M70 30 L30 70" stroke="url(#oxygenGradientLogin)" strokeWidth="10" strokeLinecap="round" fill="none" />
-                            </svg>
-                            <h3 className="text-xl font-semibold tracking-tight text-primary">Artist Hub Login</h3>
-                            <p className="text-muted-foreground text-sm mt-1">Enter your Artist ID (email) to begin.</p>
-                        </div>
-                        <div className="flex-grow p-6 space-y-4">
-                            {currentStep === 1 && (
-                                <FormField control={form.control} name="artistId" render={({ field }) => ( <FormItem><FormLabel className="sr-only">Artist ID (Email)</FormLabel><FormControl><div className="relative"><Mail className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input type="email" placeholder="your.email@example.com" autoComplete="email" {...field} disabled={isSubmitting} className="pl-8 text-base"/></div></FormControl><FormMessage /></FormItem> )} />
-                            )}
-                        </div>
-                           <div className="px-6 pb-2">
-                             <Separator className="my-3 bg-border/40" />
-                             <Button
-                               type="button"
-                               variant="outline"
-                               className="w-full justify-center"
-                               onClick={() => { /* TODO: Implement partner portal logic */ toast({ title: "Coming Soon!", description: "Partner Portal login will be available soon."}) }}
-                               disabled={isSubmitting}
-                             >
-                               <Briefcase className="mr-2 h-4 w-4" />
-                               Partner Portal Login
-                             </Button>
-                           </div>
-                  </div>
-
-
                 <button type="submit" disabled={isSubmitting} style={{ display: 'none' }} aria-hidden="true"></button>
              </form>
           </div>
       </Form>
 
-       {currentStep !== STEPS.find(step => step.name === "Check Your Email")!.id && currentStep !== STEPS.find(step => step.name === "Verify Your Email")!.id && (
+       {currentStep !== STEPS.find(step => step.name === "Verify Your Email")!.id && (
         <div className="flex justify-between items-center mt-auto p-4 h-16 border-t border-border/30">
             <Button type="button" variant="ghost" size="icon" onClick={handlePrevious} disabled={currentStep === 1 || isSubmitting} className={cn("h-10 w-10", currentStep === 1 && "invisible")} aria-label="Previous Step">
                 <ArrowLeft className="h-5 w-5" />
@@ -610,20 +439,23 @@ export function LoginForm({ className }: { className?: string }) {
               variant="ghost"
               size="icon"
               onClick={handleNext}
-              disabled={isSubmitting || (currentStep === 2 && !loginMethod)}
+              disabled={isSubmitting || (currentStep === 1 && !form.formState.isValid) || (currentStep === 2 && !form.formState.isValid)} // Disable if current step form is invalid
               className={cn("h-10 w-10", isSubmitting && "animate-pulse")}
-              aria-label={currentStep === 3 ? "Login" : "Next Step"}
+              aria-label={currentStep === 2 ? "Login" : "Next Step"} // Step 2 (password) is now the login step
             >
                  {isSubmitting ? (
                  <Loader2 className="h-5 w-5 animate-spin" />
                  ) : (
-                  currentStep === 3 ? <LogIn className="h-5 w-5 text-primary" /> : <ArrowRight className="h-5 w-5" />
+                  currentStep === 2 ? <LogIn className="h-5 w-5 text-primary" /> : <ArrowRight className="h-5 w-5" />
                  )}
              </Button>
         </div>
        )}
     </div>
+    <ForgotPasswordModal
+        isOpen={isForgotPasswordModalOpen}
+        onClose={() => setIsForgotPasswordModalOpen(false)}
+    />
+    </>
   );
 }
-
-    

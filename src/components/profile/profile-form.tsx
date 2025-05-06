@@ -5,7 +5,7 @@ import { useState, useEffect, useRef } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
-import { Loader2, Upload, AlertCircle, Mail, Phone, User, FileText, ShieldExclamation } from "lucide-react"; // Changed ShieldCheck to ShieldExclamation
+import { Loader2, Upload, AlertCircle, Mail, Phone, User, FileText, ShieldExclamation } from "lucide-react";
 import Image from "next/image";
 
 import { Button } from "@/components/ui/button";
@@ -24,33 +24,34 @@ import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-// import { Switch } from "@/components/ui/switch"; // Switch for emailLinkSignInEnabled is kept
+import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
-import { Separator } from "@/components/ui/separator"; 
+import { Separator } from "@/components/ui/separator";
 
-// Schema for profile data - smsMfaEnabled removed as MFA is disabled
+// Schema for profile data - smsMfaEnabled removed, emailLinkSignInEnabled removed
 const profileSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters.").max(50, "Name must be 50 characters or less."),
-  email: z.string().email("Invalid email address."), 
-  bio: z.string().max(300, "Bio must be 300 characters or less.").optional().nullable(), 
-  phoneNumber: z.string().optional().nullable() 
+  email: z.string().email("Invalid email address."),
+  bio: z.string().max(300, "Bio must be 300 characters or less.").optional().nullable(),
+  phoneNumber: z.string().optional().nullable()
       .refine(val => !val || /^[+]*[(]{0,1}[0-9]{1,4}[)]{0,1}[-\s\./0-9]*$/.test(val), {
           message: "Invalid phone number format.",
        }),
-  imageUrl: z.string().url("Invalid URL.").optional().nullable(), 
-  hasCompletedTutorial: z.boolean().optional().default(false), 
-  emailLinkSignInEnabled: z.boolean().optional().default(false), 
+  imageUrl: z.string().url("Invalid URL.").optional().nullable(),
+  hasCompletedTutorial: z.boolean().optional().default(false),
+  // emailLinkSignInEnabled: z.boolean().optional().default(false), // Removed
 });
 
-export type ProfileFormValues = z.infer<typeof profileSchema>;
+export type ProfileFormValues = Omit<z.infer<typeof profileSchema>, 'emailLinkSignInEnabled'> & { emailLinkSignInEnabled?: boolean };
+
 
 interface ProfileFormProps {
-    initialData?: ProfileFormValues; 
-    updateFunction: (data: ProfileFormValues, newImageFile?: File) => Promise<{ updatedData: ProfileFormValues }>; 
-    onSuccess?: (updatedData: ProfileFormValues) => void; 
-    onCancel?: () => void; 
-    onManageMfa: () => void; // Kept for potential future re-enablement, but button will be disabled/informational
-    isSmsMfaEnrolled: boolean; // Still passed, but will likely always be false
+    initialData?: ProfileFormValues;
+    updateFunction: (data: ProfileFormValues, newImageFile?: File) => Promise<{ updatedData: ProfileFormValues }>;
+    onSuccess?: (updatedData: ProfileFormValues) => void;
+    onCancel?: () => void;
+    onManageMfa: () => void;
+    isSmsMfaEnrolled: boolean;
     className?: string;
 }
 
@@ -59,8 +60,8 @@ export function ProfileForm({
     updateFunction,
     onSuccess,
     onCancel,
-    onManageMfa, // Kept for UI consistency, but its action might change
-    isSmsMfaEnrolled, // Still passed, will likely always be false
+    onManageMfa,
+    isSmsMfaEnrolled,
     className
 }: ProfileFormProps) {
     const { toast } = useToast();
@@ -80,7 +81,7 @@ export function ProfileForm({
             phoneNumber: "",
             imageUrl: "",
             hasCompletedTutorial: false,
-            emailLinkSignInEnabled: false,
+            // emailLinkSignInEnabled: false, // Removed default
         },
         mode: "onChange",
     });
@@ -89,14 +90,14 @@ export function ProfileForm({
 
     useEffect(() => {
         if (initialData) {
-             const mergedDefaults = {
+             const mergedDefaults: ProfileFormValues = { // Explicitly type mergedDefaults
                 name: "",
                 email: "",
                 bio: null,
                 phoneNumber: null,
                 imageUrl: null,
                 hasCompletedTutorial: false,
-                emailLinkSignInEnabled: false,
+                // emailLinkSignInEnabled: false, // Removed
                 ...initialData,
             };
             form.reset(mergedDefaults);
@@ -126,7 +127,7 @@ export function ProfileForm({
                 setImagePreviewUrl(reader.result as string);
             };
             reader.readAsDataURL(file);
-            form.setValue('imageUrl', '', { shouldDirty: true }); 
+            form.setValue('imageUrl', '', { shouldDirty: true });
         }
     };
 
@@ -135,7 +136,7 @@ export function ProfileForm({
     };
 
     async function onSubmit(values: ProfileFormValues) {
-        console.log("ProfileForm onSubmit triggered!"); 
+        console.log("ProfileForm onSubmit triggered!");
         setIsSubmitting(true);
         const isImageChanged = !!selectedImageFile;
 
@@ -145,6 +146,9 @@ export function ProfileForm({
          } else {
              dataToSubmit.imageUrl = currentImageUrl || null;
          }
+         // Ensure emailLinkSignInEnabled is not part of the submitted data if it was removed from schema
+         delete (dataToSubmit as any).emailLinkSignInEnabled;
+
 
         try {
             const { updatedData } = await updateFunction(dataToSubmit, selectedImageFile);
@@ -156,7 +160,7 @@ export function ProfileForm({
 
             form.reset(updatedData, { keepValues: false, keepDirty: false, keepDefaultValues: false });
 
-            onSuccess?.(updatedData); 
+            onSuccess?.(updatedData);
 
         } catch (error) {
             console.error("Error in ProfileForm onSubmit calling updateFunction:", error);
@@ -215,33 +219,6 @@ export function ProfileForm({
 
                  <h3 className="text-lg font-semibold text-foreground mb-3">Account Security</h3>
 
-                 {/* Email Link Sign-in Preference - REMOVED as per request to remove MFA */}
-                 {/* 
-                 <FormField
-                    control={form.control}
-                    name="emailLinkSignInEnabled"
-                    render={({ field }) => (
-                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm bg-background/50 dark:bg-background/30">
-                            <div className="space-y-0.5">
-                                <FormLabel className="flex items-center gap-2">
-                                     <Mail className="h-4 w-4" /> Enable Email Link Sign-In
-                                </FormLabel>
-                                <FormDescription className="text-xs">
-                                    Receive a secure link to sign in instead of using a password.
-                                </FormDescription>
-                            </div>
-                            <FormControl>
-                                <Switch
-                                    checked={field.value}
-                                    onCheckedChange={field.onChange}
-                                    disabled={isSubmitting}
-                                />
-                            </FormControl>
-                            <FormMessage />
-                        </FormItem>
-                    )}
-                 />
-                 */}
 
                 {/* SMS Multi-Factor Authentication - Changed to informational */}
                  <div className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm bg-background/50 dark:bg-background/30">
@@ -257,9 +234,9 @@ export function ProfileForm({
                          type="button"
                          variant="outline"
                          size="sm"
-                         onClick={onManageMfa} // Still calls the function, modal will explain status
-                         disabled={isSubmitting} 
-                         title={"View 2FA Status"} // Updated title
+                         onClick={onManageMfa}
+                         disabled={isSubmitting}
+                         title={"View 2FA Status"}
                      >
                          View Status
                      </Button>
