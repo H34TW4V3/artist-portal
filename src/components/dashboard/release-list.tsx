@@ -3,12 +3,10 @@
 
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
-// Removed MoreHorizontal, Edit, Trash2 from lucide-react imports
 import { Loader2, UploadCloud, PlusCircle } from "lucide-react";
-import { Timestamp } from "firebase/firestore"; // Import Timestamp
+import { Timestamp } from "firebase/firestore"; 
 
 import { Button } from "@/components/ui/button";
-// Removed DropdownMenu related imports
 import {
     AlertDialog,
     AlertDialogAction,
@@ -19,19 +17,16 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-// Import ManageReleaseModal instead of the generic Dialog
-import { ManageReleaseModal } from './manage-release-modal'; // Import the new modal
+import { ManageReleaseModal } from './manage-release-modal'; 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-// Removed ReleaseForm import as it's likely inside ManageReleaseModal now
-import { UploadReleaseModal } from './upload-release-modal'; // Import the upload modal
-import { AddExistingReleaseModal } from './add-existing-release-modal'; // Import add existing modal
-import type { ReleaseWithId, ReleaseMetadata } from '@/services/music-platform'; // Import types
-import { removeRelease, getReleases } from '@/services/music-platform'; // Import the Firestore functions
+import { UploadReleaseModal } from './upload-release-modal'; 
+import { AddExistingReleaseModal } from './add-existing-release-modal'; 
+import type { ReleaseWithId, ReleaseMetadata } from '@/services/music-platform'; 
+import { removeRelease, getReleases } from '@/services/music-platform'; 
 import { useToast } from '@/hooks/use-toast';
-import { Skeleton } from '@/components/ui/skeleton'; // Import Skeleton
+import { Skeleton } from '@/components/ui/skeleton'; 
 import { cn } from '@/lib/utils';
-import { useAuth } from '@/context/auth-context'; // Import useAuth
-// Import Table components
+import { useAuth } from '@/context/auth-context'; 
 import {
   Table,
   TableBody,
@@ -40,34 +35,33 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../ui/dropdown-menu'; // Keep Dropdown for Add Release button
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../ui/dropdown-menu'; 
 
 interface ReleaseListProps {
   className?: string;
 }
 
 export function ReleaseList({ className }: ReleaseListProps) {
-  const { user } = useAuth(); // Get user for conditional rendering/fetching
+  const { user } = useAuth(); 
   const [releases, setReleases] = useState<ReleaseWithId[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [selectedRelease, setSelectedRelease] = useState<ReleaseWithId | null>(null); // Changed from editingRelease
-  const [isManageModalOpen, setIsManageModalOpen] = useState(false); // Changed from isEditDialogOpen
+  const [selectedRelease, setSelectedRelease] = useState<ReleaseWithId | null>(null); 
+  const [isManageModalOpen, setIsManageModalOpen] = useState(false); 
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
-  const [isAddExistingModalOpen, setIsAddExistingModalOpen] = useState(false); // State for new modal
-  // Removed deletingReleaseId and isPerformingAction states related to old dropdown delete
+  const [isAddExistingModalOpen, setIsAddExistingModalOpen] = useState(false); 
   const { toast } = useToast();
-  const placeholderArtwork = "/placeholder-artwork.png"; // Define placeholder path
+  const placeholderArtwork = "/placeholder-artwork.png"; 
 
-  // Fetch releases function using the service
+  
   const fetchReleases = async () => {
     if (!user) {
-        setIsLoading(false); // No user, stop loading
-        setReleases([]);    // Clear releases
+        setIsLoading(false); 
+        setReleases([]);    
         return;
     }
     setIsLoading(true);
     try {
-      const fetchedReleases = await getReleases(); // Call the Firestore service function
+      const fetchedReleases = await getReleases(); 
       setReleases(fetchedReleases);
     } catch (error) {
       console.error("Error fetching releases:", error);
@@ -76,22 +70,22 @@ export function ReleaseList({ className }: ReleaseListProps) {
         description: error instanceof Error ? error.message : "Could not load your releases.",
         variant: "destructive",
       });
-      setReleases([]); // Clear releases on error
+      setReleases([]); 
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Fetch releases on component mount and when user changes
+  
   useEffect(() => {
     fetchReleases();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]); // Refetch if user logs in/out
+  }, [user]); 
 
 
-  // Handle opening the manage modal when a row is clicked
+  
   const handleRowClick = (release: ReleaseWithId, e: React.MouseEvent) => {
-     // Prevent modal open if clicking inside the dropdown trigger/content area (only applies to Add Release now)
+     
      const targetElement = e.target as Element;
      if (targetElement.closest('[data-radix-dropdown-menu-trigger], [data-radix-dropdown-menu-content]')) {
         return;
@@ -102,24 +96,24 @@ export function ReleaseList({ className }: ReleaseListProps) {
 
   const handleManageDialogClose = () => {
       setIsManageModalOpen(false);
-      setSelectedRelease(null); // Clear selected state when dialog closes
+      setSelectedRelease(null); 
   }
 
-  // Callback for successful edit/upload/add existing from respective forms/modals
-  // This function IS called by the modals on success and triggers a data refresh.
+  
+  
   const handleSuccess = async () => {
-      setIsManageModalOpen(false); // Close manage dialog if open
-      setIsUploadModalOpen(false); // Close upload modal if open
-      setIsAddExistingModalOpen(false); // Close add existing modal if open
-      setSelectedRelease(null); // Clear selection regardless
-      console.log("handleSuccess called, fetching releases..."); // Add log
-      await fetchReleases(); // Refetch the list to show the newly added/updated release
+      setIsManageModalOpen(false); 
+      setIsUploadModalOpen(false); 
+      setIsAddExistingModalOpen(false); 
+      setSelectedRelease(null); 
+      console.log("handleSuccess called, fetching releases..."); 
+      await fetchReleases(); 
   }
 
 
-  // handleDeleteConfirm is now handled within ManageReleaseModal
+  
 
-  // Format date for display
+  
   const formatDate = (dateValue: string | Date | Timestamp | undefined): string => {
     if (!dateValue) return '-';
     try {
@@ -127,31 +121,31 @@ export function ReleaseList({ className }: ReleaseListProps) {
         if (dateValue instanceof Timestamp) {
             date = dateValue.toDate();
         } else if (typeof dateValue === 'string') {
-             // For "YYYY-MM-DD" strings, ensure UTC interpretation for consistency
+             
              if (dateValue.match(/^\d{4}-\d{2}-\d{2}$/)) {
                   const [year, month, day] = dateValue.split('-').map(Number);
                   date = new Date(Date.UTC(year, month - 1, day));
              } else {
-                  // Fallback for other string formats or ISO strings with timezones
+                  
                   date = new Date(dateValue);
              }
-        } else { // It's already a Date object
+        } else { 
              date = dateValue;
         }
 
         if (isNaN(date.getTime())) return 'Invalid Date';
 
-        // Format date using UTC values if the input was a YYYY-MM-DD string, otherwise use local.
-        // This aims to display the intended date correctly regardless of user's local timezone for YYYY-MM-DD.
+        
+        
         if (typeof dateValue === 'string' && dateValue.match(/^\d{4}-\d{2}-\d{2}$/)) {
             return date.toLocaleDateString('en-US', {
                 year: 'numeric',
                 month: 'short',
                 day: 'numeric',
-                timeZone: 'UTC' // Explicitly use UTC for YYYY-MM-DD strings
+                timeZone: 'UTC' 
             });
         }
-        // For Timestamps or full Date objects, use local formatting
+        
         return date.toLocaleDateString('en-US', {
             year: 'numeric',
             month: 'short',
@@ -164,34 +158,37 @@ export function ReleaseList({ className }: ReleaseListProps) {
   };
 
 
-  // Main view: Release List Table
+  
   return (
     <>
     <Card className={cn("col-span-1 lg:col-span-2 shadow-md rounded-lg bg-card/60 dark:bg-card/50", className)}>
         <CardHeader className="flex flex-row justify-between items-center gap-4 flex-wrap">
             <div>
                 <CardTitle className="text-xl font-semibold text-primary">Manage Releases</CardTitle>
-                <CardDescription className="text-muted-foreground">View or edit your releases.</CardDescription> {/* Updated description */}
+                <CardDescription className="text-muted-foreground">View or edit your releases.</CardDescription> 
             </div>
-             {user && (
-                 <DropdownMenu>
-                     <DropdownMenuTrigger asChild>
-                         <Button className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-md ml-auto">
-                             <PlusCircle className="mr-2 h-4 w-4" /> Add Release
-                         </Button>
-                     </DropdownMenuTrigger>
-                     <DropdownMenuContent align="end" className="bg-popover border-border">
-                         <DropdownMenuItem onClick={() => setIsUploadModalOpen(true)} className="cursor-pointer focus:bg-accent focus:text-accent-foreground">
-                             <UploadCloud className="mr-2 h-4 w-4" />
-                             <span>Upload New Release</span>
-                         </DropdownMenuItem>
-                         <DropdownMenuItem onClick={() => setIsAddExistingModalOpen(true)} className="cursor-pointer focus:bg-accent focus:text-accent-foreground">
-                             <PlusCircle className="mr-2 h-4 w-4" />
-                             <span>Add Existing Release</span>
-                         </DropdownMenuItem>
-                     </DropdownMenuContent>
-                 </DropdownMenu>
-              )}
+             <DropdownMenu>
+                 <DropdownMenuTrigger asChild>
+                     <Button 
+                        className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-md ml-auto"
+                        disabled={!user} // Disable button if user is not logged in
+                      >
+                         <PlusCircle className="mr-2 h-4 w-4" /> Add Release
+                     </Button>
+                 </DropdownMenuTrigger>
+                 {user && ( // Only render DropdownMenuContent if user is logged in
+                    <DropdownMenuContent align="end" className="bg-popover border-border">
+                        <DropdownMenuItem onClick={() => setIsUploadModalOpen(true)} className="cursor-pointer focus:bg-accent focus:text-accent-foreground">
+                            <UploadCloud className="mr-2 h-4 w-4" />
+                            <span>Upload New Release</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setIsAddExistingModalOpen(true)} className="cursor-pointer focus:bg-accent focus:text-accent-foreground">
+                            <PlusCircle className="mr-2 h-4 w-4" />
+                            <span>Add Existing Release</span>
+                        </DropdownMenuItem>
+                    </DropdownMenuContent>
+                 )}
+             </DropdownMenu>
         </CardHeader>
         <CardContent>
              {!user && (
@@ -211,7 +208,7 @@ export function ReleaseList({ className }: ReleaseListProps) {
                     <TableHead className="hidden md:table-cell p-2">Artist</TableHead>
                     <TableHead className="hidden md:table-cell p-2">Release Date</TableHead>
                     <TableHead className="hidden md:table-cell p-2">Status</TableHead>
-                    {/* Removed Actions column header */}
+                    
                     </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -235,7 +232,7 @@ export function ReleaseList({ className }: ReleaseListProps) {
                         </TableRow>
                     ) : (
                         releases.map((release) => (
-                            // Added cursor-pointer and onClick handler to the row
+                            
                             <TableRow
                                 key={release.id}
                                 className="hover:bg-muted/50 dark:hover:bg-muted/20 transition-colors border-b border-border/30 last:border-b-0 cursor-pointer"
@@ -280,28 +277,28 @@ export function ReleaseList({ className }: ReleaseListProps) {
         </CardContent>
     </Card>
 
-    {/* Manage Release Modal */}
+    
      <ManageReleaseModal
          isOpen={isManageModalOpen}
          onClose={handleManageDialogClose}
-         releaseData={selectedRelease} // Pass the selected release data
-         onSuccess={handleSuccess} // Re-use the success handler
-         // Pass fetchReleases to refresh list after takedown
+         releaseData={selectedRelease} 
+         onSuccess={handleSuccess} 
+         
          onTakedownSuccess={fetchReleases}
      />
 
-     {/* Upload New Release Modal */}
+     
      <UploadReleaseModal
         isOpen={isUploadModalOpen}
         onClose={() => setIsUploadModalOpen(false)}
-        onSuccess={handleSuccess} // Use the same handler to refresh the list
+        onSuccess={handleSuccess} 
      />
 
-      {/* Add Existing Release Modal */}
+      
       <AddExistingReleaseModal
           isOpen={isAddExistingModalOpen}
           onClose={() => setIsAddExistingModalOpen(false)}
-          onSuccess={handleSuccess} // Use the same handler to refresh the list
+          onSuccess={handleSuccess} 
       />
     </>
   );
