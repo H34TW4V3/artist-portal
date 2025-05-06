@@ -59,20 +59,21 @@ const manageReleaseSchema = z.object({
   artworkUrlInput: z.string().url("Please enter a valid URL for the artwork.").optional().nullable(), // New field for URL input
   tracks: z.array(z.object({ name: z.string().min(1, "Track name cannot be empty.").max(100, "Track name too long.") })).min(1, "At least one track is required."),
   spotifyLink: z.string().url("Invalid Spotify link URL.").optional().nullable(),
-}).refine(data => data.artworkFile || data.artworkUrlInput || data.releaseDate, { // Ensure at least one artwork source if neither exists in initial data
-    // This refine is tricky because we need to consider initial state.
-    // If releaseData.artworkUrl exists, then neither artworkFile nor artworkUrlInput is strictly required.
-    // A better approach would be to handle this logic in the handleSubmit if specific artwork rules are needed.
-    // For now, allow submission if initial artwork exists, or if new artwork (file/URL) is provided.
-    // This makes the field effectively optional if there's existing artwork.
-    // message: "Artwork is required. Upload a file or provide a URL.",
-    // path: ["artworkFile"], // Or more general path
-    // Custom validation logic might be better here, or rely on UI cues.
-    // The main goal is to not force new artwork if existing one is fine.
-    // If this refine is too strict, it might prevent saving other changes if artwork isn't touched.
-    // Let's remove this refine for now and handle artwork logic in submit/UI.
-     return true;
 });
+// Removed problematic .refine() call below based on previous comments and error message
+// .refine(data => data.artworkFile || data.artworkUrlInput || data.releaseDate, {
+//     // This refine is tricky because we need to consider initial state.
+//     // If releaseData.artworkUrl exists, then neither artworkFile nor artworkUrlInput is strictly required.
+//     // A better approach would be to handle this logic in the handleSubmit if specific artwork rules are needed.
+//     // For now, allow submission if initial artwork exists, or if new artwork (file/URL) is provided.
+//     // This makes the field effectively optional if there's existing artwork.
+//     // message: "Artwork is required. Upload a file or provide a URL.",
+//     // path: ["artworkFile"], // Or more general path
+//     // Custom validation logic might be better here, or rely on UI cues.
+//     // The main goal is to not force new artwork if existing one is fine.
+//     // If this refine is too strict, it might prevent saving other changes if artwork isn't touched.
+//     // Let's remove this refine for now and handle artwork logic in submit/UI.
+// });
 
 
 type ManageReleaseFormValues = z.infer<typeof manageReleaseSchema>;
@@ -838,4 +839,3 @@ export function ManageReleaseModal({ isOpen, onClose, releaseData, onSuccess, on
     </Dialog>
   );
 }
-
