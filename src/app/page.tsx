@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import Link from "next/link";
@@ -93,7 +94,7 @@ export default function HomePage() {
                 if (fetchedProfile) {
                     setProfileData(fetchedProfile);
                     // Update navItems based on isLabel status
-                    if (fetchedProfile.isLabel) {
+                    if (fetchedProfile.isLabel) { // Use fetchedProfile.isLabel
                         setNavItems([
                             ...baseNavItems,
                             {
@@ -137,7 +138,8 @@ export default function HomePage() {
         };
 
         fetchProfileData();
-    }, [user, authLoading, toast]); // Removed baseNavItems from dependency array
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [user, authLoading, toast]); 
 
     const getRandomGreeting = (name: string) => {
         if (typeof window === 'undefined') return `Welcome, ${name}!`;

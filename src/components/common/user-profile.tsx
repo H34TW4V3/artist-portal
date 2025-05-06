@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useState, useEffect } from "react";
@@ -76,7 +77,7 @@ export default function UserProfile() {
         const fetchedProfile = await getUserProfileByUid(user.uid);
         
         if (fetchedProfile) {
-            setProfileData(fetchedProfile);
+            setProfileData(fetchedProfile); // This will include isLabel from getUserProfileByUid
             if (user.email !== fetchedProfile.email) {
                  console.warn(`UserProfile: Auth email (${user.email}) and Firestore profile email (${fetchedProfile.email}) mismatch. This could indicate a pending email update. Displaying Firestore email.`);
             }
@@ -89,7 +90,7 @@ export default function UserProfile() {
             bio: null,
             phoneNumber: null,
             hasCompletedTutorial: false,
-            isLabel: false, // Default isLabel
+            isLabel: false, // Default isLabel for new profiles
           };
           await setPublicProfile(user.uid, defaultData, false); 
           setProfileData(defaultData);

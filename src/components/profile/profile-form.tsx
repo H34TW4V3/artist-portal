@@ -1,4 +1,5 @@
 
+
 "use client"
 
 import { useState, useEffect, useRef } from "react";
@@ -97,7 +98,7 @@ export function ProfileForm({
                 phoneNumber: initialData.phoneNumber ?? null,
                 imageUrl: initialData.imageUrl ?? null,
                 hasCompletedTutorial: initialData.hasCompletedTutorial ?? false,
-                isLabel: initialData.isLabel ?? false, // Initialize isLabel
+                isLabel: initialData.isLabel ?? false, // Initialize isLabel from initialData
             };
             form.reset(mergedDefaults);
             setCurrentImageUrl(initialData.imageUrl ?? null);
@@ -139,7 +140,12 @@ export function ProfileForm({
         setIsSubmitting(true);
 
         try {
-            const { updatedData } = await updateFunction(values, selectedImageFile);
+            // Ensure isLabel is included in the values passed to updateFunction
+            const dataToSubmit: ProfileFormValues = {
+                ...values,
+                isLabel: values.isLabel ?? false, // Ensure isLabel has a boolean value
+            };
+            const { updatedData } = await updateFunction(dataToSubmit, selectedImageFile);
             console.log("ProfileForm: updateFunction successful, updatedData:", updatedData);
 
             setFormInitialName(updatedData.name);
@@ -147,7 +153,7 @@ export function ProfileForm({
             setSelectedImageFile(undefined);
             setImagePreviewUrl(null);
 
-            form.reset(updatedData);
+            form.reset(updatedData); // updatedData should include the correct isLabel
 
             if (onSuccess) {
                 onSuccess(updatedData);

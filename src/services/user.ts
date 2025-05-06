@@ -45,7 +45,7 @@ export async function getUserProfileByUid(uid: string): Promise<ProfileFormValue
         phoneNumber: data.phoneNumber ?? null,
         imageUrl: data.imageUrl ?? null,
         hasCompletedTutorial: data.hasCompletedTutorial ?? false,
-        isLabel: data.isLabel ?? false, // Include isLabel
+        isLabel: data.isLabel ?? false, // Ensure isLabel is fetched, default to false
       };
       
       const auth = getAuth(app);
@@ -79,7 +79,7 @@ export async function getUserProfileByUid(uid: string): Promise<ProfileFormValue
           phoneNumber: null,
           imageUrl: currentUser.photoURL || null,
           hasCompletedTutorial: false,
-          isLabel: false, // Default for isLabel
+          isLabel: false, // Default for isLabel when creating from auth fallback
         };
       }
       return null;
@@ -96,7 +96,7 @@ export async function getUserProfileByUid(uid: string): Promise<ProfileFormValue
 
 
 /**
- * Sets or updates the public profile sub-document and the root user doc (email & uid).
+ * Sets or updates the public profile sub-document and the root user doc (email & uid, and isLabel).
  * Ensures all fields from ProfileFormValues are either provided or explicitly set to null/default.
  */
 export async function setPublicProfile(uid: string, data: ProfileFormValues, merge: boolean = true): Promise<void> {
@@ -123,13 +123,14 @@ export async function setPublicProfile(uid: string, data: ProfileFormValues, mer
       phoneNumber: data.phoneNumber ?? null,
       imageUrl: data.imageUrl ?? null,
       hasCompletedTutorial: data.hasCompletedTutorial ?? false,
-      isLabel: data.isLabel ?? false, // Include isLabel
+      isLabel: data.isLabel ?? false, // Ensure isLabel is part of the profile data
     };
     console.log("setPublicProfile: Prepared profileDataToSet:", profileDataToSet);
 
     try {
-      await setDoc(rootUserDocRef, { email: emailToSave, uid: uid, isLabel: data.isLabel ?? false }, { merge: true }); // Also save isLabel to root if needed
-      console.log(`Root user document updated/merged for UID: ${uid} with email: ${emailToSave} and isLabel: ${data.isLabel}`);
+      // Save email, uid, and isLabel to the root user document
+      await setDoc(rootUserDocRef, { email: emailToSave, uid: uid, isLabel: data.isLabel ?? false }, { merge: true });
+      console.log(`Root user document updated/merged for UID: ${uid} with email: ${emailToSave} and isLabel: ${data.isLabel ?? false}`);
     } catch (rootDocError) {
        console.warn(`Could not update root user document for UID ${uid} (might be restricted by rules):`, rootDocError);
     }
@@ -178,6 +179,7 @@ export async function createNewArtistAndUser(artistName: string, email: string, 
             hasCompletedTutorial: false,
             isLabel: false, // Default isLabel to false for new artists
         };
+        // Create the profile with isLabel: false
         await setPublicProfile(newUser.uid, initialProfileData, false);
         console.log("Public profile created in Firestore for new user:", newUser.uid);
 
