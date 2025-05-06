@@ -6,7 +6,7 @@ import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { format } from "date-fns";
-import { Loader2, Link as LinkIcon, Upload, CalendarIcon, Music, Trash2, PlusCircle, X, UserPlus } from "lucide-react";
+import { Loader2, Link as LinkIcon, Upload, CalendarIcon, Music, Trash2, PlusCircle, X, UserPlus, Image as ImageIcon } from "lucide-react"; // Added ImageIcon
 import Image from 'next/image';
 
 import {
@@ -27,11 +27,11 @@ import { Calendar } from "@/components/ui/calendar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form";
-import { addExistingRelease, type ExistingReleaseData } from "@/services/music-platform"; 
-import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage"; 
-import { storage } from "@/services/firebase-config"; 
-import { useAuth } from "@/context/auth-context"; 
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"; 
+import { addExistingRelease, type ExistingReleaseData } from "@/services/music-platform";
+import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { storage } from "@/services/firebase-config";
+import { useAuth } from "@/context/auth-context";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CreateArtistModal } from "./create-artist-modal";
 import type { ProfileFormValues } from "@/components/profile/profile-form";
 import { getUserProfileByUid } from "@/services/user";
@@ -44,11 +44,15 @@ const existingReleaseSchema = z.object({
   primaryArtistName: z.string().min(2, "Primary artist name must be at least 2 characters.").max(100, "Artist name too long."),
   additionalArtistNames: z.array(z.string().min(2, "Artist name must be at least 2 characters.").max(100, "Artist name too long.")).optional(),
   releaseDate: z.date({ required_error: "A release date is required." }),
-  artworkFile: z.instanceof(File).optional().nullable() 
+  artworkFile: z.instanceof(File).optional().nullable()
     .refine(file => !file || file.size <= 5 * 1024 * 1024, 'Artwork must be 5MB or less.')
     .refine(file => !file || file.type.startsWith('image/'), 'Artwork must be an image file.'),
+  artworkUrlInput: z.string().url("Please enter a valid URL for the artwork.").optional().nullable(), // New field for URL input
   tracks: z.array(z.object({ name: z.string().min(1, "Track name cannot be empty.").max(100, "Track name too long.") })).min(1, "At least one track is required."),
   spotifyLink: z.string().url("Invalid Spotify link URL.").optional().nullable(),
+}).refine(data => data.artworkFile || data.artworkUrlInput, { // Optional: ensure at least one artwork source if artwork is desired
+    // message: "Please provide artwork by either uploading a file or entering a URL.",
+    // path: ["artworkFile"], // Or a more general path if preferred
 });
 
 type ExistingReleaseFormValues = z.infer<typeof existingReleaseSchema>;
@@ -56,14 +60,14 @@ type ExistingReleaseFormValues = z.infer<typeof existingReleaseSchema>;
 interface AddExistingReleaseModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSuccess: () => void; 
+  onSuccess: () => void;
 }
 
 export function AddExistingReleaseModal({ isOpen, onClose, onSuccess }: AddExistingReleaseModalProps) {
   const { user } = useAuth();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [artworkPreviewUrl, setArtworkPreviewUrl] = useState<string | null>(null);
+  const [artworkPreviewUrl, setArtworkPreviewUrl] = useState<string | null>(null); // Used for file upload preview
   const artworkInputRef = useRef<HTMLInputElement>(null);
   const [userProfile, setUserProfile] = useState<ProfileFormValues | null>(null);
   const [isCreateArtistModalOpen, setIsCreateArtistModalOpen] = useState(false);
@@ -75,11 +79,12 @@ export function AddExistingReleaseModal({ isOpen, onClose, onSuccess }: AddExist
     resolver: zodResolver(existingReleaseSchema),
     defaultValues: {
       title: "",
-      primaryArtistName: "", 
+      primaryArtistName: "",
       additionalArtistNames: [],
       releaseDate: new Date(),
       artworkFile: null,
-      tracks: [{ name: "" }], 
+      artworkUrlInput: null, // Initialize new field
+      tracks: [{ name: "" }],
       spotifyLink: "",
     },
     mode: "onChange",
@@ -96,15 +101,15 @@ export function AddExistingReleaseModal({ isOpen, onClose, onSuccess }: AddExist
             const profile = await getUserProfileByUid(user.uid);
             setUserProfile(profile);
             const initialNames = profile?.name ? [profile.name] : [];
-            // Placeholder for fetching other associated artist names
             const placeholderNames = ["DJ Another Name", "Producer Alias"];
             const allNames = Array.from(new Set([...initialNames, ...placeholderNames].filter(Boolean))) as string[];
             setAvailableArtistNames(allNames);
-            
+
             form.reset({
-                ...form.getValues(), 
-                primaryArtistName: profile?.name || "", 
+                ...form.getValues(),
+                primaryArtistName: profile?.name || "",
                 additionalArtistNames: [],
+                artworkUrlInput: null, // Ensure new field is reset
             });
             setSelectedAdditionalArtists([]);
         }
@@ -119,20 +124,20 @@ export function AddExistingReleaseModal({ isOpen, onClose, onSuccess }: AddExist
      if (isOpen) {
          form.reset({
              title: "",
-             primaryArtistName: userProfile?.name || "", 
+             primaryArtistName: userProfile?.name || "",
              additionalArtistNames: [],
              releaseDate: new Date(),
              artworkFile: null,
+             artworkUrlInput: null, // Reset artwork URL input
              tracks: [{ name: "" }],
              spotifyLink: "",
          });
          setArtworkPreviewUrl(null);
          setSelectedAdditionalArtists([]);
-          if (artworkInputRef.current) { 
+          if (artworkInputRef.current) {
              artworkInputRef.current.value = "";
           }
      } else {
-          
           setTimeout(() => {
             form.reset({
                 title: "",
@@ -140,27 +145,28 @@ export function AddExistingReleaseModal({ isOpen, onClose, onSuccess }: AddExist
                 additionalArtistNames: [],
                 releaseDate: new Date(),
                 artworkFile: null,
+                artworkUrlInput: null, // Reset artwork URL input
                 tracks: [{ name: "" }],
                 spotifyLink: "",
             });
              setArtworkPreviewUrl(null);
              setSelectedAdditionalArtists([]);
-              if (artworkInputRef.current) { 
+              if (artworkInputRef.current) {
                   artworkInputRef.current.value = "";
               }
           }, 150);
      }
      setIsSubmitting(false);
    // eslint-disable-next-line react-hooks/exhaustive-deps
-   }, [isOpen, userProfile]); 
+   }, [isOpen, userProfile]);
 
-  
-  const handleArtworkChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+
+  const handleArtworkFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
         if (file.size > 5 * 1024 * 1024) {
             toast({ title: "Image Too Large", description: "Artwork must be 5MB or less.", variant: "destructive" });
-            form.setValue("artworkFile", null); 
+            form.setValue("artworkFile", null);
             setArtworkPreviewUrl(null);
             return;
         }
@@ -172,18 +178,19 @@ export function AddExistingReleaseModal({ isOpen, onClose, onSuccess }: AddExist
         }
 
         form.setValue("artworkFile", file, { shouldValidate: true, shouldDirty: true });
+        form.setValue("artworkUrlInput", null, { shouldValidate: false }); // Clear URL input if file is chosen
         const reader = new FileReader();
         reader.onloadend = () => {
             setArtworkPreviewUrl(reader.result as string);
         };
         reader.readAsDataURL(file);
     } else {
-         clearArtwork();
+         clearArtworkFile();
     }
   };
 
-  
-  const clearArtwork = () => {
+
+  const clearArtworkFile = () => {
     form.setValue("artworkFile", null, { shouldValidate: true, shouldDirty: true });
     setArtworkPreviewUrl(null);
     if (artworkInputRef.current) {
@@ -191,23 +198,36 @@ export function AddExistingReleaseModal({ isOpen, onClose, onSuccess }: AddExist
     }
   };
 
+  const handleArtworkUrlInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const url = event.target.value;
+    form.setValue("artworkUrlInput", url || null, { shouldValidate: true, shouldDirty: true });
+    if (url) {
+        form.setValue("artworkFile", null, { shouldValidate: false }); // Clear file input if URL is typed
+        setArtworkPreviewUrl(null); // Clear file preview
+        if (artworkInputRef.current) artworkInputRef.current.value = "";
+    }
+  };
+
+
   const handleSubmit = async (values: ExistingReleaseFormValues) => {
     if (!user) {
       toast({ title: "Authentication Error", description: "You must be logged in.", variant: "destructive" });
       return;
     }
     setIsSubmitting(true);
-    let artworkUrl: string | null = null;
+    let finalArtworkUrl: string | null = null;
 
     try {
-      
       const artworkFile = values.artworkFile;
       if (artworkFile) {
         const artworkFileName = `${user.uid}_${Date.now()}_${artworkFile.name}`;
         const artworkStorageRef = ref(storage, `releaseArtwork/${user.uid}/${artworkFileName}`);
         const snapshot = await uploadBytes(artworkStorageRef, artworkFile);
-        artworkUrl = await getDownloadURL(snapshot.ref);
-        console.log("Artwork uploaded for existing release:", artworkUrl);
+        finalArtworkUrl = await getDownloadURL(snapshot.ref);
+        console.log("Artwork uploaded for existing release:", finalArtworkUrl);
+      } else if (values.artworkUrlInput) {
+        finalArtworkUrl = values.artworkUrlInput;
+        console.log("Using provided artwork URL for existing release:", finalArtworkUrl);
       }
 
       const allArtistNames = [values.primaryArtistName, ...(values.additionalArtistNames || [])].filter(Boolean);
@@ -215,9 +235,9 @@ export function AddExistingReleaseModal({ isOpen, onClose, onSuccess }: AddExist
 
       const releaseData: ExistingReleaseData = {
         title: values.title,
-        artists: allArtistNames, 
+        artists: allArtistNames,
         releaseDate: values.releaseDate,
-        artworkUrl: artworkUrl,
+        artworkUrl: finalArtworkUrl, // Use the determined artwork URL
         tracks: values.tracks,
         spotifyLink: values.spotifyLink || null,
       };
@@ -244,8 +264,11 @@ export function AddExistingReleaseModal({ isOpen, onClose, onSuccess }: AddExist
       setIsSubmitting(false);
     }
   };
-  
-  
+
+
+  const displayPreviewSrc = artworkPreviewUrl || form.watch("artworkUrlInput") || null;
+
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-lg md:max-w-2xl bg-card/85 dark:bg-card/70 border-border/50">
@@ -316,14 +339,14 @@ export function AddExistingReleaseModal({ isOpen, onClose, onSuccess }: AddExist
                  <FormField
                     control={form.control}
                     name="additionalArtistNames"
-                    render={() => ( // field is not directly used here, but control is via form.getValues/setValue
+                    render={() => (
                         <FormItem>
                             <FormLabel>Additional Artists (Optional)</FormLabel>
                             <Popover>
                                 <PopoverTrigger asChild>
                                     <Button variant="outline" className="w-full justify-start text-left font-normal border-input" disabled={isSubmitting || availableArtistNames.length <=1}>
-                                        {selectedAdditionalArtists.length > 0 
-                                            ? selectedAdditionalArtists.join(', ') 
+                                        {selectedAdditionalArtists.length > 0
+                                            ? selectedAdditionalArtists.join(', ')
                                             : "Select additional artists"}
                                     </Button>
                                 </PopoverTrigger>
@@ -335,8 +358,8 @@ export function AddExistingReleaseModal({ isOpen, onClose, onSuccess }: AddExist
                                                 id={`artist-select-${artist}`}
                                                 checked={selectedAdditionalArtists.includes(artist)}
                                                 onCheckedChange={(checked) => {
-                                                    const newSelection = checked 
-                                                        ? [...selectedAdditionalArtists, artist] 
+                                                    const newSelection = checked
+                                                        ? [...selectedAdditionalArtists, artist]
                                                         : selectedAdditionalArtists.filter(name => name !== artist);
                                                     setSelectedAdditionalArtists(newSelection);
                                                     form.setValue("additionalArtistNames", newSelection, { shouldValidate: true, shouldDirty: true });
@@ -398,49 +421,94 @@ export function AddExistingReleaseModal({ isOpen, onClose, onSuccess }: AddExist
                   )}
                 />
 
-                <FormField
-                    control={form.control}
-                    name="artworkFile"
-                    render={({ fieldState }) => (
-                        <FormItem>
-                            <FormLabel>Release Artwork (Optional)</FormLabel>
-                             <FormControl>
-                                <div className={cn(
-                                     "mt-1 flex rounded-md border-2 border-dashed px-4 py-4 items-center gap-4",
-                                      fieldState.error ? "border-destructive" : "border-input hover:border-accent",
-                                      artworkPreviewUrl ? "border-solid p-3 items-center" : "justify-center"
-                                 )}>
-                                    {artworkPreviewUrl ? (
-                                         <div className="flex items-center gap-3 w-full">
-                                             <Image src={artworkPreviewUrl} alt="Artwork preview" width={80} height={80} className="rounded-md object-cover aspect-square border border-border" data-ai-hint="artwork preview" />
-                                             <div className="text-sm text-foreground truncate flex-grow">{form.watch('artworkFile')?.name}</div>
-                                             <Button variant="ghost" size="icon" onClick={clearArtwork} className="h-7 w-7 text-muted-foreground hover:text-destructive" type="button">
-                                                 <X className="h-4 w-4" />
-                                                 <span className="sr-only">Clear Artwork</span>
-                                             </Button>
-                                         </div>
-                                    ) : (
-                                         <div className="text-center">
-                                              <Upload className="mx-auto h-8 w-8 text-muted-foreground" aria-hidden="true" />
-                                              <div className="mt-2 flex text-sm text-muted-foreground">
-                                                <button
-                                                    type="button"
-                                                    onClick={() => artworkInputRef.current?.click()}
-                                                    className="relative cursor-pointer rounded-md bg-background px-1 font-medium text-primary hover:text-primary/90 focus-within:outline-none focus-within:ring-2 focus-within:ring-accent focus-within:ring-offset-2"
-                                                >
-                                                    <span>Upload artwork</span>
-                                                </button>
-                                                <input id="artwork-upload-existing" ref={artworkInputRef} name="artwork-upload-existing" type="file" className="sr-only" accept="image/*" onChange={handleArtworkChange} disabled={isSubmitting} />
-                                              </div>
-                                              <p className="text-xs text-muted-foreground">PNG, JPG, GIF up to 5MB</p>
-                                         </div>
-                                     )}
-                                </div>
-                            </FormControl>
-                            <FormMessage />
-                        </FormItem>
+                {/* Artwork Section - File Upload OR URL Input */}
+                <FormItem>
+                    <FormLabel>Release Artwork (Optional)</FormLabel>
+                    <div className="space-y-3">
+                        {/* Artwork File Upload */}
+                        <FormField
+                            control={form.control}
+                            name="artworkFile"
+                            render={({ fieldState }) => (
+                                <FormItem>
+                                    <FormControl>
+                                        <div className={cn(
+                                            "mt-1 flex rounded-md border-2 border-dashed px-4 py-4 items-center gap-4",
+                                            fieldState.error ? "border-destructive" : "border-input hover:border-accent",
+                                            artworkPreviewUrl ? "border-solid p-3 items-center" : "justify-center"
+                                        )}>
+                                            {artworkPreviewUrl ? (
+                                                <div className="flex items-center gap-3 w-full">
+                                                    <Image src={artworkPreviewUrl} alt="Artwork preview" width={80} height={80} className="rounded-md object-cover aspect-square border border-border" data-ai-hint="artwork preview" />
+                                                    <div className="text-sm text-foreground truncate flex-grow">{form.watch('artworkFile')?.name}</div>
+                                                    <Button variant="ghost" size="icon" onClick={clearArtworkFile} className="h-7 w-7 text-muted-foreground hover:text-destructive" type="button" disabled={isSubmitting}>
+                                                        <X className="h-4 w-4" />
+                                                        <span className="sr-only">Clear Artwork File</span>
+                                                    </Button>
+                                                </div>
+                                            ) : (
+                                                <div className="text-center">
+                                                    <Upload className="mx-auto h-8 w-8 text-muted-foreground" aria-hidden="true" />
+                                                    <div className="mt-2 flex text-sm text-muted-foreground">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => artworkInputRef.current?.click()}
+                                                            className="relative cursor-pointer rounded-md bg-background px-1 font-medium text-primary hover:text-primary/90 focus-within:outline-none focus-within:ring-2 focus-within:ring-accent focus-within:ring-offset-2"
+                                                            disabled={isSubmitting}
+                                                        >
+                                                            <span>Upload artwork file</span>
+                                                        </button>
+                                                        <input id="artwork-upload-existing-file" ref={artworkInputRef} name="artwork-upload-existing-file" type="file" className="sr-only" accept="image/*" onChange={handleArtworkFileChange} disabled={isSubmitting} />
+                                                    </div>
+                                                    <p className="text-xs text-muted-foreground">PNG, JPG, GIF up to 5MB</p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </FormControl>
+                                    <FormMessage>{form.formState.errors.artworkFile?.message}</FormMessage>
+                                </FormItem>
+                            )}
+                        />
+                        {/* OR Separator */}
+                         <div className="relative">
+                             <div className="absolute inset-0 flex items-center" aria-hidden="true">
+                                 <div className="w-full border-t border-border/50" />
+                             </div>
+                             <div className="relative flex justify-center">
+                                 <span className="bg-card px-2 text-sm text-muted-foreground">Or</span>
+                             </div>
+                         </div>
+
+                        {/* Artwork URL Input */}
+                        <FormField
+                            control={form.control}
+                            name="artworkUrlInput"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormControl>
+                                        <div className="flex items-center space-x-2">
+                                            <ImageIcon className="h-4 w-4 text-muted-foreground" />
+                                            <Input
+                                                placeholder="Enter artwork image URL (e.g., https://...)"
+                                                {...field}
+                                                value={field.value ?? ""}
+                                                onChange={handleArtworkUrlInputChange}
+                                                disabled={isSubmitting}
+                                            />
+                                        </div>
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                    </div>
+                     {/* Display preview if URL is entered */}
+                     {form.watch("artworkUrlInput") && !artworkPreviewUrl && (
+                        <div className="mt-2 flex justify-center">
+                             <Image src={form.watch("artworkUrlInput")!} alt="Artwork URL preview" width={100} height={100} className="rounded-md object-contain border border-border" data-ai-hint="artwork url preview" />
+                        </div>
                     )}
-                 />
+                </FormItem>
 
 
                 <div className="space-y-3">
