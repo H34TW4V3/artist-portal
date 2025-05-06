@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import Link from "next/link";
@@ -89,25 +88,23 @@ export default function HomePage() {
 
             setProfileLoading(true);
             try {
-                // getUserProfileByUid now fetches isLabel from the publicProfile subcollection
                 const fetchedProfile = await getUserProfileByUid(user.uid);
 
                 if (fetchedProfile) {
                     setProfileData(fetchedProfile);
-                    // Update navItems based on isLabel status from the fetched profile
                     if (fetchedProfile.isLabel) { 
                         setNavItems([
                             ...baseNavItems,
                             {
                                 title: "My Artists",
-                                href: "/my-artists", // Placeholder link
+                                href: "/my-artists", 
                                 icon: <Users className="h-12 w-12 md:h-16 md:w-16" />,
                                 description: "Manage your roster",
                                 external: false,
                             }
-                        ]);
+                        ].sort((a, b) => a.title.localeCompare(b.title))); // Sort items alphabetically
                     } else {
-                        setNavItems(baseNavItems);
+                        setNavItems(baseNavItems.sort((a, b) => a.title.localeCompare(b.title)));
                     }
                 } else {
                   console.log("No public profile found for user, creating default values for display...");
@@ -118,10 +115,10 @@ export default function HomePage() {
                     bio: null,
                     phoneNumber: null,
                     hasCompletedTutorial: false,
-                    isLabel: false, // Default isLabel for new profiles if no doc exists
+                    isLabel: false, 
                   };
                   setProfileData(defaultData);
-                  setNavItems(baseNavItems); // Default nav items if no profile or not a label
+                  setNavItems(baseNavItems.sort((a, b) => a.title.localeCompare(b.title))); 
                 }
             } catch (error) {
                 console.error("Error fetching user profile for greeting:", error);
@@ -132,7 +129,7 @@ export default function HomePage() {
                      duration: 2000,
                  });
                 setProfileData(null);
-                setNavItems(baseNavItems); // Default nav items on error
+                setNavItems(baseNavItems.sort((a, b) => a.title.localeCompare(b.title))); 
             } finally {
                 setProfileLoading(false);
             }
