@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { getUserProfileByUid } from "@/services/user";
 import type { ProfileFormValues } from "@/components/profile/profile-form";
 import { useToast } from "@/hooks/use-toast";
+import { DashboardRedirectModal } from "@/components/dashboard/dashboard-redirect-modal"; // Import the new modal
 
 
 const PineappleIcon = () => (
@@ -27,20 +28,8 @@ const PineappleIcon = () => (
   />
 );
 
-const navItems = [
-  { title: "Dashboard", href: "/dashboard", icon: <LayoutDashboard className="h-12 w-12 md:h-16 md:w-16" />, description: "View your latest stats", external: false },
-  { title: "My Releases", href: "/releases", icon: <ListMusic className="h-12 w-12 md:h-16 md:w-16" />, description: "Manage your music", external: false },
-  { title: "Events", href: "/events", icon: <CalendarClock className="h-12 w-12 md:h-16 md:w-16" />, description: "Manage your events", external: false },
-  { title: "Documents & Guidebooks", href: "/documents", icon: <FileText className="h-12 w-12 md:h-16 md:w-16" />, description: "Access agreements & guidebooks", external: false },
-  { title: "Pineapple", href: "/pineapple", icon: <PineappleIcon />, description: "Connect & Collaborate", external: false },
-   {
-     title: "Spotify for Artists",
-     href: "https://accounts.spotify.com/en-GB/login?continue=https%3A%2F%2Faccounts.spotify.com%2Foauth2%2Fv2%2Fauth%3Fresponse_type%3Dnone%26client_id%3D6cf79a93be894c2086b8cbf737e0796b%26scope%3Duser-read-email%2Buser-read-private%2Bugc-image-upload%26redirect_uri%3Dhttps%253A%252F%252Fartists.spotify.com%252Fc%26acr_values%3Durn%253Aspotify%253Asso%253Aacr%253Aartist%253A2fa&flow_ctx=0bb76910-45f7-4890-9c65-90cebef63fd0%3A1746148618",
-     imageSrc: "https://s29.q4cdn.com/175625835/files/images/S4A.jpeg",
-     description: "Access your Spotify profile",
-     external: true
-   },
-];
+const SPOTIFY_FOR_ARTISTS_URL = "https://accounts.spotify.com/en-GB/login?continue=https%3A%2F%2Faccounts.spotify.com%2Foauth2%2Fv2%2Fauth%3Fresponse_type%3Dnone%26client_id%3D6cf79a93be894c2086b8cbf737e0796b%26scope%3Duser-read-email%2Buser-read-private%2Bugc-image-upload%26redirect_uri%3Dhttps%253A%252F%252Fartists.spotify.com%252Fc%26acr_values%3Durn%253Aspotify%253Asso%253Aacr%253Aartist%253A2fa&flow_ctx=0bb76910-45f7-4890-9c65-90cebef63fd0%3A1746148618";
+
 
 const greetings = [
     "Hey, {{name}}!",
@@ -73,6 +62,32 @@ export default function HomePage() {
     const [profileLoading, setProfileLoading] = useState(true);
     const [clientGreeting, setClientGreeting] = useState("");
     const [randomBorderStyles, setRandomBorderStyles] = useState<string[]>([]);
+    const [isDashboardModalOpen, setIsDashboardModalOpen] = useState(false);
+
+    const navItems = [
+        {
+            title: "Dashboard",
+            href: "/dashboard",
+            icon: <LayoutDashboard className="h-12 w-12 md:h-16 md:w-16" />,
+            description: "View your latest stats",
+            external: false,
+            onClick: (e: React.MouseEvent) => {
+              e.preventDefault();
+              setIsDashboardModalOpen(true);
+            }
+        },
+        { title: "My Releases", href: "/releases", icon: <ListMusic className="h-12 w-12 md:h-16 md:w-16" />, description: "Manage your music", external: false },
+        { title: "Events", href: "/events", icon: <CalendarClock className="h-12 w-12 md:h-16 md:w-16" />, description: "Manage your events", external: false },
+        { title: "Documents & Guidebooks", href: "/documents", icon: <FileText className="h-12 w-12 md:h-16 md:w-16" />, description: "Access agreements & guidebooks", external: false },
+        { title: "Pineapple", href: "/pineapple", icon: <PineappleIcon />, description: "Connect & Collaborate", external: false },
+         {
+           title: "Spotify for Artists",
+           href: SPOTIFY_FOR_ARTISTS_URL,
+           imageSrc: "https://s29.q4cdn.com/175625835/files/images/S4A.jpeg",
+           description: "Access your Spotify profile",
+           external: true
+         },
+      ];
 
 
     useEffect(() => {
@@ -235,43 +250,25 @@ export default function HomePage() {
                         const activeStateClasses = "active:scale-[0.97] active:opacity-90 transition-transform duration-100";
                         const currentBorderStyle = randomBorderStyles[index] || "rounded-2xl"; // Fallback
 
-                        if (item.imageSrc) {
-                            const cardContent = (
-                                <Card className={cn(
-                                    "bg-card/60 dark:bg-card/50 border border-border/30 shadow-lg transition-all duration-300 ease-out cursor-pointer text-center h-full flex flex-col justify-center items-center overflow-hidden",
-                                    "hover:shadow-xl hover:border-primary/60 hover:-translate-y-1.5 hover-glow",
-                                    currentBorderStyle // Apply random border style
-                                )}>
-                                    <Image
-                                        src={item.imageSrc}
-                                        alt={item.title}
-                                        layout="fill"
-                                        objectFit="cover"
-                                        className="transition-transform duration-300 group-hover:scale-105" // Removed explicit rounding
-                                        data-ai-hint="spotify for artists banner"
-                                        unoptimized
-                                    />
-                                </Card>
-                            );
-                            return (
-                                <a
-                                    href={item.href}
-                                    key={item.href}
-                                    className={cn("block group relative aspect-[4/3.5]", animationClass, activeStateClasses)}
-                                    style={{ animationDelay }}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                >
-                                    {cardContent}
-                                </a>
-                            );
-                        } else {
-                            const cardContent = (
-                                <Card className={cn(
-                                    "bg-card/60 dark:bg-card/50 border border-border/30 shadow-lg transition-all duration-300 ease-out cursor-pointer text-center h-full flex flex-col justify-center items-center p-6 overflow-hidden", // Added overflow-hidden
-                                    "hover:shadow-xl hover:border-primary/60 hover:-translate-y-1.5 hover-glow",
-                                    currentBorderStyle // Apply random border style
-                                )}>
+                        const cardContent = (
+                            <Card className={cn(
+                                "bg-card/60 dark:bg-card/50 border border-border/30 shadow-lg transition-all duration-300 ease-out cursor-pointer text-center h-full flex flex-col justify-center items-center p-6 overflow-hidden",
+                                "hover:shadow-xl hover:border-primary/60 hover:-translate-y-1.5 hover-glow",
+                                currentBorderStyle // Apply random border style
+                            )}>
+                                {item.imageSrc ? (
+                                    <div className="relative w-full h-full">
+                                        <Image
+                                            src={item.imageSrc}
+                                            alt={item.title}
+                                            layout="fill"
+                                            objectFit="cover"
+                                            className={cn("transition-transform duration-300 group-hover:scale-105", currentBorderStyle)} // Apply border style to image too
+                                            data-ai-hint="spotify for artists banner"
+                                            unoptimized
+                                        />
+                                    </div>
+                                ) : (
                                     <CardContent className="flex flex-col items-center justify-center space-y-3 md:space-y-4 p-0">
                                         <div className="p-3 md:p-4 rounded-2xl bg-primary/10 text-primary transition-colors group-hover:bg-primary/20 mb-2">
                                             {item.icon}
@@ -279,29 +276,48 @@ export default function HomePage() {
                                         <CardTitle className="text-lg md:text-xl font-semibold text-foreground">{item.title}</CardTitle>
                                         <CardDescription className="text-sm md:text-base text-muted-foreground">{item.description}</CardDescription>
                                     </CardContent>
-                                </Card>
-                            );
-                            return item.external ? (
-                                <a
-                                    href={item.href}
+                                )}
+                            </Card>
+                        );
+
+                        if (item.onClick) {
+                            return (
+                                <button
                                     key={item.href}
+                                    onClick={item.onClick}
                                     className={cn("block group aspect-[4/3.5]", animationClass, activeStateClasses)}
                                     style={{ animationDelay }}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
                                 >
                                     {cardContent}
-                                </a>
-                            ) : (
-                                <Link href={item.href} key={item.href} className={cn("block group aspect-[4/3.5]", animationClass, activeStateClasses)} style={{ animationDelay }}>
-                                    {cardContent}
-                                </Link>
+                                </button>
                             );
                         }
+
+                        return item.external ? (
+                            <a
+                                href={item.href}
+                                key={item.href}
+                                className={cn("block group aspect-[4/3.5]", animationClass, activeStateClasses)}
+                                style={{ animationDelay }}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                            >
+                                {cardContent}
+                            </a>
+                        ) : (
+                            <Link href={item.href} key={item.href} className={cn("block group aspect-[4/3.5]", animationClass, activeStateClasses)} style={{ animationDelay }}>
+                                {cardContent}
+                            </Link>
+                        );
                     })}
                     </div>
                 </div>
             </main>
+            <DashboardRedirectModal
+                isOpen={isDashboardModalOpen}
+                onClose={() => setIsDashboardModalOpen(false)}
+                spotifyUrl={SPOTIFY_FOR_ARTISTS_URL}
+            />
         </div>
     );
 }
