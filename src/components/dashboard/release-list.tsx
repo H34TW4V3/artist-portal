@@ -127,24 +127,35 @@ export function ReleaseList({ className }: ReleaseListProps) {
         if (dateValue instanceof Timestamp) {
             date = dateValue.toDate();
         } else if (typeof dateValue === 'string') {
-             const parts = dateValue.split('-');
-             if (parts.length === 3) {
-                  // Ensure UTC interpretation for YYYY-MM-DD
-                  date = new Date(Date.UTC(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2])));
+             // For "YYYY-MM-DD" strings, ensure UTC interpretation for consistency
+             if (dateValue.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                  const [year, month, day] = dateValue.split('-').map(Number);
+                  date = new Date(Date.UTC(year, month - 1, day));
              } else {
-                   // Fallback for other string formats (might be less reliable)
+                  // Fallback for other string formats or ISO strings with timezones
                   date = new Date(dateValue);
              }
-        } else {
+        } else { // It's already a Date object
              date = dateValue;
         }
-        if (isNaN(date.getTime())) return '-';
-        // Format date using UTC values
+
+        if (isNaN(date.getTime())) return 'Invalid Date';
+
+        // Format date using UTC values if the input was a YYYY-MM-DD string, otherwise use local.
+        // This aims to display the intended date correctly regardless of user's local timezone for YYYY-MM-DD.
+        if (typeof dateValue === 'string' && dateValue.match(/^\d{4}-\d{2}-\d{2}$/)) {
+            return date.toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
+                timeZone: 'UTC' // Explicitly use UTC for YYYY-MM-DD strings
+            });
+        }
+        // For Timestamps or full Date objects, use local formatting
         return date.toLocaleDateString('en-US', {
             year: 'numeric',
             month: 'short',
-            day: 'numeric',
-            timeZone: 'UTC' // Specify UTC timezone for consistent display
+            day: 'numeric'
         });
     } catch (e) {
         console.error("Error formatting date:", dateValue, e);
@@ -197,8 +208,9 @@ export function ReleaseList({ className }: ReleaseListProps) {
                         Artwork
                     </TableHead>
                     <TableHead className="p-2">Title</TableHead>
-                    {/* Removed Artist column header */}
+                    <TableHead className="hidden md:table-cell p-2">Artist</TableHead>
                     <TableHead className="hidden md:table-cell p-2">Release Date</TableHead>
+                    <TableHead className="hidden md:table-cell p-2">Status</TableHead>
                     {/* Removed Actions column header */}
                     </TableRow>
                 </TableHeader>
@@ -210,15 +222,14 @@ export function ReleaseList({ className }: ReleaseListProps) {
                                     <Skeleton className="h-12 w-12 rounded-md bg-muted/50" />
                                 </TableCell>
                                 <TableCell className="p-2"><Skeleton className="h-4 w-3/4 bg-muted/50" /></TableCell>
-                                {/* Removed Artist skeleton cell */}
+                                <TableCell className="hidden md:table-cell p-2"><Skeleton className="h-4 w-1/2 bg-muted/50" /></TableCell>
                                 <TableCell className="hidden md:table-cell p-2"><Skeleton className="h-4 w-20 bg-muted/50" /></TableCell>
-                                {/* Removed Actions skeleton cell */}
+                                <TableCell className="hidden md:table-cell p-2"><Skeleton className="h-4 w-20 bg-muted/50" /></TableCell>
                             </TableRow>
                         ))
                     ) : releases.length === 0 ? (
                         <TableRow>
-                            {/* Adjusted colSpan */}
-                            <TableCell colSpan={3} className="h-24 text-center text-muted-foreground">
+                            <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
                                 No releases found yet. Click "Add Release" to get started!
                             </TableCell>
                         </TableRow>
@@ -242,11 +253,23 @@ export function ReleaseList({ className }: ReleaseListProps) {
                                     />
                                 </TableCell>
                                 <TableCell className="font-medium text-foreground p-2 align-middle">{release.title}</TableCell>
-                                {/* Removed Artist data cell */}
+                                <TableCell className="hidden md:table-cell text-muted-foreground p-2 align-middle">{release.artist}</TableCell>
                                 <TableCell className="hidden md:table-cell text-muted-foreground p-2 align-middle">
                                   {formatDate(release.releaseDate || release.createdAt)}
                                 </TableCell>
-                                {/* Removed Actions data cell and dropdown */}
+                                <TableCell className="hidden md:table-cell text-muted-foreground p-2 align-middle">
+                                    <span className={cn(
+                                        "px-2 py-1 text-xs font-medium rounded-full",
+                                        release.status === "completed" && "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
+                                        release.status === "processing" && "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
+                                        release.status === "failed" && "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200",
+                                        release.status === "takedown_requested" && "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200",
+                                        release.status === "existing" && "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
+                                        !release.status && "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200"
+                                    )}>
+                                        {release.status ? release.status.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : 'Unknown'}
+                                    </span>
+                                </TableCell>
                             </TableRow>
                         ))
                     )}
@@ -283,3 +306,4 @@ export function ReleaseList({ className }: ReleaseListProps) {
     </>
   );
 }
+

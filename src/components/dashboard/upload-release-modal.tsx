@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useRef } from "react"; // Added useRef
@@ -289,7 +290,7 @@ export function UploadReleaseModal({ isOpen, onClose, onSuccess }: UploadRelease
         {/* Indeterminate Progress Bar during submission */}
         {isSubmitting && (
             <div className="px-6 pb-2 pt-0"> {/* Add padding */}
-                <Progress indeterminate className="w-full h-1.5" />
+                <Progress value={undefined} className="w-full h-1.5 animate-progress-indeterminate" /> {/* Use indeterminate style for ShadCN */}
                  <p className="text-xs text-center text-muted-foreground mt-1">Uploading, please wait...</p>
              </div>
         )}
@@ -432,7 +433,10 @@ export function UploadReleaseModal({ isOpen, onClose, onSuccess }: UploadRelease
                               )}
                             </div>
                           </FormControl>
-                          <FormDescription className="text-xs">Must be a ZIP file containing audio & artwork structured according to the guidelines (click <HelpCircle className="inline h-3 w-3 align-text-bottom" /> icon above).</FormDescription>
+                          <FormDescription className="text-xs flex items-start gap-1">
+                            <Info className="h-3 w-3 mt-0.5 flex-shrink-0"/>
+                            <span>Must be a ZIP file containing audio & artwork structured according to the guidelines (click <HelpCircle className="inline h-3 w-3 align-text-bottom" /> icon above).</span>
+                          </FormDescription>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -502,3 +506,4 @@ export function UploadReleaseModal({ isOpen, onClose, onSuccess }: UploadRelease
     </Dialog>
   );
 }
+

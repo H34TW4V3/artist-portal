@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
@@ -31,10 +32,10 @@ import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { storage } from "@/services/firebase-config"; // Import storage instance
 import { useAuth } from "@/context/auth-context"; // To get user ID for storage path
 
-// Schema for adding an existing release - REMOVED artist field
+// Schema for adding an existing release - artist field is now optional.
 const existingReleaseSchema = z.object({
   title: z.string().min(2, "Title must be at least 2 characters.").max(100, "Title must be 100 characters or less."),
-  // artist: z.string().min(2, "Artist name must be at least 2 characters.").max(100, "Artist name must be 100 characters or less."), // REMOVED
+  artist: z.string().min(2, "Artist name must be at least 2 characters.").max(100, "Artist name must be 100 characters or less.").optional().nullable(), // Artist is optional
   releaseDate: z.date({ required_error: "A release date is required." }),
   artworkFile: z.instanceof(File).optional().nullable() // Artwork file is optional
     .refine(file => !file || file.size <= 5 * 1024 * 1024, 'Artwork must be 5MB or less.')
@@ -62,7 +63,7 @@ export function AddExistingReleaseModal({ isOpen, onClose, onSuccess }: AddExist
     resolver: zodResolver(existingReleaseSchema),
     defaultValues: {
       title: "",
-      // artist: "", // REMOVED
+      artist: "", // Initialize as empty string
       releaseDate: new Date(),
       artworkFile: null,
       tracks: [{ name: "" }], // Start with one empty track
@@ -81,7 +82,7 @@ export function AddExistingReleaseModal({ isOpen, onClose, onSuccess }: AddExist
      if (isOpen) {
          form.reset({
              title: "",
-             // artist: "", // REMOVED
+             artist: "",
              releaseDate: new Date(),
              artworkFile: null,
              tracks: [{ name: "" }],
@@ -96,7 +97,7 @@ export function AddExistingReleaseModal({ isOpen, onClose, onSuccess }: AddExist
           setTimeout(() => {
             form.reset({
                 title: "",
-                // artist: "", // REMOVED
+                artist: "",
                 releaseDate: new Date(),
                 artworkFile: null,
                 tracks: [{ name: "" }],
@@ -162,17 +163,17 @@ export function AddExistingReleaseModal({ isOpen, onClose, onSuccess }: AddExist
       const artworkFile = values.artworkFile;
       if (artworkFile) {
         const artworkFileName = `${user.uid}_${Date.now()}_${artworkFile.name}`;
-        // **UPDATED PATH**
         const artworkStorageRef = ref(storage, `releaseArtwork/${user.uid}/${artworkFileName}`);
         const snapshot = await uploadBytes(artworkStorageRef, artworkFile);
         artworkUrl = await getDownloadURL(snapshot.ref);
         console.log("Artwork uploaded for existing release:", artworkUrl);
       }
 
-      // 2. Prepare data for Firestore service - REMOVED artist from values
-      // The service function will handle fetching the artist name internally.
+      // 2. Prepare data for Firestore service
+      // The service function will handle fetching the artist name internally if values.artist is null/empty.
       const releaseData: ExistingReleaseData = {
         title: values.title,
+        artist: values.artist || null, // Pass null if artist field is empty
         releaseDate: values.releaseDate, // Pass Date object, service handles formatting
         artworkUrl: artworkUrl, // URL from upload or null
         tracks: values.tracks,
@@ -234,20 +235,20 @@ export function AddExistingReleaseModal({ isOpen, onClose, onSuccess }: AddExist
                   )}
                 />
 
-                 {/* Artist Name - REMOVED */}
-                 {/* <FormField
+                 {/* Artist Name - Optional */}
+                 <FormField
                     control={form.control}
                     name="artist"
                     render={({ field }) => (
                         <FormItem>
-                        <FormLabel>Artist Name</FormLabel>
+                        <FormLabel>Artist Name (Optional)</FormLabel>
                         <FormControl>
-                            <Input placeholder="Your Artist Name" {...field} disabled={isSubmitting} />
+                            <Input placeholder="Defaults to your profile name if left blank" {...field} value={field.value ?? ""} disabled={isSubmitting} />
                         </FormControl>
                         <FormMessage />
                         </FormItem>
                     )}
-                /> */}
+                />
 
                 {/* Release Date */}
                 <FormField
@@ -439,3 +440,4 @@ export function AddExistingReleaseModal({ isOpen, onClose, onSuccess }: AddExist
     </Dialog>
   );
 }
+

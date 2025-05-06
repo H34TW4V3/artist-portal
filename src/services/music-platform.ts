@@ -273,9 +273,6 @@ import {
       const userId = getCurrentUserId();
       if (!userId) throw new Error("Authentication required. Please log in.");
 
-      // REMOVED Artwork Upload Logic - This function should not upload files.
-      // The artworkUrl in `data` should be a URL string if provided.
-
       // Fetch artist name from Firestore profile if not provided in data
       let artistName = data.artist;
       if (!artistName) {

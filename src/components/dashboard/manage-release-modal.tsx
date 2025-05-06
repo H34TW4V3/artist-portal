@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
@@ -85,10 +86,14 @@ export function ManageReleaseModal({ isOpen, onClose, releaseData, onSuccess, on
           if (dateValue instanceof Timestamp) {
               return dateValue.toDate();
           } else if (typeof dateValue === 'string') {
-               // Try parsing ISO string (which YYYY-MM-DD is a subset of)
-                const parsed = new Date(dateValue + 'T00:00:00Z'); // Assume UTC if only date part
-                // Check if parseISO worked, otherwise fallback
-                return isNaN(parsed.getTime()) ? new Date() : parsed; // Fallback to current date if parsing fails
+               // For "YYYY-MM-DD" strings, ensure UTC interpretation for consistency
+                if (dateValue.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                     const [year, month, day] = dateValue.split('-').map(Number);
+                     return new Date(Date.UTC(year, month - 1, day));
+                }
+                // Fallback for other string formats or ISO strings with timezones
+                const parsed = new Date(dateValue);
+                return isNaN(parsed.getTime()) ? new Date() : parsed;
           } else if (dateValue instanceof Date) {
               return dateValue;
           }
@@ -204,12 +209,13 @@ export function ManageReleaseModal({ isOpen, onClose, releaseData, onSuccess, on
 
     try {
       // Prepare data for the update function
-      const dataToUpdate: Partial<Omit<ReleaseMetadata, 'userId' | 'createdAt' | 'zipUrl' | 'status' | 'artworkUrl' >> & { releaseDate?: string | Date } = {
+      const dataToUpdate: Partial<Omit<ReleaseMetadata, 'userId' | 'createdAt' | 'zipUrl' | 'status' >> & { releaseDate?: Date } = {
         title: values.title,
         artist: values.artist,
         releaseDate: values.releaseDate, // Pass Date object, service function handles formatting
         tracks: values.tracks,
         spotifyLink: values.spotifyLink || null,
+        // artworkUrl is handled by updateRelease service based on artworkFile
       };
 
       // Call the update service function, passing the new artwork file if selected
@@ -390,8 +396,11 @@ export function ManageReleaseModal({ isOpen, onClose, releaseData, onSuccess, on
                             {/* Displaying as read-only text */}
                             <Input
                                 type="text"
-                                // Use UTC date formatting for consistency
-                                value={field.value instanceof Date && !isNaN(field.value.getTime()) ? format(field.value, "PPP", { useAdditionalDayOfYearTokens: false }) : "Invalid Date"}
+                                // Use UTC date formatting for consistency if the input was YYYY-MM-DD
+                                value={field.value instanceof Date && !isNaN(field.value.getTime())
+                                        ? format(field.value, "PPP", { timeZone: typeof releaseData.releaseDate === 'string' && releaseData.releaseDate.match(/^\d{4}-\d{2}-\d{2}$/) ? 'UTC' : undefined })
+                                        : "Invalid Date"
+                                }
                                 readOnly
                                 disabled
                                 className="bg-muted/50 cursor-not-allowed"
@@ -574,3 +583,4 @@ export function ManageReleaseModal({ isOpen, onClose, releaseData, onSuccess, on
     </Dialog>
   );
 }
+
