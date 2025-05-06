@@ -117,7 +117,7 @@ export function LoginForm({ className }: { className?: string }) {
             // We need to find profile by *input* email for display consistency.
             // This is now problematic as getUserProfileByEmail was removed for security.
             // Solution: Rely on Firestore data fetched by UID if already logged in, otherwise just email part.
-            const tempAuthUser = auth.currentUser; // Check if user is now authenticated (e.g. after email link)
+            const tempAuthUser = getAuth(app).currentUser; // Check if user is now authenticated (e.g. after email link)
             if (tempAuthUser && tempAuthUser.email === email) {
                 fetchedProfile = await getUserProfileByUid(tempAuthUser.uid);
             } else {
