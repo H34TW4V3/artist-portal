@@ -1,9 +1,10 @@
+
 "use client";
 
 import type { NextPage } from 'next';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Home, Users, Briefcase, Loader2, Edit3, UserCircle2 } from 'lucide-react';
+import { Home, Users, Briefcase, Loader2, Edit3, UserCircle2, UserPlus } from 'lucide-react'; // Added UserPlus
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import UserProfile from '@/components/common/user-profile';
@@ -13,13 +14,13 @@ import { useAuth } from '@/context/auth-context';
 import { useRouter } from 'next/navigation';
 import type { ProfileFormValues } from '@/components/profile/profile-form';
 import { getUserProfileByUid } from '@/services/user';
-import type { ManagedArtist } from '@/services/artists'; // Will create this type
-import { getManagedArtists } from '@/services/artists'; // Will create this service
-import { ArtistTable } from '@/components/my-artists/artist-table'; // Will create this component
-import { ArtistProfileDisplay } from '@/components/my-artists/artist-profile-display'; // Will create
-import { ArtistReleaseList } from '@/components/my-artists/artist-release-list'; // Will create
+import type { ManagedArtist } from '@/services/artists'; 
+import { getManagedArtists } from '@/services/artists'; 
+import { ArtistTable } from '@/components/my-artists/artist-table'; 
+import { ArtistProfileDisplay } from '@/components/my-artists/artist-profile-display'; 
+import { ArtistReleaseList } from '@/components/my-artists/artist-release-list'; 
 import { useToast } from '@/hooks/use-toast';
-import { CreateArtistModal } from '@/components/dashboard/create-artist-modal'; // Re-use for adding new artists
+import { CreateArtistModal } from '@/components/dashboard/create-artist-modal'; 
 
 const MyArtistsPage: NextPage = () => {
   const { user, loading: authLoading } = useAuth();
