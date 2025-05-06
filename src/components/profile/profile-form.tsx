@@ -5,7 +5,7 @@ import { useState, useEffect, useRef } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
-import { Loader2, Upload, AlertCircle, Mail, Phone, User, FileText, ShieldIcon } from "lucide-react"; // Replaced ShieldExclamation
+import { Loader2, Upload, AlertCircle, Mail, Phone, User, FileText, ShieldIcon } from "lucide-react"; 
 import Image from "next/image";
 
 import { Button } from "@/components/ui/button";
@@ -37,12 +37,14 @@ const profileSchema = z.object({
       .refine(val => !val || /^[+]*[(]{0,1}[0-9]{1,4}[)]{0,1}[-\s\./0-9]*$/.test(val), {
           message: "Invalid phone number format.",
        }),
-  imageUrl: z.string().url("Invalid URL.").optional().nullable(),
+  imageUrl: z.string().url("Invalid URL.").optional().nullable(), // This will store the URL, not the file
   hasCompletedTutorial: z.boolean().optional().default(false),
   // emailLinkSignInEnabled: z.boolean().optional().default(false), // Removed
 });
 
-export type ProfileFormValues = Omit<z.infer<typeof profileSchema>, 'emailLinkSignInEnabled'> & { emailLinkSignInEnabled?: boolean };
+// Ensure ProfileFormValues exactly matches the schema including optionality for emailLinkSignInEnabled if it were present.
+// Since it's removed from schema, we only need Omit if it was ever part of the passed `initialData` type incorrectly.
+export type ProfileFormValues = z.infer<typeof profileSchema>;
 
 
 interface ProfileFormProps {
@@ -66,7 +68,7 @@ export function ProfileForm({
 }: ProfileFormProps) {
     const { toast } = useToast();
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [currentImageUrl, setCurrentImageUrl] = useState<string | undefined>(initialData?.imageUrl ?? undefined);
+    const [currentImageUrl, setCurrentImageUrl] = useState<string | null | undefined>(initialData?.imageUrl);
     const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
     const [selectedImageFile, setSelectedImageFile] = useState<File | undefined>(undefined);
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -77,11 +79,11 @@ export function ProfileForm({
         defaultValues: initialData || {
             name: "",
             email: "",
-            bio: "",
-            phoneNumber: "",
-            imageUrl: "",
+            bio: null, // Ensure nullable fields default to null if not provided
+            phoneNumber: null,
+            imageUrl: null,
             hasCompletedTutorial: false,
-            // emailLinkSignInEnabled: false, // Removed default
+            // emailLinkSignInEnabled: false, // This field is removed from schema
         },
         mode: "onChange",
     });
@@ -90,21 +92,20 @@ export function ProfileForm({
 
     useEffect(() => {
         if (initialData) {
-             const mergedDefaults: ProfileFormValues = { // Explicitly type mergedDefaults
-                name: "",
-                email: "",
-                bio: null,
-                phoneNumber: null,
-                imageUrl: null,
-                hasCompletedTutorial: false,
-                // emailLinkSignInEnabled: false, // Removed
-                ...initialData,
+             const mergedDefaults: ProfileFormValues = {
+                name: initialData.name || "",
+                email: initialData.email || "",
+                bio: initialData.bio ?? null,
+                phoneNumber: initialData.phoneNumber ?? null,
+                imageUrl: initialData.imageUrl ?? null, // Use the URL for the form value too
+                hasCompletedTutorial: initialData.hasCompletedTutorial ?? false,
+                // emailLinkSignInEnabled is removed
             };
             form.reset(mergedDefaults);
-            setCurrentImageUrl(initialData.imageUrl ?? undefined);
-            setFormInitialName(initialData.name);
-            setSelectedImageFile(undefined);
-            setImagePreviewUrl(null);
+            setCurrentImageUrl(initialData.imageUrl ?? null);
+            setFormInitialName(initialData.name || "User");
+            setSelectedImageFile(undefined); // Clear any previously selected file
+            setImagePreviewUrl(null);      // Clear preview
         }
     }, [initialData, form]);
 
@@ -121,13 +122,13 @@ export function ProfileForm({
                 return;
             }
 
-            setSelectedImageFile(file);
+            setSelectedImageFile(file); // Store the file object
             const reader = new FileReader();
             reader.onloadend = () => {
-                setImagePreviewUrl(reader.result as string);
+                setImagePreviewUrl(reader.result as string); // Show client-side preview
             };
             reader.readAsDataURL(file);
-            form.setValue('imageUrl', '', { shouldDirty: true });
+            form.setValue('imageUrl', '', { shouldDirty: true }); // Mark form dirty; imageUrl field in schema is for URL
         }
     };
 
@@ -136,43 +137,39 @@ export function ProfileForm({
     };
 
     async function onSubmit(values: ProfileFormValues) {
-        console.log("ProfileForm onSubmit triggered!");
+        console.log("ProfileForm onSubmit called with values:", values);
         setIsSubmitting(true);
-        const isImageChanged = !!selectedImageFile;
 
-        let dataToSubmit = { ...values };
-         if (isImageChanged) {
-             dataToSubmit.imageUrl = null;
-         } else {
-             dataToSubmit.imageUrl = currentImageUrl || null;
-         }
-         // Ensure emailLinkSignInEnabled is not part of the submitted data if it was removed from schema
-         delete (dataToSubmit as any).emailLinkSignInEnabled;
-
-
+        // Pass the form values and the selected image file (if any) to the updateFunction
         try {
-            const { updatedData } = await updateFunction(dataToSubmit, selectedImageFile);
+            const { updatedData } = await updateFunction(values, selectedImageFile);
+            console.log("ProfileForm: updateFunction successful, updatedData:", updatedData);
 
+            // Update local component state based on the data returned from updateFunction
             setFormInitialName(updatedData.name);
-            setCurrentImageUrl(updatedData.imageUrl ?? undefined);
-            setSelectedImageFile(undefined);
-            setImagePreviewUrl(null);
+            setCurrentImageUrl(updatedData.imageUrl ?? null); // Update currentImageUrl from returned data
+            setSelectedImageFile(undefined); // Clear selected file after successful upload
+            setImagePreviewUrl(null);      // Clear preview
 
-            form.reset(updatedData, { keepValues: false, keepDirty: false, keepDefaultValues: false });
+            // Reset the form with the new data to clear dirty state, validation errors, etc.
+            form.reset(updatedData);
 
-            onSuccess?.(updatedData);
-
+            if (onSuccess) {
+                onSuccess(updatedData);
+            }
         } catch (error) {
-            console.error("Error in ProfileForm onSubmit calling updateFunction:", error);
+            console.error("ProfileForm: Error during updateFunction call:", error);
+            // Error toast is likely handled by the parent updateFunction or UserProfile component
         } finally {
             setIsSubmitting(false);
         }
     }
 
+    // Determine if form is dirty: either RHF says it's dirty OR a new image has been selected
     const formIsDirty = formIsDirtyState || !!selectedImageFile;
     const formIsValid = formIsValidState;
 
-    console.log("ProfileForm Button State:", { isSubmitting, formIsDirty, formIsValid });
+    console.log("ProfileForm Button State (inside form):", { isSubmitting, formIsDirty, formIsValid });
 
 
     return (
@@ -183,18 +180,23 @@ export function ProfileForm({
                     <FormLabel>Profile Picture</FormLabel>
                     <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
                         <Avatar className="h-20 w-20 sm:h-24 sm:w-24 cursor-pointer border-2 border-primary/30 hover:border-primary/60 transition-colors" onClick={handleAvatarClick}>
-                           <AvatarImage src={imagePreviewUrl || currentImageUrl} alt={formInitialName} />
+                           {/* Display preview if available, otherwise current image, then fallback */}
+                           <AvatarImage src={imagePreviewUrl || currentImageUrl || undefined} alt={formInitialName} />
                             <AvatarFallback className="text-2xl sm:text-3xl bg-muted text-muted-foreground">
-                                {formInitialName?.split(' ').map(n => n[0]).join('').toUpperCase()}
+                                {formInitialName?.split(' ').map(n => n[0]).join('').toUpperCase() || 'U'}
                             </AvatarFallback>
                         </Avatar>
                         <div className="flex flex-col gap-2 flex-grow">
                             <Button type="button" variant="outline" size="sm" onClick={handleAvatarClick} disabled={isSubmitting}>
                                 <Upload className="mr-2 h-4 w-4" /> Change Picture
                             </Button>
-                            <FormControl>
-                                <Input type="file" ref={fileInputRef} accept="image/*" onChange={handleFileChange} className="hidden" disabled={isSubmitting} />
-                            </FormControl>
+                            {/* Hidden file input, controlled by the button/avatar click */}
+                            <input type="file" ref={fileInputRef} accept="image/*" onChange={handleFileChange} className="hidden" disabled={isSubmitting} />
+                            {/* The imageUrl field in the form is for the URL, not the file itself.
+                                It's managed by the parent component after upload.
+                                We don't need a FormField for 'imageUrl' here for file upload.
+                                The selectedImageFile state handles the file.
+                            */}
                             <FormDescription className="text-xs">Click avatar or button to upload (JPG, PNG, GIF, max 5MB).</FormDescription>
                         </div>
                     </div>
@@ -220,11 +222,10 @@ export function ProfileForm({
                  <h3 className="text-lg font-semibold text-foreground mb-3">Account Security</h3>
 
 
-                {/* SMS Multi-Factor Authentication - Changed to informational */}
                  <div className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm bg-background/50 dark:bg-background/30">
                     <div className="space-y-0.5">
                         <FormLabel className="flex items-center gap-2">
-                             <ShieldIcon className="h-4 w-4" /> {/* Replaced ShieldExclamation */} SMS Two-Factor Auth (2FA)
+                             <ShieldIcon className="h-4 w-4" /> SMS Two-Factor Auth (2FA)
                         </FormLabel>
                         <FormDescription className="text-xs">
                              SMS-based 2FA is currently disabled for this portal.

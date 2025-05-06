@@ -10,7 +10,6 @@ import * as z from "zod";
 import { app } from "@/services/firebase-config";
 import { useAuth } from "@/context/auth-context";
 import { getUserProfileByUid, setPublicProfile } from "@/services/user";
-// Removed MFA related service imports: getUserMfaInfo
 import { verifyBeforeUpdateEmail, sendVerificationEmail } from "@/services/auth";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -58,12 +57,12 @@ export default function UserProfile() {
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
   const [isMfaModalOpen, setIsMfaModalOpen] = useState(false); 
-  const [isSmsMfaEnrolled, setIsSmsMfaEnrolled] = useState(false); // Will default to false as MFA is removed
+  const [isSmsMfaEnrolled, setIsSmsMfaEnrolled] = useState(false); 
   const [isUpdating, setIsUpdating] = useState(false);
   const [showEmailVerificationNotice, setShowEmailVerificationNotice] = useState(false); 
 
   useEffect(() => {
-    const fetchProfile = async () => { // Renamed as MFA check is removed
+    const fetchProfile = async () => { 
       if (authLoading || !user?.uid) {
         setIsProfileLoading(false);
         setProfileData(null);
@@ -75,41 +74,41 @@ export default function UserProfile() {
       setIsProfileLoading(true);
       try {
         const fetchedProfile = await getUserProfileByUid(user.uid);
-        // MFA status check removed
-        // const mfaInfo = await getUserMfaInfo(user); 
-
+        
         if (fetchedProfile) {
             setProfileData(fetchedProfile);
-            if (user.email !== fetchedProfile.email) {
-                 console.warn("Auth email and Firestore profile email mismatch. Displaying Firestore email:", fetchedProfile.email);
+            // The email displayed should be from Firestore, as it reflects the intended/verified email.
+            // Auth email (user.email) might be outdated if an update is pending.
+            // If fetchedProfile.email and user.email (auth) differ, it usually means an email update is pending.
+             if (user.email !== fetchedProfile.email) {
+                 console.warn(`UserProfile: Auth email (${user.email}) and Firestore profile email (${fetchedProfile.email}) mismatch. This could indicate a pending email update. Displaying Firestore email.`);
             }
         } else {
           console.log("No public profile found for user, creating default...");
           const defaultData: ProfileFormValues = {
             name: user.displayName || user.email?.split('@')[0] || "User",
-            email: user.email || "",
+            email: user.email || "", // Initialize with auth email
             imageUrl: user.photoURL || null,
             bio: null,
             phoneNumber: null,
             hasCompletedTutorial: false,
             emailLinkSignInEnabled: false,
           };
-          await setPublicProfile(user.uid, defaultData, false);
+          // Use merge:false (create only) for the initial setup.
+          await setPublicProfile(user.uid, defaultData, false); 
           setProfileData(defaultData);
         }
 
-        setIsSmsMfaEnrolled(false); // Always false as MFA is removed
-        // const smsEnrolled = mfaInfo.some(info => info.factorId === 'phone'); // Removed
-        // setIsSmsMfaEnrolled(smsEnrolled); // Removed
-        // console.log("UserProfile: MFA Status Check - SMS Enrolled =", smsEnrolled); // Removed
+        setIsSmsMfaEnrolled(false); 
 
       } catch (error) {
-        console.error("Error fetching user profile in UserProfile component:", error); // Updated error message
+        console.error("Error fetching user profile in UserProfile component:", error); 
         toast({
-          title: "Error Loading Profile", // Updated toast title
+          title: "Error Loading Profile", 
           description: "Could not load your profile data. Please try refreshing.",
           variant: "destructive",
         });
+        // Fallback profileData structure
         setProfileData({
             name: user.displayName || "Error",
             email: user.email || "unknown",
@@ -138,64 +137,83 @@ export default function UserProfile() {
     }
   };
 
+  // This function will be passed to ProfileForm's updateFunction prop
   const handleUpdateProfile = async (
-      data: ProfileFormValues,
-      newImageFile?: File
+      data: ProfileFormValues, // Data from the form
+      newImageFile?: File      // Optional new image file
   ): Promise<{ updatedData: ProfileFormValues }> => {
-      if (!user?.uid) throw new Error("User not authenticated.");
+      if (!user?.uid) throw new Error("User not authenticated for profile update.");
       setIsUpdating(true);
+      console.log("handleUpdateProfile: Received data:", data, "New image file:", newImageFile);
 
-      let newImageUrl = profileData?.imageUrl || null;
-      const currentAuthEmail = user.email; 
-      const formEmail = data.email; 
+
+      let newImageUrl = profileData?.imageUrl || null; // Start with current or null
+      const currentAuthEmail = user.email; // Get current email from Firebase Auth user object
+      const formEmail = data.email.toLowerCase(); // Ensure form email is lowercase
       let emailUpdateInitiated = false;
 
       try {
+          // Handle email change - initiate verification if email differs
           if (formEmail && currentAuthEmail !== formEmail) {
-              console.log("Attempting to update email from", currentAuthEmail, "to", formEmail);
+              console.log("handleUpdateProfile: Attempting to update email from", currentAuthEmail, "to", formEmail);
               try {
-                  await verifyBeforeUpdateEmail(formEmail);
+                  await verifyBeforeUpdateEmail(formEmail); // Service function to handle Firebase email update
                   emailUpdateInitiated = true;
                   toast({
                       title: "Verify New Email",
                       description: `A verification link has been sent to ${formEmail}. Please click the link to update your sign-in email. Your current email (${currentAuthEmail}) remains active until verification.`,
                       variant: "default",
-                      duration: 10000, 
+                      duration: 10000, // Longer duration for user to act
                   });
+                  // Note: Firestore email will be updated by setPublicProfile below.
+                  // Auth email updates after user clicks verification link.
               } catch (emailError: any) {
                    toast({
                        title: "Email Update Failed",
                        description: emailError.message || "Could not initiate email update.",
                        variant: "destructive",
                    });
-                   setIsUpdating(false);
-                   throw emailError; 
+                   // Don't throw here, allow other profile updates to proceed if desired,
+                   // or re-throw if email update is critical for the whole operation.
+                   // For now, we'll let other updates proceed, but the email in `data` will be the new one.
+                   // The `setPublicProfile` will save this new email to Firestore.
               }
           }
 
+          // Handle image upload if a new file is provided
           if (newImageFile) {
-              console.log("Uploading new profile image...");
+              console.log("handleUpdateProfile: Uploading new profile image...");
               const imageRef = ref(storage, `profileImages/${user.uid}/${newImageFile.name}`);
               const snapshot = await uploadBytes(imageRef, newImageFile);
               newImageUrl = await getDownloadURL(snapshot.ref);
-              console.log("Image uploaded, URL:", newImageUrl);
+              console.log("handleUpdateProfile: Image uploaded, URL:", newImageUrl);
           }
 
+          // Prepare the final data object to save to Firestore.
+          // This includes the potentially new email and image URL.
           const dataToSave: ProfileFormValues = {
-              ...data, 
-              email: data.email, 
-              imageUrl: newImageUrl, 
+              ...data, // Form data (name, bio, phoneNumber, hasCompletedTutorial etc.)
+              email: formEmail, // Always save the email from the form (lowercase)
+              imageUrl: newImageUrl, // New or existing image URL
+              // Ensure all fields from ProfileFormValues are covered
               hasCompletedTutorial: data.hasCompletedTutorial ?? profileData?.hasCompletedTutorial ?? false,
+              // emailLinkSignInEnabled is optional, include if present
+              ...(data.emailLinkSignInEnabled !== undefined && { emailLinkSignInEnabled: data.emailLinkSignInEnabled }),
           };
 
-          await setPublicProfile(user.uid, dataToSave, true); 
+          // Save updated profile to Firestore using the service function
+          // The `setPublicProfile` function will handle creating or merging the profile document.
+          await setPublicProfile(user.uid, dataToSave, true); // true for merge
 
+          // Update local state to reflect changes immediately
           setProfileData(dataToSave);
+          console.log("handleUpdateProfile: Public profile updated successfully in Firestore and local state.");
 
-          console.log("Public profile updated successfully in Firestore.");
+          // Close modal if it was open (typically handled by the form itself, but good to ensure)
           setIsProfileModalOpen(false); 
 
-          if (!emailUpdateInitiated) {
+          // Show success toast ONLY if email update wasn't the primary action that needs user intervention
+           if (!emailUpdateInitiated) {
                toast({
                    title: "Profile Updated",
                    description: "Your profile information has been saved.",
@@ -203,20 +221,18 @@ export default function UserProfile() {
                    duration: 2000,
                });
            }
-
           return { updatedData: dataToSave }; 
-
       } catch (error) {
-          console.error("Error updating profile:", error);
+          console.error("Error updating profile in handleUpdateProfile:", error);
+          // Avoid showing a generic toast if a specific one (like email update failed) was already shown
           if (!(error instanceof Error && error.message.includes("email"))) {
-                toast({
-                    title: "Update Failed",
-                    description: error instanceof Error ? error.message : "An unexpected error occurred.",
-                    variant: "destructive",
-                });
-                throw error; 
+             toast({
+                title: "Update Failed",
+                description: error instanceof Error ? error.message : "An unexpected error occurred while saving your profile.",
+                variant: "destructive",
+             });
           }
-           return { updatedData: profileData || data };
+          throw error; // Re-throw to be caught by the form if needed
       } finally {
           setIsUpdating(false);
       }
@@ -268,7 +284,7 @@ export default function UserProfile() {
    }, [isProfileModalOpen, user]); 
 
     const handleMfaEnrollmentChange = (enrolled: boolean) => {
-        setIsSmsMfaEnrolled(enrolled); // This will likely always be called with false now
+        setIsSmsMfaEnrolled(enrolled); 
     };
 
   const getInitials = (name: string | undefined | null): string => {
@@ -276,6 +292,7 @@ export default function UserProfile() {
   };
 
   const isLoading = authLoading || isProfileLoading;
+  // Prioritize Firestore profileData for display, then auth user data, then fallbacks
   const displayName = profileData?.name || user?.displayName || (profileData?.email ? profileData.email.split('@')[0] : 'Artist');
   const displayEmail = profileData?.email || user?.email || 'Loading...';
   const displayImageUrl = profileData?.imageUrl || user?.photoURL || undefined;
@@ -378,15 +395,16 @@ export default function UserProfile() {
                  )}
                 {profileData && !isProfileLoading ? (
                     <ProfileForm
-                        key={user?.uid || 'profile-form'}
+                        key={user?.uid || 'profile-form'} // Add key to ensure re-render if user changes
                         initialData={profileData}
-                        updateFunction={handleUpdateProfile} 
+                        updateFunction={handleUpdateProfile} // Pass the new update function
                         onCancel={() => setIsProfileModalOpen(false)}
                          onSuccess={(updatedData) => {
-                             setProfileData(updatedData);
+                             setProfileData(updatedData); // Update local state on successful save from form
+                             // setIsProfileModalOpen(false); // Form might handle its own closing or success callback
                          }}
                          onManageMfa={() => setIsMfaModalOpen(true)} 
-                         isSmsMfaEnrolled={false} // MFA is removed, so always false
+                         isSmsMfaEnrolled={isSmsMfaEnrolled} 
                          className="bg-transparent shadow-none border-0 p-0 mt-2"
                     />
                 ) : (
