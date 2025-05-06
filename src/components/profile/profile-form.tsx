@@ -5,7 +5,7 @@ import { useState, useEffect, useRef } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
-import { Loader2, Upload, AlertCircle, Mail, Phone, User, FileText, ShieldExclamation } from "lucide-react";
+import { Loader2, Upload, AlertCircle, Mail, Phone, User, FileText, ShieldIcon } from "lucide-react"; // Replaced ShieldExclamation
 import Image from "next/image";
 
 import { Button } from "@/components/ui/button";
@@ -224,7 +224,7 @@ export function ProfileForm({
                  <div className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm bg-background/50 dark:bg-background/30">
                     <div className="space-y-0.5">
                         <FormLabel className="flex items-center gap-2">
-                             <ShieldExclamation className="h-4 w-4" /> SMS Two-Factor Auth (2FA)
+                             <ShieldIcon className="h-4 w-4" /> {/* Replaced ShieldExclamation */} SMS Two-Factor Auth (2FA)
                         </FormLabel>
                         <FormDescription className="text-xs">
                              SMS-based 2FA is currently disabled for this portal.

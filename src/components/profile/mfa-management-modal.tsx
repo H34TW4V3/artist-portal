@@ -25,7 +25,7 @@ import { Button } from "@/components/ui/button";
 // import { Input } from "@/components/ui/input"; // No longer needed for verification code
 // import { Label } from "@/components/ui/label"; // No longer needed
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Loader2, AlertTriangle, ShieldExclamation } from "lucide-react"; // Changed icons
+import { Loader2, AlertTriangle, ShieldIcon } from "lucide-react"; // Changed icons - ShieldExclamation to ShieldIcon
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import type { MultiFactorInfo, RecaptchaVerifier, User } from "firebase/auth"; 
@@ -72,7 +72,7 @@ export function MfaManagementModal({
   const renderContent = () => {
     return (
         <div className="space-y-4 py-4 text-center">
-             <ShieldExclamation className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+             <ShieldIcon className="h-12 w-12 text-muted-foreground mx-auto mb-3" /> {/* Replaced ShieldExclamation with ShieldIcon */}
             <p className="text-base font-semibold text-foreground">
                 Multi-Factor Authentication (MFA)
             </p>
