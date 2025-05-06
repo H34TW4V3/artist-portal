@@ -1,4 +1,5 @@
 
+
 // Import the functions you need from the SDKs you need
 import { initializeApp, getApps, getApp, type FirebaseApp } from "firebase/app";
 // Add SDKs for Firebase products that you want to use
@@ -68,43 +69,51 @@ if (!firebaseConfig.appId) {
 
 // Important Note on Security Rules:
 // Review and adjust these rules according to your application's security needs.
-// The following rules grant users full read/write access to their own data.
 //
 // Firestore Rules Example:
 // rules_version = '2';
 // service cloud.firestore {
 //   match /databases/{database}/documents {
 //
-//     // Users collection: User can read and write their own root document.
-//     // No one else can list all users or read/write other users' root documents directly via these rules.
+//     // Rule for accessing individual user documents (e.g., /users/{userId})
 //     match /users/{userId} {
-//       allow read, write: if request.auth != null && request.auth.uid == userId;
-//       // Prevent listing all users for security by default
+//       // Allow authenticated users to read their own user document
+//       // Restrict which fields can be read if necessary (e.g., only email, name, isLabel)
+//       allow get: if request.auth != null && request.auth.uid == userId;
+//
+//       // Allow authenticated users to write to their own user document
+//       allow write: if request.auth != null && request.auth.uid == userId;
+//
+//       // Disallow listing all user documents by default for security
 //       allow list: if false;
+//
+//       // Rules for subcollections under a user (e.g., releases, events, but NOT publicProfile here)
+//       // Allow users full access to their own subcollections like 'releases', 'events'
+//       match /{subcollection}/{docId} {
+//         // Check that subcollection is not 'publicProfile' to avoid conflict with collection group rule
+//         allow read, write: if request.auth != null && request.auth.uid == userId && subcollection != 'publicProfile';
+//       }
 //     }
 //
-//     // Subcollections under a user's document (e.g., publicProfile, releases, events):
-//     // User has full read/write access to all documents within their own subcollections.
-//     match /users/{userId}/{collectionId}/{docId} {
-//       allow read, write: if request.auth != null && request.auth.uid == userId;
-//     }
+//     // Rule for the 'publicProfile' collection group
+//     // This allows querying across all 'publicProfile' subcollections
+//     match /{path=**}/publicProfile/{profileId} {
+//       // Allow an authenticated user to read their own profile directly
+//       // profileId here refers to the document ID within the publicProfile subcollection (which is 'profile')
+//       // The actual user's UID is part of the {path}
+//       allow get: if request.auth != null && request.auth.uid == path[1]; // path[1] should be the userId segment
 //
-//     // If you still need specific rules for labels managing artists, those would be ADDED to the above.
-//     // For example, a label might need to read an artist's publicProfile if managedByLabelId matches.
-//     // However, for the user's own data, the rules above are sufficient.
-//     //
-//     // Example for allowing a label to read managed artist's publicProfile:
-//     // match /users/{artistUserId}/publicProfile/profile {
-//     //   // Artist can read/write their own profile
-//     //   allow read, write: if request.auth != null && request.auth.uid == artistUserId;
-//     //   // Label can read profile of artist they manage
-//     //   allow get: if request.auth != null &&
-//     //                get(/databases/$(database)/documents/users/$(request.auth.uid)/publicProfile/profile).data.isLabel == true &&
-//     //                resource.data.managedByLabelId == request.auth.uid;
-//     // }
-//     //
-//     // Similar rules would apply for a label to manage an artist's releases or events, always checking
-//     // `isLabel` for the requester and `managedByLabelId` on the target artist's profile.
+//       // Allow an authenticated user to write to their own profile directly
+//       allow write: if request.auth != null && request.auth.uid == path[1];
+//
+//       // Allow a user who is a 'label' to LIST profiles IF the query filters by
+//       // 'managedByLabelId' matching the label's UID AND 'isLabel' is false.
+//       // This is crucial for the getManagedArtists query.
+//       allow list: if request.auth != null &&
+//                      get(/databases/$(database)/documents/users/$(request.auth.uid)/publicProfile/profile).data.isLabel == true &&
+//                      request.query.resource.data.managedByLabelId == request.auth.uid && // This checks the query's where clauses
+//                      request.query.resource.data.isLabel == false;
+//     }
 //   }
 // }
 //
@@ -127,4 +136,7 @@ if (!firebaseConfig.appId) {
 // }
 // These are example rules. Adjust them based on your exact security requirements.
 // Make sure to test these rules thoroughly in the Firebase console.
+// Ensure composite indexes are created in Firestore for queries involving multiple 'where' clauses
+// or 'orderBy' on different fields, especially for collection group queries.
+// For getManagedArtists, an index on 'publicProfile' collection group with 'managedByLabelId' (Asc) and 'isLabel' (Asc) is required.
 
