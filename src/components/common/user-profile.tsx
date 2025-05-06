@@ -74,15 +74,16 @@ export default function UserProfile() {
       setShowEmailVerificationNotice(!user.emailVerified);
       setIsProfileLoading(true);
       try {
+        // getUserProfileByUid now fetches isLabel from the publicProfile subcollection
         const fetchedProfile = await getUserProfileByUid(user.uid);
         
         if (fetchedProfile) {
-            setProfileData(fetchedProfile); // This will include isLabel from getUserProfileByUid
+            setProfileData(fetchedProfile); 
             if (user.email !== fetchedProfile.email) {
                  console.warn(`UserProfile: Auth email (${user.email}) and Firestore profile email (${fetchedProfile.email}) mismatch. This could indicate a pending email update. Displaying Firestore email.`);
             }
         } else {
-          console.log("No public profile found for user, creating default...");
+          console.log("No public profile found for user, creating default for display/edit...");
           const defaultData: ProfileFormValues = {
             name: user.displayName || user.email?.split('@')[0] || "User",
             email: user.email || "",
@@ -92,7 +93,7 @@ export default function UserProfile() {
             hasCompletedTutorial: false,
             isLabel: false, // Default isLabel for new profiles
           };
-          await setPublicProfile(user.uid, defaultData, false); 
+          // Set profile data for the form, but don't persist here; let ProfileForm handle initial save if user edits.
           setProfileData(defaultData);
         }
 
@@ -176,17 +177,20 @@ export default function UserProfile() {
               console.log("handleUpdateProfile: Image uploaded, URL:", newImageUrl);
           }
 
+          // Ensure isLabel is correctly included in the data to save.
+          // It should come from the form `data` object, which gets its default from `profileData`.
           const dataToSave: ProfileFormValues = {
               ...data,
               email: formEmail,
               imageUrl: newImageUrl,
               hasCompletedTutorial: data.hasCompletedTutorial ?? profileData?.hasCompletedTutorial ?? false,
-              isLabel: data.isLabel ?? profileData?.isLabel ?? false, // Ensure isLabel is included
+              isLabel: data.isLabel ?? profileData?.isLabel ?? false, 
           };
 
+          // setPublicProfile now handles isLabel within the publicProfile subcollection
           await setPublicProfile(user.uid, dataToSave, true);
 
-          setProfileData(dataToSave);
+          setProfileData(dataToSave); // Update local state with saved data (including isLabel)
           console.log("handleUpdateProfile: Public profile updated successfully in Firestore and local state.");
 
           setIsProfileModalOpen(false); 
@@ -269,6 +273,7 @@ export default function UserProfile() {
   };
 
   const isLoading = authLoading || isProfileLoading;
+  // Display name and email now correctly sourced from profileData if available
   const displayName = profileData?.name || user?.displayName || (profileData?.email ? profileData.email.split('@')[0] : 'Artist');
   const displayEmail = profileData?.email || user?.email || 'Loading...';
   const displayImageUrl = profileData?.imageUrl || user?.photoURL || undefined;
@@ -372,11 +377,11 @@ export default function UserProfile() {
                 {profileData && !isProfileLoading ? (
                     <ProfileForm
                         key={user?.uid || 'profile-form'}
-                        initialData={profileData}
+                        initialData={profileData} // This now includes isLabel from publicProfile
                         updateFunction={handleUpdateProfile}
                         onCancel={() => setIsProfileModalOpen(false)}
                          onSuccess={(updatedData) => {
-                             setProfileData(updatedData);
+                             setProfileData(updatedData); // Update local state with the latest
                          }}
                          onManageMfa={() => setIsMfaModalOpen(true)} 
                          isSmsMfaEnrolled={isSmsMfaEnrolled} 

@@ -7,7 +7,7 @@ import Image from "next/image";
 import UserProfile from "@/components/common/user-profile";
 import { TimeWeather } from "@/components/common/time-weather";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { LayoutDashboard, FileText, Home, ListMusic, CalendarClock, Users, Briefcase } from "lucide-react"; // Added Users icon for My Artists
+import { LayoutDashboard, FileText, Home, ListMusic, CalendarClock, Users, Briefcase } from "lucide-react"; 
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/auth-context";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -89,12 +89,13 @@ export default function HomePage() {
 
             setProfileLoading(true);
             try {
+                // getUserProfileByUid now fetches isLabel from the publicProfile subcollection
                 const fetchedProfile = await getUserProfileByUid(user.uid);
 
                 if (fetchedProfile) {
                     setProfileData(fetchedProfile);
-                    // Update navItems based on isLabel status
-                    if (fetchedProfile.isLabel) { // Use fetchedProfile.isLabel
+                    // Update navItems based on isLabel status from the fetched profile
+                    if (fetchedProfile.isLabel) { 
                         setNavItems([
                             ...baseNavItems,
                             {
@@ -109,7 +110,7 @@ export default function HomePage() {
                         setNavItems(baseNavItems);
                     }
                 } else {
-                  console.log("No public profile found for user, creating default...");
+                  console.log("No public profile found for user, creating default values for display...");
                   const defaultData: ProfileFormValues = {
                     name: user.displayName || user.email?.split('@')[0] || "User",
                     email: user.email || "",
@@ -117,7 +118,7 @@ export default function HomePage() {
                     bio: null,
                     phoneNumber: null,
                     hasCompletedTutorial: false,
-                    isLabel: false, // Default isLabel for new profiles
+                    isLabel: false, // Default isLabel for new profiles if no doc exists
                   };
                   setProfileData(defaultData);
                   setNavItems(baseNavItems); // Default nav items if no profile or not a label

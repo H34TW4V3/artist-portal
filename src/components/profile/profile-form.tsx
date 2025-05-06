@@ -29,7 +29,7 @@ import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import { Separator } from "@/components/ui/separator";
 
-// Schema for profile data - added isLabel
+// Schema for profile data - isLabel is part of the profile
 const profileSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters.").max(50, "Name must be 50 characters or less."),
   email: z.string().email("Invalid email address."),
@@ -40,14 +40,14 @@ const profileSchema = z.object({
        }),
   imageUrl: z.string().url("Invalid URL.").optional().nullable(),
   hasCompletedTutorial: z.boolean().optional().default(false),
-  isLabel: z.boolean().optional().default(false), // Added isLabel field
+  isLabel: z.boolean().optional().default(false), // isLabel is part of the profile data
 });
 
 export type ProfileFormValues = z.infer<typeof profileSchema>;
 
 
 interface ProfileFormProps {
-    initialData?: ProfileFormValues;
+    initialData?: ProfileFormValues; // This will include isLabel
     updateFunction: (data: ProfileFormValues, newImageFile?: File) => Promise<{ updatedData: ProfileFormValues }>;
     onSuccess?: (updatedData: ProfileFormValues) => void;
     onCancel?: () => void;
@@ -82,7 +82,7 @@ export function ProfileForm({
             phoneNumber: null,
             imageUrl: null,
             hasCompletedTutorial: false,
-            isLabel: false, // Default for isLabel
+            isLabel: false, // Default for isLabel if no initialData
         },
         mode: "onChange",
     });
@@ -136,16 +136,12 @@ export function ProfileForm({
     };
 
     async function onSubmit(values: ProfileFormValues) {
-        console.log("ProfileForm onSubmit called with values:", values);
+        console.log("ProfileForm onSubmit called with values (including isLabel):", values);
         setIsSubmitting(true);
 
         try {
-            // Ensure isLabel is included in the values passed to updateFunction
-            const dataToSubmit: ProfileFormValues = {
-                ...values,
-                isLabel: values.isLabel ?? false, // Ensure isLabel has a boolean value
-            };
-            const { updatedData } = await updateFunction(dataToSubmit, selectedImageFile);
+            // Ensure isLabel from the form (values.isLabel) is passed to updateFunction
+            const { updatedData } = await updateFunction(values, selectedImageFile);
             console.log("ProfileForm: updateFunction successful, updatedData:", updatedData);
 
             setFormInitialName(updatedData.name);
@@ -153,7 +149,7 @@ export function ProfileForm({
             setSelectedImageFile(undefined);
             setImagePreviewUrl(null);
 
-            form.reset(updatedData); // updatedData should include the correct isLabel
+            form.reset(updatedData); // Reset form with all updated data, including isLabel
 
             if (onSuccess) {
                 onSuccess(updatedData);
@@ -215,7 +211,7 @@ export function ProfileForm({
 
                  <FormField
                     control={form.control}
-                    name="isLabel"
+                    name="isLabel" // Field for isLabel
                     render={({ field }) => (
                         <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm bg-background/50 dark:bg-background/30">
                             <div className="space-y-0.5">
