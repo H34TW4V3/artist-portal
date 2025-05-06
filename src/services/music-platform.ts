@@ -436,9 +436,32 @@ import {
 }
 
 
-  export async function removeRelease(releaseId: string): Promise<void> {
+export async function removeRelease(releaseId: string): Promise<void> {
     const userId = getCurrentUserId();
-    if (!userId) throw new Error("Authentication required. Please log in.");
+    if (!userId) {
+        console.warn("removeRelease called without a user ID (likely during automated cleanup with no active session). Skipping storage deletion for this call.");
+        // Only delete the Firestore document if no user ID is present
+        const directReleaseDocRef = doc(db, "users", "unknown", "releases", releaseId); // Placeholder path, will fail if rules require auth
+        try {
+            // Try to delete the Firestore document if path is known and rules allow unauthenticated deletion (not typical)
+            // More robustly, this function should not be called by automated processes without context if userId is needed for storage.
+            // For now, focus on deleting Firestore doc. If storage paths are user-specific, this will need to be handled by a backend function.
+            // await deleteDoc(directReleaseDocRef); // This line would be problematic without userId for path construction
+            // For now, let's assume this is only called with a valid user for storage operations.
+            // If called by an automated process without user context for storage file deletion, that's a separate architectural consideration.
+            console.log(`removeRelease called without userId for releaseId ${releaseId}. Firestore document cannot be deleted without user context for path, and associated storage files won't be deleted.`);
+            // Fallback: just delete the firestore doc if we can construct its path (e.g. if userId was passed differently)
+             // This will only work if the `releaseId` is globally unique and not nested under a specific user in a different way.
+             // For releases in users/{userId}/releases, we absolutely need the userId.
+            // If this function is called from an automated process, the userId must be passed or determined by that process.
+            throw new Error("User ID is required to construct the correct Firestore path for release deletion.");
+        } catch (error) {
+            console.error("Error removing release document from Firestore without user ID context:", error);
+            throw new Error("Failed to remove release document without user context.");
+        }
+        return; // Exit if no userId
+    }
+
 
     const releaseDocRef = doc(db, "users", userId, "releases", releaseId);
 
@@ -447,18 +470,18 @@ import {
       if (docSnap.exists()) {
         const data = docSnap.data() as ReleaseMetadata;
 
-        if (data.artworkUrl && !data.artworkUrl.includes('placeholder')) {
-             try { await deleteObject(ref(storage, data.artworkUrl)); console.log("Deleted artwork file from Cloud Storage"); }
+        if (data.artworkUrl && !data.artworkUrl.includes('placeholder') && data.artworkUrl.startsWith('https://firebasestorage.googleapis.com/')) {
+             try { await deleteObject(ref(storage, data.artworkUrl)); console.log("Deleted artwork file from Cloud Storage:", data.artworkUrl); }
              catch (e: any) { if (e.code !== 'storage/object-not-found') console.error("Error deleting artwork:", e);}
         }
 
-        if (data.zipUrl) {
-             try { await deleteObject(ref(storage, data.zipUrl)); console.log("Deleted ZIP file from Cloud Storage"); }
+        if (data.zipUrl && data.zipUrl.startsWith('https://firebasestorage.googleapis.com/')) {
+             try { await deleteObject(ref(storage, data.zipUrl)); console.log("Deleted ZIP file from Cloud Storage:", data.zipUrl); }
              catch (e: any) { if (e.code !== 'storage/object-not-found') console.error("Error deleting ZIP file:", e);}
         }
 
       } else {
-          console.warn(`Release document ${releaseId} not found for deletion.`);
+          console.warn(`Release document ${releaseId} not found for deletion in user ${userId}'s collection.`);
       }
 
       await deleteDoc(releaseDocRef);

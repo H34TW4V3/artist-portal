@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -64,12 +63,62 @@ export function ReleaseList({ className }: ReleaseListProps) {
     setIsLoading(true);
     try {
       const fetchedReleases = await getReleases(); 
-      setReleases(fetchedReleases);
+      const now = new Date();
+      const fortyEightHoursInMs = 48 * 60 * 60 * 1000;
+      const releaseIdsToDelete: string[] = [];
+      const titlesOfReleasesToDelete: string[] = [];
+      const releasesToDisplay: ReleaseWithId[] = [];
+
+      for (const release of fetchedReleases) {
+        if (release.status === 'takedown_requested' && release.takedownRequestedAt) {
+          const takedownTime = release.takedownRequestedAt.toDate().getTime();
+          if (now.getTime() - takedownTime >= fortyEightHoursInMs) {
+            console.log(`Release ${release.id} ('${release.title}') marked for permanent deletion (takedown requested > 48hrs ago).`);
+            releaseIdsToDelete.push(release.id);
+            titlesOfReleasesToDelete.push(release.title);
+            // Do not add to releasesToDisplay, it will be deleted.
+          } else {
+            releasesToDisplay.push(release);
+          }
+        } else {
+          releasesToDisplay.push(release);
+        }
+      }
+
+      setReleases(releasesToDisplay); // Update UI optimistically
+
+      if (releaseIdsToDelete.length > 0) {
+        console.log(`Attempting to delete ${releaseIdsToDelete.length} releases permanently.`);
+        const deletePromises = releaseIdsToDelete.map((id, index) =>
+          removeRelease(id)
+            .then(() => {
+              toast({ title: "Release Removed", description: `Release "${titlesOfReleasesToDelete[index]}" was automatically removed after 48hrs of takedown request.`, variant: "default" });
+              return { status: 'fulfilled', id };
+            })
+            .catch(error => {
+              console.error(`Failed to auto-delete release ${id}:`, error);
+              toast({ title: "Deletion Error", description: `Could not auto-remove release "${titlesOfReleasesToDelete[index]}". ID: ${id}`, variant: "destructive" });
+              return { status: 'rejected', id, reason: error };
+            })
+        );
+        // Perform deletions without waiting for all to complete to avoid blocking UI updates further.
+        // The UI is already updated optimistically.
+        Promise.allSettled(deletePromises).then(results => {
+            const failedDeletions = results.filter(r => r.status === 'rejected');
+            if (failedDeletions.length > 0) {
+                // If any deletions failed, a full refetch might be good to ensure UI consistency
+                // for those specific items, but this could be complex if fetchReleases itself is triggered by user effect.
+                // For now, individual error toasts are shown.
+                console.warn(`${failedDeletions.length} releases failed to auto-delete. They might reappear on next full refresh.`);
+            }
+        });
+      }
+
     } catch (error) {
-      console.error("Error fetching releases:", error);
+      console.error("Error fetching/processing releases:", error);
       toast({
-        title: "Error Fetching Releases",
-        description: error instanceof Error ? error.message : "Could not load your releases.",
+        title: "Error Processing Releases",
+        description: error instanceof Error ? error.message : "Could not load or process your releases.",
         variant: "destructive",
       });
       setReleases([]); 
