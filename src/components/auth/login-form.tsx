@@ -7,7 +7,7 @@ import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { getAuth, type RecaptchaVerifier, reload } from "firebase/auth";
 import { app } from '@/services/firebase-config';
-import { Loader2, ArrowLeft, ArrowRight, Mail, KeyRound, MailCheck, LogIn, RefreshCcw, AlertCircle, Briefcase } from "lucide-react";
+import { Loader2, ArrowLeft, Mail, KeyRound, MailCheck, LogIn, RefreshCcw, AlertCircle, Briefcase } from "lucide-react"; // Removed ArrowRight
 import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
@@ -29,7 +29,7 @@ import {
     login,
     initializeRecaptchaVerifier,
     clearGlobalRecaptchaVerifier,
-    sendVerificationEmail, // Keep for password login if email not verified
+    sendVerificationEmail,
 } from '@/services/auth';
 import { SplashScreen } from '@/components/common/splash-screen';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -37,19 +37,17 @@ import { Separator } from "@/components/ui/separator";
 import { ForgotPasswordModal } from "./forgot-password-modal";
 
 
-// Schema updated - password required
 const loginSchema = z.object({
   artistId: z.string().email({ message: "Please enter a valid email address." }),
-  password: z.string().min(1, { message: "Password is required."}), // Password is now required
+  password: z.string().min(1, { message: "Password is required."}),
 });
 
 type LoginFormValues = z.infer<typeof loginSchema>;
 
-// Define steps - Simplified to Email -> Password -> (Optional) Verify Email
 const STEPS = [
   { id: 1, name: "Artist ID", icon: Mail },
   { id: 2, name: "Password", icon: KeyRound },
-  { id: 3, name: "Verify Your Email", icon: MailCheck }, // Email Verification Step if needed after password login
+  { id: 3, name: "Verify Your Email", icon: MailCheck },
 ];
 
 
@@ -82,26 +80,22 @@ export function LoginForm({ className }: { className?: string }) {
     mode: "onChange",
   });
 
-   // Initialize reCAPTCHA (kept for now, might be used for other non-MFA security checks or if re-enabled)
    useEffect(() => {
      if (typeof window !== 'undefined' && recaptchaContainerRef.current && !recaptchaVerifier && currentStep === 1) {
          const containerId = `recaptcha-container-${Date.now()}`;
          recaptchaContainerRef.current.id = containerId;
-         console.log(`Preparing to initialize reCAPTCHA on container: ${containerId}`);
          try {
              const verifier = initializeRecaptchaVerifier(containerId);
              setRecaptchaVerifier(verifier);
-             console.log(`reCAPTCHA Initialized successfully on container: ${containerId}`);
          } catch (error) {
              console.error(`Failed to initialize reCAPTCHA on container ${containerId}:`, error);
              toast({ title: "Security Check Error", description: "Could not initialize security check. Please refresh.", variant: "destructive" });
          }
      }
      return () => {
-          if (recaptchaVerifier && currentStep > 1) { // Clear if moving past email step
+          if (recaptchaVerifier && currentStep > 1) {
             try {
                clearGlobalRecaptchaVerifier();
-               console.log("Cleared reCAPTCHA verifier as it's no longer needed.");
             } catch (e) {
                console.warn("Could not clear reCAPTCHA:", e)
             }
@@ -113,23 +107,27 @@ export function LoginForm({ className }: { className?: string }) {
 
 
   const fetchProfileForPasswordStep = async (email: string) => {
-     console.log("Fetching profile for password step, email:", email);
      try {
         const authUser = getAuth(app).currentUser;
         let fetchedProfile: ProfileFormValues | null = null;
-        if (authUser?.email === email) { // Try to get UID from current auth user if email matches
+        if (authUser?.email === email) {
             fetchedProfile = await getUserProfileByUid(authUser.uid);
         } else {
-            // If no current auth user or email mismatch, this part might be problematic
-            // without a direct email-to-UID lookup.
-            // For now, we'll rely on email for fallback display.
-            console.warn("Cannot reliably fetch profile by UID for password step if current auth user doesn't match input email.");
+            // If login with email link is successful, authUser will be set.
+            // We need to find profile by *input* email for display consistency.
+            // This is now problematic as getUserProfileByEmail was removed for security.
+            // Solution: Rely on Firestore data fetched by UID if already logged in, otherwise just email part.
+            const tempAuthUser = auth.currentUser; // Check if user is now authenticated (e.g. after email link)
+            if (tempAuthUser && tempAuthUser.email === email) {
+                fetchedProfile = await getUserProfileByUid(tempAuthUser.uid);
+            } else {
+                 console.warn("Cannot reliably fetch profile by UID for password step if current auth user doesn't match input email, or not yet authenticated.");
+            }
         }
 
         if (fetchedProfile) {
             setProfileData(fetchedProfile);
         } else {
-            console.warn("getUserProfileByUid returned null or profile not found for password step. Using email as fallback for display.");
             setProfileData({ name: email.split('@')[0] || "User", email: email, imageUrl: null, bio: null, phoneNumber: null, hasCompletedTutorial: false, emailLinkSignInEnabled: false });
         }
      } catch (error) {
@@ -170,7 +168,7 @@ export function LoginForm({ className }: { className?: string }) {
   const validateStep = async (step: number): Promise<boolean> => {
     let fieldsToValidate: (keyof LoginFormValues)[] = [];
     if (step === 1) fieldsToValidate = ["artistId"];
-    else if (step === 2) fieldsToValidate = ["password"]; // Step 2 is now password
+    else if (step === 2) fieldsToValidate = ["password"];
 
      if (fieldsToValidate.length === 0) return true;
 
@@ -187,15 +185,15 @@ export function LoginForm({ className }: { className?: string }) {
 
   const handleNext = async () => {
      if (await validateStep(currentStep)) {
-         if (currentStep === 1) { // After Artist ID
+         if (currentStep === 1) {
              const email = form.getValues("artistId");
              if (email) {
                   await fetchProfileForPasswordStep(email);
-                  goToStep(2); // Go to Password step
+                  goToStep(2);
              } else {
                    toast({ title: "Error", description: "Email not found.", variant: "destructive" });
              }
-         } else if (currentStep === 2) { // After Password
+         } else if (currentStep === 2) {
              await form.handleSubmit(onSubmit)();
          }
      }
@@ -204,17 +202,17 @@ export function LoginForm({ className }: { className?: string }) {
   const handlePrevious = () => {
     if (currentStep > 1) {
         if (currentStep === STEPS.find(step => step.name === "Verify Your Email")!.id) {
-             setUnverifiedUser(null); // Clear unverified user state
-             goToStep(2); // Go back to password step
-        } else if (currentStep === 2) { // If on password step
-            setProfileData(null); // Clear profile data loaded for password step
-            goToStep(1); // Go back to Artist ID step
+             setUnverifiedUser(null);
+             goToStep(2);
+        } else if (currentStep === 2) {
+            setProfileData(null);
+            goToStep(1);
         }
     }
   };
 
    async function onSubmit(values: LoginFormValues) {
-     if (!values.password) { // Should be caught by validation, but good to double check
+     if (!values.password) {
           toast({ title: "Missing Password", description: "Please enter your password.", variant: "destructive" });
           return;
      }
@@ -228,7 +226,6 @@ export function LoginForm({ className }: { className?: string }) {
        const user = await login(values.artistId, values.password!);
 
        if (!user.emailVerified) {
-           console.log("Login successful, but email not verified. Sending verification email...");
            setUnverifiedUser(user);
            try {
                await sendVerificationEmail();
@@ -242,12 +239,9 @@ export function LoginForm({ className }: { className?: string }) {
            return;
        }
 
-        console.log("LoginForm: Login successful via service. User UID:", user.uid);
         setSplashLoadingText(`Welcome, ${profileData?.name || user.displayName || user.email?.split('@')[0]}!`);
-        // Splash screen will handle redirect after duration
 
      } catch (error) {
-       console.error("Login failed:", error);
        setShowSplash(false);
        setIsSubmitting(false);
        toast({
@@ -275,7 +269,6 @@ export function LoginForm({ className }: { className?: string }) {
                 setSplashUserName(profile?.name || refreshedUser.email?.split('@')[0] || 'User');
                 setSplashUserImageUrl(profile?.imageUrl || refreshedUser.photoURL || null);
                setSplashLoadingText(`Welcome, ${splashUserName}!`);
-               // Splash screen handles redirect
            } else {
                setShowSplash(false);
                toast({ title: "Still Waiting", description: "Email not verified yet. Please check your inbox and click the link.", variant: "default" });
@@ -292,7 +285,7 @@ export function LoginForm({ className }: { className?: string }) {
        if (!unverifiedUser) return;
         setIsSubmitting(true);
         try {
-            await sendVerificationEmail(); // This uses the currently authenticated user (unverifiedUser)
+            await sendVerificationEmail();
             toast({ title: "Verification Email Resent", description: `Check ${unverifiedUser.email} for the link.`, duration: 5000 });
         } catch (error: any) {
             toast({ title: "Resend Failed", description: error.message || "Could not resend verification email.", variant: "destructive" });
@@ -302,7 +295,7 @@ export function LoginForm({ className }: { className?: string }) {
     };
 
 
-  if (showSplash) { // Removed isProcessingEmailLink as email link flow is gone
+  if (showSplash) {
       return (
          <div className={cn("flex flex-col h-full items-center justify-center", className)}>
              <SplashScreen
@@ -310,7 +303,6 @@ export function LoginForm({ className }: { className?: string }) {
                  userImageUrl={splashUserImageUrl}
                  userName={splashUserName}
                  className="bg-transparent border-none shadow-none p-0"
-                 // duration={4000} // Optional: set duration for auto-redirect
              />
          </div>
       );
@@ -439,14 +431,14 @@ export function LoginForm({ className }: { className?: string }) {
               variant="ghost"
               size="icon"
               onClick={handleNext}
-              disabled={isSubmitting || (currentStep === 1 && !form.formState.isValid) || (currentStep === 2 && !form.formState.isValid)} // Disable if current step form is invalid
+              disabled={isSubmitting || (currentStep === 1 && !form.formState.isValid) || (currentStep === 2 && !form.formState.isValid)}
               className={cn("h-10 w-10", isSubmitting && "animate-pulse")}
-              aria-label={currentStep === 2 ? "Login" : "Next Step"} // Step 2 (password) is now the login step
+              aria-label={currentStep === 1 ? "Proceed to Password" : "Login"}
             >
                  {isSubmitting ? (
                  <Loader2 className="h-5 w-5 animate-spin" />
                  ) : (
-                  currentStep === 2 ? <LogIn className="h-5 w-5 text-primary" /> : <ArrowRight className="h-5 w-5" />
+                  <LogIn className="h-5 w-5 text-primary" />
                  )}
              </Button>
         </div>
