@@ -89,3 +89,4 @@ export async function getManagedArtists(labelUserId: string): Promise<ManagedArt
         throw new Error("Failed to fetch managed artists. Check console for details, Firestore security rules, and indexes.");
     }
 }
+
