@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -42,7 +43,7 @@ interface ReleaseListProps {
 }
 
 export function ReleaseList({ className }: ReleaseListProps) {
-  const { user } = useAuth(); 
+  const { user, loading: authLoading } = useAuth(); 
   const [releases, setReleases] = useState<ReleaseWithId[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingTestRelease, setIsLoadingTestRelease] = useState(false);
@@ -55,11 +56,13 @@ export function ReleaseList({ className }: ReleaseListProps) {
 
   
   const fetchReleases = async () => {
-    if (!user) {
+    if (!user) { // If no user, don't attempt to fetch
+        console.log("ReleaseList: No user, skipping fetchReleases.");
         setIsLoading(false); 
         setReleases([]);    
         return;
     }
+    console.log("ReleaseList: User found, fetching releases for", user.uid);
     setIsLoading(true);
     try {
       const fetchedReleases = await getReleases(); 
@@ -86,6 +89,8 @@ export function ReleaseList({ className }: ReleaseListProps) {
       }
 
       setReleases(releasesToDisplay); // Update UI optimistically
+      console.log("ReleaseList: Releases displayed:", releasesToDisplay.length);
+
 
       if (releaseIdsToDelete.length > 0) {
         console.log(`Attempting to delete ${releaseIdsToDelete.length} releases permanently.`);
@@ -101,14 +106,10 @@ export function ReleaseList({ className }: ReleaseListProps) {
               return { status: 'rejected', id, reason: error };
             })
         );
-        // Perform deletions without waiting for all to complete to avoid blocking UI updates further.
-        // The UI is already updated optimistically.
+        
         Promise.allSettled(deletePromises).then(results => {
             const failedDeletions = results.filter(r => r.status === 'rejected');
             if (failedDeletions.length > 0) {
-                // If any deletions failed, a full refetch might be good to ensure UI consistency
-                // for those specific items, but this could be complex if fetchReleases itself is triggered by user effect.
-                // For now, individual error toasts are shown.
                 console.warn(`${failedDeletions.length} releases failed to auto-delete. They might reappear on next full refresh.`);
             }
         });
@@ -124,45 +125,58 @@ export function ReleaseList({ className }: ReleaseListProps) {
       setReleases([]); 
     } finally {
       setIsLoading(false);
+      console.log("ReleaseList: fetchReleases finished, isLoading set to false.");
     }
   };
 
   
   useEffect(() => {
-    fetchReleases();
+    console.log("ReleaseList: useEffect triggered. User:", user?.uid, "AuthLoading:", authLoading);
+    if (!authLoading && user) { // Fetch only if auth is resolved and user exists
+        fetchReleases();
+    } else if (!authLoading && !user) { // If auth resolved and no user, clear list and stop loading
+        setIsLoading(false);
+        setReleases([]);
+        console.log("ReleaseList: No authenticated user, clearing releases and stopping load.");
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]); 
+  }, [user, authLoading]); // Depend on user and authLoading
 
 
   
   const handleRowClick = (release: ReleaseWithId, e: React.MouseEvent) => {
-     
      const targetElement = e.target as Element;
      if (targetElement.closest('[data-radix-dropdown-menu-trigger], [data-radix-dropdown-menu-content]')) {
         return;
      }
     setSelectedRelease(release);
     setIsManageModalOpen(true);
+    console.log("ReleaseList: Row clicked, opening manage modal for:", release.title);
   };
 
   const handleManageDialogClose = () => {
       setIsManageModalOpen(false);
       setSelectedRelease(null); 
+      console.log("ReleaseList: Manage modal closed.");
   }
 
   
   
   const handleSuccess = async () => {
+      console.log("ReleaseList: handleSuccess called (from modal), fetching releases..."); 
       setIsManageModalOpen(false); 
       setIsUploadModalOpen(false); 
       setIsAddExistingModalOpen(false); 
       setSelectedRelease(null); 
-      console.log("handleSuccess called, fetching releases..."); 
       await fetchReleases(); 
   }
 
   const handleAddTestRelease = async () => {
-    if (!user) return;
+    if (!user) {
+        toast({ title: "Login Required", description: "Please log in to add a test release.", variant: "destructive" });
+        return;
+    }
+    console.log("ReleaseList: Attempting to add test release for user:", user.uid);
     setIsLoadingTestRelease(true);
     try {
         const newReleaseId = await addTestRelease();
@@ -186,10 +200,17 @@ export function ReleaseList({ className }: ReleaseListProps) {
     }
   };
 
+  const openUploadModal = () => {
+    console.log("ReleaseList: Opening Upload New Release modal.");
+    setIsUploadModalOpen(true);
+  };
 
-  
+  const openAddExistingModal = () => {
+    console.log("ReleaseList: Opening Add Existing Release modal.");
+    setIsAddExistingModalOpen(true);
+  };
 
-  
+
   const formatDate = (dateValue: string | Date | Timestamp | undefined): string => {
     if (!dateValue) return '-';
     try {
@@ -197,12 +218,10 @@ export function ReleaseList({ className }: ReleaseListProps) {
         if (dateValue instanceof Timestamp) {
             date = dateValue.toDate();
         } else if (typeof dateValue === 'string') {
-             
              if (dateValue.match(/^\d{4}-\d{2}-\d{2}$/)) {
                   const [year, month, day] = dateValue.split('-').map(Number);
                   date = new Date(Date.UTC(year, month - 1, day));
              } else {
-                  
                   date = new Date(dateValue);
              }
         } else { 
@@ -210,8 +229,6 @@ export function ReleaseList({ className }: ReleaseListProps) {
         }
 
         if (isNaN(date.getTime())) return 'Invalid Date';
-
-        
         
         if (typeof dateValue === 'string' && dateValue.match(/^\d{4}-\d{2}-\d{2}$/)) {
             return date.toLocaleDateString('en-US', {
@@ -233,6 +250,14 @@ export function ReleaseList({ className }: ReleaseListProps) {
     }
   };
 
+  // Determine if the Add Release button should be disabled
+  const isAddReleaseDisabled = authLoading || !user || isLoadingTestRelease;
+  if (user) {
+      console.log("ReleaseList rendering. User:", user.uid, "AuthLoading:", authLoading, "IsLoading:", isLoading, "IsAddReleaseDisabled:", isAddReleaseDisabled);
+  } else {
+      console.log("ReleaseList rendering. No user. AuthLoading:", authLoading, "IsLoading:", isLoading, "IsAddReleaseDisabled:", isAddReleaseDisabled);
+  }
+
 
   
   return (
@@ -247,7 +272,7 @@ export function ReleaseList({ className }: ReleaseListProps) {
                 <Button
                     onClick={handleAddTestRelease}
                     variant="outline"
-                    disabled={!user || isLoadingTestRelease}
+                    disabled={isAddReleaseDisabled}
                     className="border-accent text-accent hover:bg-accent/10 hover:text-accent/90"
                 >
                     {isLoadingTestRelease ? (
@@ -261,18 +286,18 @@ export function ReleaseList({ className }: ReleaseListProps) {
                     <DropdownMenuTrigger asChild>
                         <Button 
                             className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-md"
-                            disabled={!user} // Disable button if user is not logged in
+                            disabled={isAddReleaseDisabled} 
                         >
                             <PlusCircle className="mr-2 h-4 w-4" /> Add Release
                         </Button>
                     </DropdownMenuTrigger>
                     {user && ( // Only render DropdownMenuContent if user is logged in
                         <DropdownMenuContent align="end" className="bg-popover border-border">
-                            <DropdownMenuItem onClick={() => setIsUploadModalOpen(true)} className="cursor-pointer focus:bg-accent focus:text-accent-foreground">
+                            <DropdownMenuItem onClick={openUploadModal} className="cursor-pointer focus:bg-accent focus:text-accent-foreground">
                                 <UploadCloud className="mr-2 h-4 w-4" />
                                 <span>Upload New Release</span>
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => setIsAddExistingModalOpen(true)} className="cursor-pointer focus:bg-accent focus:text-accent-foreground">
+                            <DropdownMenuItem onClick={openAddExistingModal} className="cursor-pointer focus:bg-accent focus:text-accent-foreground">
                                 <PlusCircle className="mr-2 h-4 w-4" />
                                 <span>Add Existing Release</span>
                             </DropdownMenuItem>
@@ -282,12 +307,15 @@ export function ReleaseList({ className }: ReleaseListProps) {
              </div>
         </CardHeader>
         <CardContent>
-             {!user && (
+             {authLoading ? ( // Show main loader if auth is still loading
+                  <div className="flex justify-center items-center py-10">
+                      <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                  </div>
+             ) : !user ? ( // Message if not logged in (after auth check)
                  <div className="text-center py-10 text-muted-foreground">
                      Please log in to manage your releases.
                  </div>
-             )}
-            {user && (
+             ) : ( // Content for logged-in users
              <div className="overflow-x-auto rounded-md border border-border/50">
                 <Table>
                 <TableHeader>
@@ -303,7 +331,7 @@ export function ReleaseList({ className }: ReleaseListProps) {
                     </TableRow>
                 </TableHeader>
                 <TableBody>
-                    {isLoading ? (
+                    {isLoading ? ( // Show table skeleton if releases are loading
                         Array.from({ length: 3 }).map((_, index) => (
                             <TableRow key={`skeleton-${index}`} className="border-b border-border/30">
                                 <TableCell className="hidden sm:table-cell p-2">

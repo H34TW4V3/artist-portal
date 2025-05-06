@@ -15,7 +15,9 @@ const firebaseConfig = {
   projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
   storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
   messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+  // Measurement ID is optional
+  // measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID 
 };
 
 // Initialize Firebase App
@@ -57,5 +59,27 @@ if (!firebaseConfig.projectId) {
 if (!firebaseConfig.storageBucket) {
     console.error("Firebase Error: NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET is not defined. Check your .env.local file.");
 }
+if (!firebaseConfig.messagingSenderId) {
+    console.error("Firebase Error: NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID is not defined. Check your .env.local file.");
+}
+if (!firebaseConfig.appId) {
+    console.error("Firebase Error: NEXT_PUBLIC_FIREBASE_APP_ID is not defined. Check your .env.local file.");
+}
 
+// Important Note on Storage Rules:
+// Ensure your Firebase Storage security rules allow users to upload to their specific paths (e.g., `releases/{userId}/{fileName}`).
+// A typical rule might look like:
+// service firebase.storage {
+//   match /b/{bucket}/o {
+//     match /releases/{userId}/{allPaths=**} {
+//       allow read: if request.auth != null; // Or specific read conditions
+//       allow write: if request.auth != null && request.auth.uid == userId;
+//     }
+//     match /releaseArtwork/{userId}/{allPaths=**} {
+//       allow read: if request.auth != null;
+//       allow write: if request.auth != null && request.auth.uid == userId;
+//     }
+//   }
+// }
+// Review and adjust these rules according to your application's security needs.
 

@@ -4,85 +4,80 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // User documents
+    // Rules for the root 'users' collection
     match /users/{userId} {
-      // Allow authenticated users to read specific fields (e.g., for profile lookups)
-      // Adjust allowed fields as needed for your application's requirements.
-      allow get: if request.auth != null;
-      // Allow reading specific fields even for unauthenticated users (if needed, e.g., for public profiles)
-      // Use caution here. Only allow fields that are truly public.
-      // allow read: if resource.data.keys().hasAny(['name', 'imageUrl']);
+      // Allow a user to read their own document.
+      // Disallow listing all users for security.
+      // Allow a user to create, update, or delete their own document.
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow list: if false; // Explicitly disallow listing all users
 
-      // Disallow listing all user documents
-      allow list: if false;
-
-      // Only the authenticated owner can create, update, or delete their root user document.
-      allow write: if request.auth != null && request.auth.uid == userId;
-
-      // Subcollections within a user document
-      match /publicProfile/{docId} {
-        // Allow owner full read/write access to their profile subdocument
-        allow read, write: if request.auth != null && request.auth.uid == userId;
+      // Rules for the 'publicProfile' subcollection
+      match /publicProfile/{profileDocId} {
+        // Allow anyone to read public profiles (e.g., for display on a public site if needed)
+        // If profiles should only be readable by the owner or other specific conditions, adjust here.
+        allow get: if true; // Or: if request.auth != null; for logged-in users only
+        allow list: if false; // Disallow listing all public profiles directly
+        // Only the owner can create, update, or delete their public profile.
+        allow write: if request.auth != null && request.auth.uid == userId;
       }
 
+      // Rules for the 'releases' subcollection
       match /releases/{releaseId} {
-        // Allow owner full read/write access to their releases subcollection
+        // Only the owner can read, create, update, or delete their releases.
         allow read, write: if request.auth != null && request.auth.uid == userId;
       }
 
+      // Rules for the 'events' subcollection
       match /events/{eventId} {
-         // Allow owner full read/write access to their events subcollection
+        // Only the owner can read, create, update, or delete their events.
         allow read, write: if request.auth != null && request.auth.uid == userId;
       }
-
-      // Add rules for other subcollections as needed
-      // match /privateData/{privateDocId} {
-      //   allow read, write: if request.auth != null && request.auth.uid == userId;
-      // }
     }
 
-    // Deny all other access to the root level by default
-    // match /{document=**} {
-    //   allow read, write: if false;
-    // }
-    // It's often better to rely on the specific matches above and let anything
-    // not explicitly matched be denied by default.
+    // Default deny all other paths not explicitly matched above.
+    // This is a good security practice.
+    match /{document=**} {
+      allow read, write: if false;
+    }
   }
 }
 
 service firebase.storage {
   match /b/{bucket}/o {
-
-    // Allow users to read/write ONLY within their own dedicated folders.
-    // Match any file within a user-specific folder (e.g., profileImages/{userId}/...)
-    match /profileImages/{userId}/{allPaths=**} {
-        // Allow read access to anyone (adjust if images should be private)
-        allow read: if true;
-        // Allow write (create, update, delete) only by the authenticated owner
-        allow write: if request.auth != null && request.auth.uid == userId;
-    }
-
-     // Match files within the user's releaseArtwork folder
-    match /releaseArtwork/{userId}/{allPaths=**} {
-        // Allow read access to anyone (e.g., to display artwork publicly)
-        allow read: if true;
-        // Allow write only by the authenticated owner
-        allow write: if request.auth != null && request.auth.uid == userId;
-    }
-
-    // Match files within the user's releases (ZIP files) folder
+    // Rules for release ZIP files
+    // Path: releases/{userId}/{fileName}
     match /releases/{userId}/{allPaths=**} {
-        // Disallow public read access to ZIP files by default
-        allow read: if request.auth != null && request.auth.uid == userId;
-        // Allow write only by the authenticated owner
+      // Allow read by authenticated users (e.g., if admin needs access, or if links are shared)
+      // Adjust read access as needed (e.g., only owner: request.auth.uid == userId)
+      allow read: if request.auth != null;
+      // Only the authenticated owner can upload/delete their release files.
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Rules for release artwork files
+    // Path: releaseArtwork/{userId}/{fileName}
+    match /releaseArtwork/{userId}/{allPaths=**} {
+      // Allow public read for artwork URLs (common for display)
+      allow get: if true;
+      allow list: if false; // Prevent listing all artwork
+      // Only the authenticated owner can upload/delete their release artwork.
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // Rules for profile images
+    // Path: profileImages/{userId}/{fileName}
+    match /profileImages/{userId}/{allPaths=**} {
+        // Allow public read for profile images if they are displayed publicly
+        allow get: if true;
+        allow list: if false; // Prevent listing all profile images
+        // Only the authenticated owner can upload/delete their profile image.
         allow write: if request.auth != null && request.auth.uid == userId;
     }
 
-    // Deny all other storage access by default
-    // match /{allPaths=**} {
-    //   allow read, write: if false;
-    // }
-    // Relying on specific matches above implicitly denies other paths.
+    // Default deny all other storage paths
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
   }
 }
-    
