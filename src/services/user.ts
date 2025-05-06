@@ -15,7 +15,7 @@ import {
   addDoc,
   getDoc,
 } from "firebase/firestore";
-import { getAuth } from "firebase/auth";
+import { getAuth, createUserWithEmailAndPassword, updateProfile } from "firebase/auth"; // Import createUserWithEmailAndPassword and updateProfile
 import { app, db } from './firebase-config';
 import type { ProfileFormValues } from "@/components/profile/profile-form";
 
@@ -30,7 +30,6 @@ export async function getUserProfileByUid(uid: string): Promise<ProfileFormValue
   }
   console.log("getUserProfileByUid: Attempting to fetch profile for UID:", uid);
 
-  // Correct path to the specific profile document within the subcollection
   const profileDocRef = doc(db, "users", uid, "publicProfile", "profile");
 
   try {
@@ -39,20 +38,16 @@ export async function getUserProfileByUid(uid: string): Promise<ProfileFormValue
       console.log("getUserProfileByUid: Profile data found for UID:", uid, docSnap.data());
       const data = docSnap.data() as Partial<ProfileFormValues>;
 
-      // Construct a complete profile object, providing defaults for missing fields
-      // Ensure all fields defined in ProfileFormValues are present
       const completeProfile: ProfileFormValues = {
         name: data.name || "User",
-        email: data.email || "unknown", // This will be the Firestore email
+        email: data.email || "unknown",
         bio: data.bio ?? null,
         phoneNumber: data.phoneNumber ?? null,
         imageUrl: data.imageUrl ?? null,
         hasCompletedTutorial: data.hasCompletedTutorial ?? false,
-        // emailLinkSignInEnabled is optional in the type
-        ...(data.emailLinkSignInEnabled !== undefined && { emailLinkSignInEnabled: data.emailLinkSignInEnabled }),
+        // emailLinkSignInEnabled is removed from ProfileFormValues
       };
       
-      // Fallback for name and image from Auth if not in Firestore profile or default
       const auth = getAuth(app);
       const currentUser = auth.currentUser;
       if (currentUser?.uid === uid) {
@@ -62,37 +57,32 @@ export async function getUserProfileByUid(uid: string): Promise<ProfileFormValue
         if (!completeProfile.imageUrl && currentUser.photoURL) {
           completeProfile.imageUrl = currentUser.photoURL;
         }
-        // Email decision: Firestore profile email is primary due to update verification flow
-        // If Firestore email is "unknown" and auth email exists, consider logging warning or specific handling
         if (completeProfile.email === "unknown" && currentUser.email) {
             console.warn(`getUserProfileByUid: Firestore email is 'unknown' for UID ${uid}, auth email is ${currentUser.email}. Using Firestore email for display consistency regarding updates.`);
         }
       }
-       // Final fallback for name if still missing after auth check
        if (!completeProfile.name || completeProfile.name === "User") {
          completeProfile.name = completeProfile.email?.split('@')[0] || 'User';
        }
 
-
       return completeProfile;
     } else {
       console.warn("getUserProfileByUid: No public profile document found at path:", profileDocRef.path);
-      // If no profile doc, try to construct from auth data as a fallback
       const auth = getAuth(app);
       const currentUser = auth.currentUser;
       if (currentUser?.uid === uid) {
          console.log("getUserProfileByUid: Falling back to auth data for UID:", uid);
         return {
           name: currentUser.displayName || currentUser.email?.split('@')[0] || "User",
-          email: currentUser.email || "unknown", // This will be the auth email
+          email: currentUser.email || "unknown",
           bio: null,
           phoneNumber: null,
           imageUrl: currentUser.photoURL || null,
-          hasCompletedTutorial: false, // Assume false if no profile doc
-          emailLinkSignInEnabled: false,
+          hasCompletedTutorial: false,
+          // emailLinkSignInEnabled is removed
         };
       }
-      return null; // Return null if no profile and auth doesn't match
+      return null;
     }
   } catch (error: any) {
     console.error(`getUserProfileByUid: Error fetching user profile for UID ${uid}:`, error);
@@ -118,43 +108,32 @@ export async function setPublicProfile(uid: string, data: ProfileFormValues, mer
 
 
   const profileDocRef = doc(db, "users", uid, "publicProfile", "profile");
-  const rootUserDocRef = doc(db, "users", uid); // Reference to the top-level user document
+  const rootUserDocRef = doc(db, "users", uid);
 
   try {
-    // Ensure email is lowercase for consistency in storage and querying
     const emailToSave = (data.email || '').toLowerCase();
     if (!emailToSave) {
       console.warn("setPublicProfile: Attempting to save profile with empty email for UID:", uid);
-      // Allow saving with empty email if schema allows and it's intentional
     }
 
-    // Prepare data for the publicProfile sub-document, ensuring all fields are covered
     const profileDataToSet: ProfileFormValues = {
-      name: data.name || "User", // Fallback if name is somehow empty
+      name: data.name || "User",
       email: emailToSave,
       bio: data.bio ?? null,
       phoneNumber: data.phoneNumber ?? null,
       imageUrl: data.imageUrl ?? null,
       hasCompletedTutorial: data.hasCompletedTutorial ?? false,
-      // emailLinkSignInEnabled is optional in type, include if present
-      ...(data.emailLinkSignInEnabled !== undefined && { emailLinkSignInEnabled: data.emailLinkSignInEnabled }),
+      // emailLinkSignInEnabled is removed
     };
     console.log("setPublicProfile: Prepared profileDataToSet:", profileDataToSet);
 
-    // 1. Update the root user document with email and uid (using merge to avoid overwriting other fields)
-    // This is useful for querying by email at the root level if rules allow.
     try {
       await setDoc(rootUserDocRef, { email: emailToSave, uid: uid }, { merge: true });
       console.log(`Root user document updated/merged for UID: ${uid} with email: ${emailToSave}`);
     } catch (rootDocError) {
        console.warn(`Could not update root user document for UID ${uid} (might be restricted by rules):`, rootDocError);
-       // Continue with profile update even if root doc fails, profile sub-doc is primary source
     }
 
-
-    // 2. Update the publicProfile sub-document
-    // Using setDoc with merge:true will create the doc if it doesn't exist, or merge if it does.
-    // If merge is false, it will overwrite.
     await setDoc(profileDocRef, profileDataToSet, { merge: merge });
     console.log(`Public profile sub-document ${merge ? 'updated/merged' : 'created/overwritten'} for UID: ${uid}`);
 
@@ -162,4 +141,65 @@ export async function setPublicProfile(uid: string, data: ProfileFormValues, mer
     console.error("setPublicProfile: Error setting public profile or root user document:", error);
     throw new Error("Failed to update user profile.");
   }
+}
+
+
+/**
+ * Creates a new Firebase user and their associated public profile.
+ * @param artistName The desired display name for the new artist.
+ * @param email The email for the new user account.
+ * @param password A temporary or user-defined password for the new account.
+ * @returns The UID of the newly created user.
+ * @throws If user creation or profile creation fails.
+ */
+export async function createNewArtistAndUser(artistName: string, email: string, password?: string): Promise<string> {
+    const auth = getAuth(app);
+    let tempPassword = password;
+
+    if (!tempPassword) {
+        // Generate a strong random password if none is provided
+        tempPassword = Math.random().toString(36).slice(-10) + Math.random().toString(36).slice(-10).toUpperCase();
+        console.log(`Generated temporary password for new user ${email}: ${tempPassword}`);
+        // It's crucial to communicate this password to the user securely or prompt them to set one immediately.
+        // For this example, we'll proceed, but real-world scenarios need secure handling.
+    }
+
+    try {
+        // 1. Create the Firebase user
+        const userCredential = await createUserWithEmailAndPassword(auth, email, tempPassword);
+        const newUser = userCredential.user;
+        console.log("New Firebase user created successfully:", newUser.uid, newUser.email);
+
+        // 2. Update the Firebase Auth user's display name
+        await updateProfile(newUser, { displayName: artistName });
+        console.log("Firebase Auth profile updated with displayName:", artistName);
+
+        // 3. Create the public profile document in Firestore
+        const initialProfileData: ProfileFormValues = {
+            name: artistName,
+            email: newUser.email || email, // Use email from auth object if available
+            bio: `Welcome, ${artistName}!`,
+            phoneNumber: null,
+            imageUrl: null, // Or a default image URL
+            hasCompletedTutorial: false, // New users haven't completed tutorial
+        };
+        await setPublicProfile(newUser.uid, initialProfileData, false); // Use merge:false for initial creation
+        console.log("Public profile created in Firestore for new user:", newUser.uid);
+
+        // TODO: Consider sending a welcome email with the temporary password
+        // or a password reset link to prompt the user to set their own password.
+
+        return newUser.uid;
+
+    } catch (error: any) {
+        console.error("Error creating new artist and user:", error);
+        if (error.code === 'auth/email-already-in-use') {
+            throw new Error(`The email address ${email} is already in use by another account.`);
+        } else if (error.code === 'auth/invalid-email') {
+            throw new Error(`The email address ${email} is not valid.`);
+        } else if (error.code === 'auth/weak-password') {
+            throw new Error("The password provided is too weak.");
+        }
+        throw new Error("Failed to create new artist profile and user account.");
+    }
 }

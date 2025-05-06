@@ -1,3 +1,4 @@
+
 import {
     getFirestore,
     collection,
@@ -58,6 +59,7 @@ import {
   }
 
   export interface ReleaseUploadMetadata {
+    artistName: string; // Added artistName
     releaseName: string;
     releaseDate: string | Date;
   }
@@ -185,7 +187,7 @@ import {
 
     const sanitizedReleaseName = uploadMetadata.releaseName.replace(/[^a-zA-Z0-9-_]/g, '_');
     const zipFileName = `release_${sanitizedReleaseName}_${Date.now()}.zip`;
-    const storagePath = `releases/${userId}/${zipFileName}`; // Define path for clarity
+    const storagePath = `releases/${userId}/${zipFileName}`;
     const storageRef = ref(storage, storagePath);
 
 
@@ -200,13 +202,12 @@ import {
         throw new Error("Failed to upload release file.");
     }
 
-    const userProfile = await getUserProfileByUid(userId);
-    const auth = getAuth(app);
-    const artistName = userProfile?.name || auth.currentUser?.displayName || auth.currentUser?.email?.split('@')[0] || "Unknown Artist";
+    // Use artistName from uploadMetadata directly
+    const artistName = uploadMetadata.artistName;
 
     const newReleaseData: Omit<ReleaseMetadata, 'id' | 'createdAt'> = {
       title: uploadMetadata.releaseName,
-      artist: artistName,
+      artist: artistName, // Use provided artist name
       releaseDate: formatDateToString(uploadMetadata.releaseDate),
       artworkUrl: null,
       zipUrl: downloadURL,
@@ -510,14 +511,14 @@ export async function addTestRelease(): Promise<string | null> {
         title: "My Awesome Test EP",
         artist: artistName,
         releaseDate: formatDateToString(new Date(new Date().setDate(new Date().getDate() + 7))),
-        artworkUrl: "https://picsum.photos/seed/testrelease/300/300",
+        artworkUrl: "https://picsum.photos/seed/testrelease1/300/300",
         status: 'existing',
         tracks: [
             { name: "Test Track 1 (Sunrise Mix)" },
             { name: "Another Test Vibe" },
             { name: "The Test Outro" },
         ],
-        spotifyLink: "https://open.spotify.com/album/0sNOF9WDwhWunNAHPD3qYc",
+        spotifyLink: "https://open.spotify.com/album/0sNOF9WDwhWunNAHPD3qYc", // Example Spotify link
         takedownRequestedAt: null,
         previousStatusBeforeTakedown: null,
     };

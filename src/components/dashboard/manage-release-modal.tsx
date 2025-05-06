@@ -1,11 +1,12 @@
+
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { format, parseISO, differenceInHours } from "date-fns"; // Added differenceInHours
-import { Loader2, Link as LinkIcon, Upload, CalendarIcon, Music, Trash2, PlusCircle, X, Save, ExternalLink, AlertTriangle, RotateCcw } from "lucide-react"; // Added RotateCcw
+import { format, parseISO, differenceInHours, isWithinInterval, addHours } from "date-fns"; // Added isWithinInterval, addHours
+import { Loader2, Link as LinkIcon, Upload, CalendarIcon, Music, Trash2, PlusCircle, X, Save, ExternalLink, AlertTriangle, RotateCcw, Ban } from "lucide-react"; // Added Ban
 import Image from 'next/image';
 import { Timestamp } from "firebase/firestore";
 
@@ -35,10 +36,12 @@ import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form";
-// Updated import to include cancelTakedownRequest service function
 import { updateRelease, initiateTakedown, cancelTakedownRequest, type ReleaseWithId, type TrackInfo, type ReleaseMetadata } from "@/services/music-platform";
 import { storage } from "@/services/firebase-config";
 import { useAuth } from "@/context/auth-context";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"; // Import Select
+import { getUserProfileByUid } from "@/services/user"; // To fetch profile for artist names
+import type { ProfileFormValues } from "@/components/profile/profile-form"; // Import ProfileFormValues
 
 const manageReleaseSchema = z.object({
   title: z.string().min(2, "Title must be at least 2 characters.").max(100, "Title must be 100 characters or less."),
@@ -65,14 +68,14 @@ export function ManageReleaseModal({ isOpen, onClose, releaseData, onSuccess, on
   const { user } = useAuth();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isTakedownSubmitting, setIsTakedownSubmitting] = useState(false);
-  const [isCancelTakedownSubmitting, setIsCancelTakedownSubmitting] = useState(false); // For cancelling takedown
+  const [isTakedownActionLoading, setIsTakedownActionLoading] = useState(false); // Consolidated loading state
   const [isTakedownConfirmOpen, setIsTakedownConfirmOpen] = useState(false);
-  const [isCancelTakedownConfirmOpen, setIsCancelTakedownConfirmOpen] = useState(false); // For cancelling takedown confirm
+  const [isCancelTakedownConfirmOpen, setIsCancelTakedownConfirmOpen] = useState(false);
   const [artworkPreviewUrl, setArtworkPreviewUrl] = useState<string | null>(null);
   const [currentArtworkUrl, setCurrentArtworkUrl] = useState<string | null>(null);
   const artworkInputRef = useRef<HTMLInputElement>(null);
   const placeholderArtwork = "/placeholder-artwork.png";
+  const [userProfile, setUserProfile] = useState<ProfileFormValues | null>(null);
 
   const parseInitialDate = (dateValue: string | Date | Timestamp | undefined): Date => {
       if (!dateValue) return new Date();
@@ -108,16 +111,29 @@ export function ManageReleaseModal({ isOpen, onClose, releaseData, onSuccess, on
     mode: "onChange",
   });
 
-  const { fields, append, remove, replace } = useFieldArray({
+  const { fields, append, remove } = useFieldArray({
     control: form.control,
     name: "tracks",
   });
 
    useEffect(() => {
+    const fetchProfile = async () => {
+        if (user?.uid) {
+            const profile = await getUserProfileByUid(user.uid);
+            setUserProfile(profile);
+        }
+    };
+    if (isOpen) {
+        fetchProfile();
+    }
+   }, [isOpen, user]);
+
+
+   useEffect(() => {
      if (isOpen && releaseData) {
          form.reset({
              title: releaseData.title || "",
-             artist: releaseData.artist || "",
+             artist: releaseData.artist || userProfile?.name || "", // Default to profile name if release artist is empty
              releaseDate: parseInitialDate(releaseData.releaseDate),
              artworkFile: null,
              tracks: releaseData.tracks && releaseData.tracks.length > 0 ? releaseData.tracks : [{ name: "" }],
@@ -127,23 +143,21 @@ export function ManageReleaseModal({ isOpen, onClose, releaseData, onSuccess, on
          setArtworkPreviewUrl(null);
          setIsTakedownConfirmOpen(false);
          setIsCancelTakedownConfirmOpen(false);
-         setIsTakedownSubmitting(false);
-         setIsCancelTakedownSubmitting(false);
+         setIsTakedownActionLoading(false);
          if (artworkInputRef.current) {
              artworkInputRef.current.value = "";
          }
      } else if (!isOpen) {
            setTimeout(() => {
                 form.reset({
-                    title: "", artist: "", releaseDate: new Date(), artworkFile: null,
+                    title: "", artist: userProfile?.name || "", releaseDate: new Date(), artworkFile: null,
                     tracks: [{ name: "" }], spotifyLink: ""
                 });
                 setCurrentArtworkUrl(null);
                 setArtworkPreviewUrl(null);
                 setIsTakedownConfirmOpen(false);
                 setIsCancelTakedownConfirmOpen(false);
-                setIsTakedownSubmitting(false);
-                setIsCancelTakedownSubmitting(false);
+                setIsTakedownActionLoading(false);
                  if (artworkInputRef.current) {
                      artworkInputRef.current.value = "";
                  }
@@ -151,7 +165,7 @@ export function ManageReleaseModal({ isOpen, onClose, releaseData, onSuccess, on
      }
      setIsSubmitting(false);
    // eslint-disable-next-line react-hooks/exhaustive-deps
-   }, [isOpen, releaseData]);
+   }, [isOpen, releaseData, userProfile]);
 
 
   const handleArtworkChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -230,7 +244,7 @@ export function ManageReleaseModal({ isOpen, onClose, releaseData, onSuccess, on
 
   const handleTakedownRequest = async () => {
       if (!releaseData) return;
-      setIsTakedownSubmitting(true);
+      setIsTakedownActionLoading(true);
       console.log(`Submitting takedown request for release: ${releaseData.id} - ${releaseData.title}`);
 
       try {
@@ -253,13 +267,13 @@ export function ManageReleaseModal({ isOpen, onClose, releaseData, onSuccess, on
               variant: "destructive",
           });
       } finally {
-          setIsTakedownSubmitting(false);
+          setIsTakedownActionLoading(false);
       }
   };
 
   const handleCancelTakedownRequest = async () => {
       if (!releaseData) return;
-      setIsCancelTakedownSubmitting(true);
+      setIsTakedownActionLoading(true);
       try {
           await cancelTakedownRequest(releaseData.id);
           toast({
@@ -277,7 +291,7 @@ export function ManageReleaseModal({ isOpen, onClose, releaseData, onSuccess, on
               variant: "destructive",
           });
       } finally {
-          setIsCancelTakedownSubmitting(false);
+          setIsTakedownActionLoading(false);
       }
   };
 
@@ -285,10 +299,16 @@ export function ManageReleaseModal({ isOpen, onClose, releaseData, onSuccess, on
   const formIsDirty = form.formState.isDirty || !!form.watch('artworkFile');
   const formIsValid = form.formState.isValid;
 
-  const canCancelTakedown = releaseData?.status === 'takedown_requested' && releaseData.takedownRequestedAt &&
-                            differenceInHours(new Date(), releaseData.takedownRequestedAt.toDate()) < 24;
+  const isTakedownActive = releaseData?.status === 'takedown_requested';
+  const takedownRequestedAtDate = releaseData?.takedownRequestedAt?.toDate();
+  const canCancelTakedown = isTakedownActive && takedownRequestedAtDate && isWithinInterval(new Date(), { start: takedownRequestedAtDate, end: addHours(takedownRequestedAtDate, 24) });
+
 
   if (!releaseData) return null;
+  
+  // Placeholder for multiple artist names - replace with actual data source
+  const artistNames = userProfile?.name ? [userProfile.name, "DJ Another Name", "Producer Alias"] : [];
+
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -316,6 +336,7 @@ export function ManageReleaseModal({ isOpen, onClose, releaseData, onSuccess, on
                              onError={(e) => { e.currentTarget.src = placeholderArtwork; e.currentTarget.srcset = ""; }}
                              unoptimized
                              priority={false}
+                             data-ai-hint="album artwork"
                          />
                          <div className="flex flex-col gap-2 flex-grow">
                              <Button
@@ -378,9 +399,24 @@ export function ManageReleaseModal({ isOpen, onClose, releaseData, onSuccess, on
                     render={({ field }) => (
                         <FormItem>
                         <FormLabel>Artist Name</FormLabel>
-                        <FormControl>
-                            <Input {...field} disabled={isSubmitting} />
-                        </FormControl>
+                        {artistNames.length > 1 ? (
+                            <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isSubmitting}>
+                                <FormControl>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Select an artist name" />
+                                    </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                    {artistNames.map(name => (
+                                        <SelectItem key={name} value={name}>{name}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        ) : (
+                            <FormControl>
+                                <Input {...field} disabled={isSubmitting} />
+                            </FormControl>
+                        )}
                         <FormMessage />
                         </FormItem>
                     )}
@@ -501,45 +537,53 @@ export function ManageReleaseModal({ isOpen, onClose, releaseData, onSuccess, on
                      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
                          <div>
                              <p className="text-sm text-muted-foreground">Submit a request to remove this release from all platforms.</p>
-                             <p className="text-xs text-destructive">This action is permanent and cannot be easily undone unless cancelled within 24 hours.</p>
+                             <p className="text-xs text-destructive">This action is permanent unless cancelled within 24 hours.</p>
                          </div>
                          <div className="flex gap-2 flex-shrink-0">
-                             {releaseData.status === 'takedown_requested' && canCancelTakedown && (
+                             {isTakedownActive && canCancelTakedown && (
                                  <Button
                                      type="button"
                                      variant="outline"
                                      onClick={() => setIsCancelTakedownConfirmOpen(true)}
-                                     disabled={isSubmitting || isCancelTakedownSubmitting}
+                                     disabled={isSubmitting || isTakedownActionLoading}
                                      className="border-yellow-500 text-yellow-600 hover:bg-yellow-500/10"
                                  >
                                      <RotateCcw className="mr-2 h-4 w-4" /> Cancel Takedown
                                  </Button>
                              )}
-                            <Button
-                                type="button"
-                                variant="destructive"
-                                onClick={() => setIsTakedownConfirmOpen(true)}
-                                disabled={isSubmitting || isTakedownSubmitting || releaseData.status === 'takedown_requested'}
-                            >
-                                {releaseData.status === 'takedown_requested' ? 'Takedown In Progress' :
-                                    <>
+                             {isTakedownActive && !canCancelTakedown && (
+                                 <Button
+                                    type="button"
+                                    variant="outline"
+                                    disabled={true}
+                                    className="border-muted text-muted-foreground cursor-not-allowed"
+                                 >
+                                     <Ban className="mr-2 h-4 w-4" /> Takedown In Progress
+                                 </Button>
+                             )}
+                             {!isTakedownActive && (
+                                <Button
+                                    type="button"
+                                    variant="destructive"
+                                    onClick={() => setIsTakedownConfirmOpen(true)}
+                                    disabled={isSubmitting || isTakedownActionLoading}
+                                >
                                     <AlertTriangle className="mr-2 h-4 w-4" /> Submit Takedown
-                                    </>
-                                }
-                            </Button>
+                                </Button>
+                             )}
                          </div>
                      </div>
                  </div>
 
                 <DialogFooter className="pt-6 mt-4 border-t border-border/50">
                     <DialogClose asChild>
-                        <Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting || isTakedownSubmitting || isCancelTakedownSubmitting}>
+                        <Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting || isTakedownActionLoading}>
                         Close
                         </Button>
                     </DialogClose>
                     <Button
                         type="submit"
-                         disabled={isSubmitting || isTakedownSubmitting || isCancelTakedownSubmitting || !formIsDirty || !formIsValid}
+                         disabled={isSubmitting || isTakedownActionLoading || !formIsDirty || !formIsValid}
                         className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-md disabled:shadow-none disabled:bg-muted disabled:text-muted-foreground"
                     >
                         {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
@@ -562,20 +606,20 @@ export function ManageReleaseModal({ isOpen, onClose, releaseData, onSuccess, on
                     </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
-                    <AlertDialogCancel disabled={isTakedownSubmitting} className="border-input hover:bg-muted/50">
+                    <AlertDialogCancel disabled={isTakedownActionLoading} className="border-input hover:bg-muted/50">
                         Cancel
                     </AlertDialogCancel>
                     <AlertDialogAction
                         onClick={handleTakedownRequest}
-                        disabled={isTakedownSubmitting}
+                        disabled={isTakedownActionLoading}
                         className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                     >
-                        {isTakedownSubmitting ? (
+                        {isTakedownActionLoading ? (
                             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                         ) : (
                             <AlertTriangle className="mr-2 h-4 w-4" />
                         )}
-                        {isTakedownSubmitting ? 'Submitting...' : 'Yes, Submit Takedown'}
+                        {isTakedownActionLoading ? 'Submitting...' : 'Yes, Submit Takedown'}
                     </AlertDialogAction>
                 </AlertDialogFooter>
             </AlertDialogContent>
@@ -591,20 +635,20 @@ export function ManageReleaseModal({ isOpen, onClose, releaseData, onSuccess, on
                     </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
-                    <AlertDialogCancel disabled={isCancelTakedownSubmitting} className="border-input hover:bg-muted/50">
+                    <AlertDialogCancel disabled={isTakedownActionLoading} className="border-input hover:bg-muted/50">
                         Back
                     </AlertDialogCancel>
                     <AlertDialogAction
                         onClick={handleCancelTakedownRequest}
-                        disabled={isCancelTakedownSubmitting}
+                        disabled={isTakedownActionLoading}
                         className="bg-yellow-500 text-primary-foreground hover:bg-yellow-600"
                     >
-                        {isCancelTakedownSubmitting ? (
+                        {isTakedownActionLoading ? (
                             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                         ) : (
                             <RotateCcw className="mr-2 h-4 w-4" />
                         )}
-                        {isCancelTakedownSubmitting ? 'Cancelling...' : 'Yes, Cancel Takedown'}
+                        {isTakedownActionLoading ? 'Cancelling...' : 'Yes, Cancel Takedown'}
                     </AlertDialogAction>
                 </AlertDialogFooter>
             </AlertDialogContent>

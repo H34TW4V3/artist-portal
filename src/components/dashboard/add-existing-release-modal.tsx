@@ -31,6 +31,9 @@ import { addExistingRelease, type ExistingReleaseData } from "@/services/music-p
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage"; // Import storage functions
 import { storage } from "@/services/firebase-config"; // Import storage instance
 import { useAuth } from "@/context/auth-context"; // To get user ID for storage path
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"; // Import Select
+import { getUserProfileByUid } from "@/services/user"; // To fetch profile for artist names
+import type { ProfileFormValues } from "@/components/profile/profile-form"; // Import ProfileFormValues
 
 // Schema for adding an existing release - artist field is now optional.
 const existingReleaseSchema = z.object({
@@ -58,6 +61,7 @@ export function AddExistingReleaseModal({ isOpen, onClose, onSuccess }: AddExist
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [artworkPreviewUrl, setArtworkPreviewUrl] = useState<string | null>(null);
   const artworkInputRef = useRef<HTMLInputElement>(null);
+  const [userProfile, setUserProfile] = useState<ProfileFormValues | null>(null);
 
   const form = useForm<ExistingReleaseFormValues>({
     resolver: zodResolver(existingReleaseSchema),
@@ -77,12 +81,30 @@ export function AddExistingReleaseModal({ isOpen, onClose, onSuccess }: AddExist
     name: "tracks",
   });
 
+  useEffect(() => {
+    const fetchProfile = async () => {
+        if (user?.uid) {
+            const profile = await getUserProfileByUid(user.uid);
+            setUserProfile(profile);
+            // Set default artist name after profile is fetched
+            form.reset({
+                ...form.getValues(), // Keep other form values
+                artist: profile?.name || "", // Default to profile name
+            });
+        }
+    };
+    if (isOpen) {
+        fetchProfile();
+    }
+  }, [isOpen, user, form]);
+
+
    // Reset form when modal closes or opens
    useEffect(() => {
      if (isOpen) {
          form.reset({
              title: "",
-             artist: "",
+             artist: userProfile?.name || "", // Use fetched profile name or empty
              releaseDate: new Date(),
              artworkFile: null,
              tracks: [{ name: "" }],
@@ -97,7 +119,7 @@ export function AddExistingReleaseModal({ isOpen, onClose, onSuccess }: AddExist
           setTimeout(() => {
             form.reset({
                 title: "",
-                artist: "",
+                artist: userProfile?.name || "",
                 releaseDate: new Date(),
                 artworkFile: null,
                 tracks: [{ name: "" }],
@@ -111,7 +133,7 @@ export function AddExistingReleaseModal({ isOpen, onClose, onSuccess }: AddExist
      }
      setIsSubmitting(false);
    // eslint-disable-next-line react-hooks/exhaustive-deps
-   }, [isOpen]); // Rerun only when isOpen changes
+   }, [isOpen, userProfile]); // Add userProfile dependency to reset with artist name
 
   // Handle artwork file selection
   const handleArtworkChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -169,28 +191,25 @@ export function AddExistingReleaseModal({ isOpen, onClose, onSuccess }: AddExist
         console.log("Artwork uploaded for existing release:", artworkUrl);
       }
 
-      // 2. Prepare data for Firestore service
-      // The service function will handle fetching the artist name internally if values.artist is null/empty.
       const releaseData: ExistingReleaseData = {
         title: values.title,
-        artist: values.artist || null, // Pass null if artist field is empty
-        releaseDate: values.releaseDate, // Pass Date object, service handles formatting
-        artworkUrl: artworkUrl, // URL from upload or null
+        artist: values.artist || userProfile?.name || null, // Use form value or profile name or null
+        releaseDate: values.releaseDate,
+        artworkUrl: artworkUrl,
         tracks: values.tracks,
         spotifyLink: values.spotifyLink || null,
       };
 
-      // 3. Call the service function to add the existing release to Firestore
       await addExistingRelease(releaseData);
 
       toast({
         title: "Release Added",
         description: `"${values.title}" has been added successfully.`,
         variant: "default",
-        duration: 2000, // Short duration for success
+        duration: 2000,
       });
-      onSuccess(); // Call success callback (which should trigger a refetch in the parent)
-      onClose();   // Close modal
+      onSuccess();
+      onClose();
 
     } catch (error) {
       console.error("Error adding existing release:", error);
@@ -203,10 +222,12 @@ export function AddExistingReleaseModal({ isOpen, onClose, onSuccess }: AddExist
       setIsSubmitting(false);
     }
   };
+  
+  // Placeholder for multiple artist names - replace with actual data source
+  const artistNames = userProfile?.name ? [userProfile.name, "DJ Another Name", "Producer Alias"] : [];
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      {/* Increased max-width */}
       <DialogContent className="sm:max-w-lg md:max-w-2xl bg-card/85 dark:bg-card/70 border-border/50">
         <DialogHeader>
           <DialogTitle className="text-primary">Add Existing Release</DialogTitle>
@@ -215,12 +236,10 @@ export function AddExistingReleaseModal({ isOpen, onClose, onSuccess }: AddExist
           </DialogDescription>
         </DialogHeader>
 
-        {/* Use ScrollArea for potentially long forms */}
         <ScrollArea className="max-h-[70vh] pr-5">
             <Form {...form}>
               <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4 py-4 pr-1">
 
-                {/* Release Title */}
                 <FormField
                   control={form.control}
                   name="title"
@@ -235,22 +254,35 @@ export function AddExistingReleaseModal({ isOpen, onClose, onSuccess }: AddExist
                   )}
                 />
 
-                 {/* Artist Name - Optional */}
                  <FormField
                     control={form.control}
                     name="artist"
                     render={({ field }) => (
                         <FormItem>
-                        <FormLabel>Artist Name (Optional)</FormLabel>
-                        <FormControl>
-                            <Input placeholder="Defaults to your profile name if left blank" {...field} value={field.value ?? ""} disabled={isSubmitting} />
-                        </FormControl>
+                        <FormLabel>Artist Name</FormLabel>
+                        {artistNames.length > 1 ? (
+                            <Select onValueChange={field.onChange} defaultValue={field.value ?? userProfile?.name ?? ""} disabled={isSubmitting}>
+                                <FormControl>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Select an artist name" />
+                                    </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                    {artistNames.map(name => (
+                                        <SelectItem key={name} value={name}>{name}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        ) : (
+                            <FormControl>
+                                <Input placeholder="Defaults to your profile name" {...field} value={field.value ?? userProfile?.name ?? ""} disabled={isSubmitting} />
+                            </FormControl>
+                        )}
                         <FormMessage />
                         </FormItem>
                     )}
                 />
 
-                {/* Release Date */}
                 <FormField
                   control={form.control}
                   name="releaseDate"
@@ -282,7 +314,6 @@ export function AddExistingReleaseModal({ isOpen, onClose, onSuccess }: AddExist
                             mode="single"
                             selected={field.value instanceof Date && !isNaN(field.value.getTime()) ? field.value : undefined}
                             onSelect={(date) => field.onChange(date || new Date())}
-                            // Allow past dates for existing releases
                              disabled={(date) => date > new Date()}
                             initialFocus
                           />
@@ -293,7 +324,6 @@ export function AddExistingReleaseModal({ isOpen, onClose, onSuccess }: AddExist
                   )}
                 />
 
-                {/* Artwork Upload (Optional) */}
                 <FormField
                     control={form.control}
                     name="artworkFile"
@@ -308,7 +338,7 @@ export function AddExistingReleaseModal({ isOpen, onClose, onSuccess }: AddExist
                                  )}>
                                     {artworkPreviewUrl ? (
                                          <div className="flex items-center gap-3 w-full">
-                                             <Image src={artworkPreviewUrl} alt="Artwork preview" width={80} height={80} className="rounded-md object-cover aspect-square border border-border" />
+                                             <Image src={artworkPreviewUrl} alt="Artwork preview" width={80} height={80} className="rounded-md object-cover aspect-square border border-border" data-ai-hint="artwork preview" />
                                              <div className="text-sm text-foreground truncate flex-grow">{form.watch('artworkFile')?.name}</div>
                                              <Button variant="ghost" size="icon" onClick={clearArtwork} className="h-7 w-7 text-muted-foreground hover:text-destructive" type="button">
                                                  <X className="h-4 w-4" />
@@ -327,7 +357,6 @@ export function AddExistingReleaseModal({ isOpen, onClose, onSuccess }: AddExist
                                                     <span>Upload artwork</span>
                                                 </button>
                                                 <input id="artwork-upload-existing" ref={artworkInputRef} name="artwork-upload-existing" type="file" className="sr-only" accept="image/*" onChange={handleArtworkChange} disabled={isSubmitting} />
-                                                {/* <p className="pl-1">or drag and drop</p> */}
                                               </div>
                                               <p className="text-xs text-muted-foreground">PNG, JPG, GIF up to 5MB</p>
                                          </div>
@@ -340,7 +369,6 @@ export function AddExistingReleaseModal({ isOpen, onClose, onSuccess }: AddExist
                  />
 
 
-                {/* Tracks List */}
                 <div className="space-y-3">
                   <FormLabel>Tracks</FormLabel>
                   {fields.map((field, index) => (
@@ -360,7 +388,7 @@ export function AddExistingReleaseModal({ isOpen, onClose, onSuccess }: AddExist
                                     className="flex-grow"
                                     />
                                 </FormControl>
-                                {fields.length > 1 && ( // Only show remove button if more than one track
+                                {fields.length > 1 && (
                                     <Button
                                     type="button"
                                     variant="ghost"
@@ -374,7 +402,7 @@ export function AddExistingReleaseModal({ isOpen, onClose, onSuccess }: AddExist
                                     </Button>
                                 )}
                             </div>
-                           <FormMessage className="pl-6" /> {/* Indent error message */}
+                           <FormMessage className="pl-6" />
                         </FormItem>
                       )}
                     />
@@ -390,11 +418,10 @@ export function AddExistingReleaseModal({ isOpen, onClose, onSuccess }: AddExist
                     <PlusCircle className="mr-2 h-4 w-4" />
                     Add Track
                   </Button>
-                   <FormMessage>{form.formState.errors.tracks?.root?.message || form.formState.errors.tracks?.message}</FormMessage> {/* Show root array errors */}
+                   <FormMessage>{form.formState.errors.tracks?.root?.message || form.formState.errors.tracks?.message}</FormMessage>
                 </div>
 
 
-                {/* Spotify Link (Optional) */}
                 <FormField
                   control={form.control}
                   name="spotifyLink"
@@ -424,7 +451,6 @@ export function AddExistingReleaseModal({ isOpen, onClose, onSuccess }: AddExist
                     </DialogClose>
                     <Button
                         type="submit"
-                        // Disable if submitting OR if form is not valid (checks all fields according to schema)
                         disabled={isSubmitting || !form.formState.isValid}
                         className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-md disabled:shadow-none disabled:bg-muted disabled:text-muted-foreground"
                     >
