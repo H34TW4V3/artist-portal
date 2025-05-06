@@ -537,3 +537,4 @@ export async function addTestRelease(): Promise<string | null> {
         throw new Error("Failed to add test release.");
     }
 }
+

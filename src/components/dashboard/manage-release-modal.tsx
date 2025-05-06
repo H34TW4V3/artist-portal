@@ -658,3 +658,4 @@ export function ManageReleaseModal({ isOpen, onClose, releaseData, onSuccess, on
     </Dialog>
   );
 }
+
