@@ -74,38 +74,32 @@ if (!firebaseConfig.appId) {
 // service cloud.firestore {
 //   match /databases/{database}/documents {
 
-//     // Rule for accessing individual user documents (e.g., to get the label's own profile)
-//     match /users/{userId} {
+//     // Rule for accessing individual user's publicProfile document (e.g., label checking its own isLabel)
+//     match /users/{userId}/publicProfile/profile {
+//       // Owner can read/write their own profile.
+//       // This rule allows the `get()` in the collection group rule to work when a label checks its own `isLabel` status.
 //       allow read, write: if request.auth != null && request.auth.uid == userId;
 //     }
 
-//     // Rules for publicProfile subcollection (direct path access)
-//     match /users/{userId}/publicProfile/profile {
-//       allow read: if request.auth != null &&
-//                      (
-//                        // Owner can read their own profile
-//                        request.auth.uid == userId ||
-//                        // A label user can read the profile of an artist they manage (direct read)
-//                        (
-//                          get(/databases/$(database)/documents/users/$(request.auth.uid)/publicProfile/profile).data.isLabel == true &&
-//                          resource.data.managedByLabelId == request.auth.uid &&
-//                          resource.data.isLabel == false
-//                        )
-//                      );
-//       allow write: if request.auth != null && request.auth.uid == userId;
-//     }
-
-//     // Rule for COLLECTION GROUP queries on 'publicProfile'
-//     // This is essential for the `getManagedArtists` function which queries across all 'publicProfile' collections.
-//     match /{path=**}/publicProfile/profile {
+//     // Rule for the COLLECTION GROUP query on 'publicProfile'
+//     // This rule is crucial for `getManagedArtists`.
+//     match /{path=**}/publicProfile/profile { // Correct syntax for collection group
 //        allow list, get: if request.auth != null &&
-//                          // Check if the requesting user is a label by fetching their own profile.
-//                          get(/databases/$(database)/documents/users/$(request.auth.uid)/publicProfile/profile).data.isLabel == true;
-//                          // This rule allows a label user to *initiate* the collection group query.
-//                          // The client-side Firestore query (with `where("managedByLabelId", "==", labelId)`)
-//                          // then filters the results. The security rule ensures only labels can make this broad query.
+//                           // Ensure the requesting user is a label by checking their OWN profile document.
+//                           get(/databases/$(database)/documents/users/$(request.auth.uid)/publicProfile/profile).data.isLabel == true;
+//                           // `list` allows the query to run if the condition is met.
+//                           // `get` allows reading the individual documents returned by the query,
+//                           // as long as they meet the conditions of *this* rule (which is just being a label).
+//                           // The client-side query will further filter by `managedByLabelId` and `isLabel == false`.
 //     }
 
+//     // Rule for user's root document (if primarily used for auth data like email, uid)
+//     match /users/{userId} {
+//       // Only owner can read/write their root user document.
+//       // Consider if any other access is needed here based on your app structure.
+//       allow read, write: if request.auth != null && request.auth.uid == userId;
+//     }
+    
 //     // User can manage their own 'releases' subcollection.
 //     match /users/{userId}/releases/{releaseId} {
 //       allow read, write: if request.auth != null && request.auth.uid == userId;
