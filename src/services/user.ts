@@ -151,13 +151,14 @@ export async function setPublicProfile(uid: string, data: ProfileFormValues, mer
     // Also update/merge the root user document with essential info (email, uid, and isLabel for rules)
     // This helps with Firestore rules that might need to check `isLabel` directly on the /users/{userId} document.
     try {
-      const rootDocDataToSet: { email: string, uid: string, isLabel?: boolean, name?:string } = { email: emailToSave, uid: uid, name: profileDataToSet.name };
-      // Only include isLabel if it's explicitly defined in the input data, otherwise let merge handle it.
-      if (profileDataToSet.isLabel !== undefined) {
-          rootDocDataToSet.isLabel = profileDataToSet.isLabel;
-      }
+      const rootDocDataToSet: { email: string, uid: string, isLabel?: boolean, name?:string } = {
+        email: emailToSave,
+        uid: uid,
+        name: profileDataToSet.name,
+        isLabel: profileDataToSet.isLabel // Ensure isLabel is part of root doc for easier rule access
+      };
       await setDoc(rootUserDocRef, rootDocDataToSet, { merge: true });
-      console.log(`Root user document updated/merged for UID: ${uid} with email: ${emailToSave} and isLabel: ${profileDataToSet.isLabel ?? 'unchanged'}`);
+      console.log(`Root user document updated/merged for UID: ${uid} with email: ${emailToSave}, name: ${profileDataToSet.name}, and isLabel: ${profileDataToSet.isLabel}`);
     } catch (rootDocError) {
        // This is a secondary update; log a warning if it fails but don't necessarily throw
        console.warn(`Could not update root user document for UID ${uid}:`, rootDocError);
@@ -219,6 +220,7 @@ export async function createNewArtistAndUser(
             isLabel: false, // New users created this way are always artists, not labels
             managedByLabelId: labelManagerId || null, // Set who manages this artist
         };
+        console.log("Data to be saved for new artist profile:", initialProfileData);
 
         // Create the publicProfile document in Firestore
         await setPublicProfile(newUser.uid, initialProfileData, false); // Use false for merge to ensure a fresh document
@@ -246,3 +248,4 @@ export async function createNewArtistAndUser(
 // export async function getUserProfileByEmail(email: string): Promise<{ uid: string | null; profile: ProfileFormValues | null }> {
 // ...
 // }
+

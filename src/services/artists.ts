@@ -1,3 +1,4 @@
+
 import {
     getFirestore,
     collection,
@@ -30,15 +31,13 @@ export interface ManagedArtist {
 export async function getManagedArtists(labelUserId: string): Promise<ManagedArtist[]> {
     console.log("Fetching managed artists for label (Service):", labelUserId);
 
-    const labelProfile = await getUserProfileByUid(labelUserId); // Use the more robust getUserProfileByUid
+    const labelProfile = await getUserProfileByUid(labelUserId);
     if (!labelProfile) {
         console.warn(`Label user profile not found for UID: ${labelUserId}. Cannot fetch managed artists.`);
-        // Consider throwing an error or returning an empty array based on how you want to handle this case.
-        // For now, returning empty to prevent page crash if profile somehow missing after auth.
         return [];
     }
     if (!labelProfile.isLabel) {
-        console.warn(`User ${labelUserId} (${labelProfile.name}) is not marked as a label in their profile. Cannot fetch managed artists.`);
+        console.warn(`User ${labelUserId} (${labelProfile.name || 'N/A'}) is not marked as a label in their profile. Cannot fetch managed artists. Ensure 'isLabel: true' is set in their publicProfile/profile document.`);
         return [];
     }
 
@@ -55,12 +54,22 @@ export async function getManagedArtists(labelUserId: string): Promise<ManagedArt
         const querySnapshot = await getDocs(q);
         const artists: ManagedArtist[] = [];
 
+        if (querySnapshot.empty) {
+            console.log(`No artist profiles found managed by label ${labelUserId}. This could be due to: 1. No artists assigned. 2. Artists' 'managedByLabelId' or 'isLabel' fields are incorrect. 3. Firestore rules preventing access. 4. Missing/incorrect Firestore index.`);
+        }
+
         querySnapshot.forEach((profileDoc) => {
             const artistProfileData = profileDoc.data() as ProfileFormValues;
             // The parent document's ID is the artist's UID.
             // The path to a document in a collection group is like 'users/{userId}/publicProfile/{profileDocId}'
             // So profileDoc.ref.parent gives 'publicProfile', and profileDoc.ref.parent.parent gives 'users/{userId}'
-            const artistUid = profileDoc.ref.parent.parent?.id;
+            const userDocRef = profileDoc.ref.parent.parent;
+            if (!userDocRef) {
+                console.warn("Could not determine parent user document for profile:", profileDoc.ref.path);
+                return;
+            }
+            const artistUid = userDocRef.id;
+
 
             if (artistUid) {
                 artists.push({
@@ -85,3 +94,4 @@ export async function getManagedArtists(labelUserId: string): Promise<ManagedArt
         throw new Error("Failed to fetch managed artists. Check console for details, Firestore security rules, and indexes.");
     }
 }
+
