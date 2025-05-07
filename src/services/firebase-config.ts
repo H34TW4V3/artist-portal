@@ -1,4 +1,5 @@
 
+
 // Import the functions you need from the SDKs you need
 import { initializeApp, getApps, getApp, type FirebaseApp } from "firebase/app";
 // Add SDKs for Firebase products that you want to use
@@ -73,46 +74,18 @@ if (!firebaseConfig.appId) {
 // rules_version = '2';
 // service cloud.firestore {
 //   match /databases/{database}/documents {
-
-//     // Rule for accessing individual user's publicProfile document (e.g., label checking its own isLabel)
-//     match /users/{userId}/publicProfile/profile {
-//       // Owner can read/write their own profile.
-//       // This rule allows the `get()` in the collection group rule to work when a label checks its own `isLabel` status.
-//       allow read, write: if request.auth != null && request.auth.uid == userId;
-//     }
-
-//     // Rule for the COLLECTION GROUP query on 'publicProfile'
-//     // This rule is crucial for `getManagedArtists`.
-//     match /{path=**}/publicProfile/profile { // Correct syntax for collection group
-//        allow list, get: if request.auth != null &&
-//                           // Ensure the requesting user is a label by checking their OWN profile document.
-//                           get(/databases/$(database)/documents/users/$(request.auth.uid)/publicProfile/profile).data.isLabel == true;
-//                           // `list` allows the query to run if the condition is met.
-//                           // `get` allows reading the individual documents returned by the query,
-//                           // as long as they meet the conditions of *this* rule (which is just being a label).
-//                           // The client-side query will further filter by `managedByLabelId` and `isLabel == false`.
-//     }
-
-//     // Rule for user's root document (if primarily used for auth data like email, uid)
-//     match /users/{userId} {
-//       // Only owner can read/write their root user document.
-//       // Consider if any other access is needed here based on your app structure.
-//       allow read, write: if request.auth != null && request.auth.uid == userId;
-//     }
-    
-//     // User can manage their own 'releases' subcollection.
-//     match /users/{userId}/releases/{releaseId} {
-//       allow read, write: if request.auth != null && request.auth.uid == userId;
-//     }
-    
-//     // User can manage their own 'events' subcollection.
-//     match /users/{userId}/events/{eventId} {
-//       allow read, write: if request.auth != null && request.auth.uid == userId;
+//     // WARNING: The following rule allows all users (authenticated or not)
+//     // to read and write ANY document in your ENTIRE database.
+//     // This is EXTREMELY INSECURE and should NEVER be used in production.
+//     // Use this ONLY for temporary debugging if you are completely stuck.
+//     // Replace with fine-grained, secure rules as soon as possible.
+//     match /{document=**} {
+//       allow read, write: if true;
 //     }
 //   }
 // }
 //
-// === CRITICAL FIRESTORE INDEX for `getManagedArtists` ===
+// === CRITICAL FIRESTORE INDEX for `getManagedArtists` (if using previous, more secure rules) ===
 // For the `publicProfile` collection group, you MUST have a composite index:
 // 1. Collection ID: `publicProfile` (Ensure this is targeted as a Collection Group in the Firebase Console Index section)
 // 2. Fields:
@@ -120,7 +93,7 @@ if (!firebaseConfig.appId) {
 //    - `isLabel` (Ascending)
 // Scope: Collection group
 //
-// === CRITICAL DATA CONSISTENCY for `getManagedArtists` ===
+// === CRITICAL DATA CONSISTENCY for `getManagedArtists` (if using previous, more secure rules) ===
 // 1. Label User's Profile: The document at `/users/{labelUserId}/publicProfile/profile` for the label user
 //    MUST contain the field `isLabel: true`.
 // 2. Artist User's Profile: For each artist managed by the label, their document at
@@ -129,7 +102,7 @@ if (!firebaseConfig.appId) {
 //    - `isLabel: false`
 //
 // Failure to meet EITHER the index requirement OR the data consistency requirements will result in "Permission Denied"
-// or "Failed Precondition" errors for the `getManagedArtists` query.
+// or "Failed Precondition" errors for the `getManagedArtists` query when using more restrictive rules.
 //
 // Storage rules usually grant access based on userId in the path. Example:
 // service firebase.storage {
