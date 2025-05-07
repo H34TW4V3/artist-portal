@@ -14,6 +14,7 @@ import {
 import { getAuth } from "firebase/auth";
 import { app, db } from './firebase-config';
 import type { ProfileFormValues } from "@/components/profile/profile-form";
+import { getUserProfileByUid } from "./user"; // Import getUserProfileByUid
 
 export interface ManagedArtist {
     id: string; // UID of the artist
@@ -22,17 +23,6 @@ export interface ManagedArtist {
     // Add other relevant fields like imageUrl if needed for table display
 }
 
-// Helper function to get current user's profile - specific to this service for clarity
-async function getCurrentLabelUserProfile(labelUserId: string): Promise<ProfileFormValues | null> {
-    const profileDocRef = doc(db, "users", labelUserId, "publicProfile", "profile");
-    const profileSnap = await getDoc(profileDocRef);
-    if (profileSnap.exists()) {
-        return profileSnap.data() as ProfileFormValues;
-    }
-    return null;
-}
-
-
 /**
  * Fetches a list of artists managed by the current label user.
  * This function now queries based on the `managedByLabelId` field in the artist's `publicProfile/profile`.
@@ -40,9 +30,15 @@ async function getCurrentLabelUserProfile(labelUserId: string): Promise<ProfileF
 export async function getManagedArtists(labelUserId: string): Promise<ManagedArtist[]> {
     console.log("Fetching managed artists for label (Service):", labelUserId);
 
-    const labelProfile = await getCurrentLabelUserProfile(labelUserId);
-    if (!labelProfile || !labelProfile.isLabel) {
-        console.warn(`User ${labelUserId} is not a label or profile not found. Cannot fetch managed artists.`);
+    const labelProfile = await getUserProfileByUid(labelUserId); // Use the more robust getUserProfileByUid
+    if (!labelProfile) {
+        console.warn(`Label user profile not found for UID: ${labelUserId}. Cannot fetch managed artists.`);
+        // Consider throwing an error or returning an empty array based on how you want to handle this case.
+        // For now, returning empty to prevent page crash if profile somehow missing after auth.
+        return [];
+    }
+    if (!labelProfile.isLabel) {
+        console.warn(`User ${labelUserId} (${labelProfile.name}) is not marked as a label in their profile. Cannot fetch managed artists.`);
         return [];
     }
 
@@ -80,13 +76,12 @@ export async function getManagedArtists(labelUserId: string): Promise<ManagedArt
         console.log(`Fetched ${artists.length} managed artists for label ${labelUserId}.`);
         return artists;
     } catch (error) {
-        console.error("Error fetching managed artists:", error);
+        console.error("Error fetching managed artists from Firestore:", error);
         if ((error as any).code === 'permission-denied') {
-            console.error("Firestore Permission Denied in getManagedArtists: This likely means the security rules do not allow the label account to query the 'publicProfile' collection group with the specified 'managedByLabelId' and 'isLabel' filters, or to read the resulting documents. Double-check your rules and ensure the composite index is active.");
+            console.error("Firestore Permission Denied in getManagedArtists: This likely means the security rules do not allow the label account to query the 'publicProfile' collection group with the specified 'managedByLabelId' and 'isLabel' filters, or to read the resulting documents. Ensure your label account has 'isLabel: true' in its own profile, and artists have 'managedByLabelId' set correctly. Also, verify collection group indexes are set up and rules are correct.");
         } else if ((error as any).code === 'failed-precondition') {
             console.error("Firestore Query Error (Failed Precondition) in getManagedArtists: This often means a required composite index is missing or still building. Please verify your Firestore indexes for the 'publicProfile' collection group with fields 'managedByLabelId' (Ascending) AND 'isLabel' (Ascending).");
         }
         throw new Error("Failed to fetch managed artists. Check console for details, Firestore security rules, and indexes.");
     }
 }
-
