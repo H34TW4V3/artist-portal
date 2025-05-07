@@ -68,78 +68,62 @@ if (!firebaseConfig.appId) {
 // Important Note on Security Rules:
 // Review and adjust these rules according to your application's security needs.
 //
-// Firestore Rules Example:
+// Firestore Rules Example (Updated as per user request):
 // rules_version = '2';
 // service cloud.firestore {
 //   match /databases/{database}/documents {
-//
-//     // Rule for label accounts to query and read artist profiles they manage
-//     // This rule applies to collection group queries on 'publicProfile'.
-//     match /{path=**}/publicProfile/{profileId} {
-//       allow read: if request.auth != null &&
-//                      // Check if the requester is a label
-//                      get(/databases/$(database)/documents/users/$(request.auth.uid)/publicProfile/profile).data.isLabel == true &&
-//                      // Check if the profile being read is managed by this label
-//                      resource.data.managedByLabelId == request.auth.uid &&
-//                      // Ensure the profile being read is an artist's profile
-//                      resource.data.isLabel == false;
-//
-//       // Allow users to write to their own profile.
-//       // path[1] extracts the {userId} from the full path like "users/{userId}/publicProfile/profile"
-//       allow write: if request.auth != null && path[1] == request.auth.uid;
+
+//     // Rule for accessing publicProfile documents (potentially via collection group query)
+//     // WARNING: This rule allows ANY authenticated user to read/write ANY publicProfile document.
+//     // This is very permissive and likely not secure for production.
+//     // For collection group queries, a rule like match /{path=**}/publicProfile/{docId} might be needed
+//     // with more specific conditions if the below doesn't correctly target collection group reads.
+//     match /users/{userId}/publicProfile/{docId} {
+//       allow read, write: if request.auth != null;
 //     }
-//
+
 //     match /users/{userId} {
-//       // Allow authenticated users to get their own root user document if needed (e.g., for basic auth checks).
-//       // The fields read are restricted by isSafeRead.
-//       allow get: if request.auth != null && request.auth.uid == userId && isSafeRead();
-//
+//       // Allow authenticated users to read their own user document if it matches isSafeRead criteria.
+//       // This rule implies that the fields being read from /users/{userId} must be within the isSafeRead list.
+//       allow read: if request.auth != null && isSafeRead();
+
 //       function isSafeRead() {
 //         // Restrict which fields can be accessed from the root user document.
-//         // Include 'isLabel' for the label check in the collection group rule.
-//         // Include 'uid' as it's a common field to have at the root.
-//         return request.resource == null || resource.data.keys().hasAny(['email', 'name', 'imageUrl', 'isLabel', 'uid']);
+//         return request.resource == null || resource.data.keys().hasAny(['email', 'name', 'imageUrl']);
 //       }
-//
-//       // Users can only write to their own root document (e.g., if you store email/name at root too).
-//       // Ensure that changes to 'isLabel' at the root are handled securely if allowed directly by clients.
+
+//       // Allow users to write to their own root user document.
 //       allow write: if request.auth != null && request.auth.uid == userId;
-//
-//       // User can manage their own publicProfile subcollection documents (e.g., /users/{userId}/publicProfile/profile)
-//       match /publicProfile/{docId} {
-//         allow read, write: if request.auth != null && request.auth.uid == userId;
-//       }
-//
+
+//       // This specific rule for publicProfile under /users/{userId} is now redundant
+//       // if the above /users/{userId}/publicProfile/{docId} rule is intended to cover it.
+//       // However, if the above rule is for collection group and this is for direct access by owner:
+//       // match /publicProfile/{docId} { // Path: /users/{userId}/publicProfile/{docId}
+//       //  allow read, write: if request.auth != null && request.auth.uid == userId;
+//       // }
+
 //       // User can manage their own releases
-//       match /releases/{releaseId} {
+//       match /releases/{releaseId} { // Path: /users/{userId}/releases/{releaseId}
 //         allow read, write: if request.auth != null && request.auth.uid == userId;
 //       }
-//
+      
 //       // User can manage their own events
-//       match /events/{eventId} {
+//       match /events/{eventId} { // Path: /users/{userId}/events/{eventId}
 //         allow read, write: if request.auth != null && request.auth.uid == userId;
 //       }
 //     }
 //   }
 // }
 //
-// // Firebase Storage Rules Example:
-// // Users have full control over files within their own designated folders.
+// Firebase Storage Rules Example (No changes made based on request, assuming existing rules are in place):
 // service firebase.storage {
 //   match /b/{bucket}/o {
-//     // User-specific folders (e.g., profileImages, releaseArtwork, releases)
-//     // The {userId} segment in the path is crucial for these rules.
 //     match /{path}/{userId}/{allPaths=**} {
-//       // Allow read/write only if the authenticated user's UID matches the {userId} in the path.
 //       allow read, write: if request.auth != null && request.auth.uid == userId;
 //     }
-//     // Public assets (e.g., default images, site assets) could have more open read rules if needed:
-//     // match /public/{allPaths=**} {
-//     //   allow read: if true;
-//     //   allow write: if false; // Typically, public assets are not writable by clients
-//     // }
 //   }
 // }
+
 // These are example rules. Adjust them based on your exact security requirements.
 // Make sure to test these rules thoroughly in the Firebase console.
 // Ensure composite indexes are created in Firestore for queries involving multiple 'where' clauses
@@ -148,6 +132,14 @@ if (!firebaseConfig.appId) {
 //   - 'managedByLabelId' (Ascending)
 //   - 'isLabel' (Ascending)
 // is required.
-// The `get(/databases/$(database)/documents/users/$(request.auth.uid)/publicProfile/profile).data.isLabel` check
-// in the collection group rule is a direct document read and does not require special indexing for that part,
-// but the overall query on `publicProfile` for `managedByLabelId` and `isLabel` needs the composite index.
+// The `get(/databases/$(database)/documents/users/$(request.auth.uid)/publicProfile/profile)` check
+// in a more secure collection group rule needs the root user document to be readable, potentially with isLabel.
+// The provided rule `match /users/{userId}/publicProfile/{docId} { allow read, write: if request.auth != null; }` is very broad.
+// If it's meant for the collection group query, it should generally be `match /{path=**}/publicProfile/{docId}`.
+// As written, it will allow any authenticated user to read/write any user's public profile.
+// This will "fix" the permission error for reading, but it's a security concern.
+// The `getManagedArtists` function also relies on reading the `isLabel` field from the *requesting user's* profile.
+// The rule `match /users/{userId} { allow read: if request.auth != null && isSafeRead(); }`
+// and `isSafeRead()` needs to allow reading of `isLabel` from `/users/{labelUserId}/publicProfile/profile` (or wherever `isLabel` is stored for the label user).
+// If `isLabel` is in the /users/{userId}/publicProfile/profile doc, then the rule
+// `match /users/{userId}/publicProfile/{docId} { allow read, write: if request.auth != null; }` will allow reading it.
