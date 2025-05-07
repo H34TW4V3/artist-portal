@@ -31,23 +31,22 @@ export interface ManagedArtist {
 export async function getManagedArtists(labelUserId: string): Promise<ManagedArtist[]> {
     console.log("Fetching managed artists for label (Service):", labelUserId);
 
-    const labelProfile = await getUserProfileByUid(labelUserId); // Use the more robust getUserProfileByUid
+    const labelProfile = await getUserProfileByUid(labelUserId);
     if (!labelProfile) {
         console.warn(`Label user profile not found for UID: ${labelUserId}. Cannot fetch managed artists. Ensure this user exists and has a 'publicProfile/profile' document.`);
         return [];
     }
     if (!labelProfile.isLabel) {
-        console.warn(`User ${labelUserId} (${labelProfile.name || 'N/A'}) is not marked as a label in their profile (isLabel: false). Cannot fetch managed artists. Ensure 'isLabel: true' is set in their 'publicProfile/profile' document.`);
+        console.warn(`User ${labelUserId} ('${labelProfile.name || 'N/A'}') is not marked as a label in their profile (isLabel: false). This is required to fetch managed artists. Please update their profile at '/users/${labelUserId}/publicProfile/profile' to include 'isLabel: true'.`);
         return [];
     }
+     console.log(`Label user ${labelUserId} ('${labelProfile.name}') is correctly identified as a label (isLabel: true). Proceeding to query artists.`);
 
-    // Query the `publicProfile` collection group, filtering by `managedByLabelId`.
-    // This requires a collection group index on `publicProfile` for `managedByLabelId` and `isLabel`.
     const profilesCollectionGroupRef = collectionGroup(db, "publicProfile");
     const q = query(
         profilesCollectionGroupRef,
         where("managedByLabelId", "==", labelUserId),
-        where("isLabel", "==", false) // Ensure we only get artists, not other labels
+        where("isLabel", "==", false)
     );
 
     try {
@@ -55,44 +54,67 @@ export async function getManagedArtists(labelUserId: string): Promise<ManagedArt
         const artists: ManagedArtist[] = [];
 
         if (querySnapshot.empty) {
-            console.log(`No artist profiles found managed by label ${labelUserId} (${labelProfile.name}). This could be due to: 1. No artists assigned to this label. 2. Artists' 'managedByLabelId' or 'isLabel' fields are incorrect. 3. Firestore rules preventing access. 4. Missing/incorrect Firestore composite index for collection group 'publicProfile' on fields 'managedByLabelId' and 'isLabel'.`);
+            console.log(`No artist profiles found directly managed by label ${labelUserId} ('${labelProfile.name}'). This could be due to: 
+1. No artists have 'managedByLabelId: "${labelUserId}"' and 'isLabel: false' in their '/users/{artistId}/publicProfile/profile' document.
+2. Firestore rules are preventing the query (check collection group read permissions for 'publicProfile').
+3. The required Firestore composite index for 'publicProfile' on fields 'managedByLabelId' (ASC) and 'isLabel' (ASC) is missing, disabled, or still building.`);
         }
 
         querySnapshot.forEach((profileDoc) => {
-            // The path to a document in a collection group is like 'users/{userId}/publicProfile/{profileDocId}'
-            // So profileDoc.ref.parent gives 'publicProfile' collection reference,
-            // and profileDoc.ref.parent.parent gives the 'users/{userId}' document reference.
-            const userDocRef = profileDoc.ref.parent.parent;
-            if (!userDocRef || userDocRef.parent.id !== 'users') { // Check if parent is indeed 'users' collection
-                console.warn("Could not determine parent user document for profile:", profileDoc.ref.path, "Parent path:", userDocRef?.path);
-                return;
-            }
-            const artistUid = userDocRef.id;
             const artistProfileData = profileDoc.data() as ProfileFormValues;
-
+            const artistDocRef = profileDoc.ref.parent.parent; // Path: users/{userId}/publicProfile/profile -> users/{userId}
+            
+            if (!artistDocRef || artistDocRef.parent.id !== 'users') {
+                 console.warn("Could not determine parent user document for profile:", profileDoc.ref.path, "Parent path:", artistDocRef?.path);
+                 return;
+            }
+            const artistUid = artistDocRef.id;
 
             if (artistUid) {
+                // Additional check for artist's isLabel status from the fetched document
+                if (artistProfileData.isLabel === true) {
+                    console.warn(`Profile ${profileDoc.ref.path} (UID: ${artistUid}) is marked as a label but was expected to be an artist (isLabel: false). Skipping.`);
+                    return;
+                }
+                if (artistProfileData.managedByLabelId !== labelUserId) {
+                     console.warn(`Profile ${profileDoc.ref.path} (UID: ${artistUid}) has managedByLabelId: ${artistProfileData.managedByLabelId}, which does not match querying label ${labelUserId}. Skipping. This should not happen if the query is correct.`);
+                    return;
+                }
+
                 artists.push({
                     id: artistUid,
-                    name: artistProfileData.name || artistUid, // Fallback to ID if name is missing
-                    email: artistProfileData.email || "N/A",   // Fallback for email
+                    name: artistProfileData.name || artistUid,
+                    email: artistProfileData.email || "N/A",
                 });
             } else {
-                // This case should be rare given the check above, but good to have.
                 console.warn("Found a profile managed by label but could not determine artist UID from path:", profileDoc.ref.path, artistProfileData);
             }
         });
 
-        console.log(`Fetched ${artists.length} managed artists for label ${labelUserId} (${labelProfile.name}).`);
+        console.log(`Successfully fetched ${artists.length} managed artists for label ${labelUserId} ('${labelProfile.name}').`);
         return artists;
     } catch (error) {
         console.error("Error fetching managed artists from Firestore:", error);
-        if ((error as any).code === 'permission-denied') {
-            console.error("Firestore Permission Denied in getManagedArtists: This likely means the security rules do not allow the label account to query the 'publicProfile' collection group with the specified 'managedByLabelId' and 'isLabel' filters, or to read the resulting documents. Ensure your label account has 'isLabel: true' in its own profile, and artists have 'managedByLabelId' set correctly. Also, verify collection group indexes are set up and rules are correct.");
-        } else if ((error as any).code === 'failed-precondition') {
-            console.error("Firestore Query Error (Failed Precondition) in getManagedArtists: This often means a required composite index is missing or still building. Please verify your Firestore indexes for the 'publicProfile' collection group with fields 'managedByLabelId' (Ascending) AND 'isLabel' (Ascending).");
+        const firebaseError = error as any;
+        if (firebaseError.code === 'permission-denied') {
+            console.error(`Firestore Permission Denied in getManagedArtists for label ${labelUserId} ('${labelProfile.name}'). 
+This means the security rules do not allow this label account to perform the collection group query on 'publicProfile' with 'managedByLabelId == "${labelUserId}"' and 'isLabel == false' filters, or to read the resulting documents. 
+Key checks:
+1. Ensure the label user's profile at '/users/${labelUserId}/publicProfile/profile' has 'isLabel: true'.
+2. Ensure the security rule 'match /{path=**}/publicProfile/profile { allow list, get: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)/publicProfile/profile).data.isLabel == true; }' is active and correctly implemented.
+3. Verify the Firestore composite index for the 'publicProfile' collection group on fields 'managedByLabelId' (ASC) AND 'isLabel' (ASC) exists and is enabled.
+4. Double check that artists intended to be managed have 'managedByLabelId: "${labelUserId}"' AND 'isLabel: false' in their '/users/{artistId}/publicProfile/profile' document.`);
+        } else if (firebaseError.code === 'failed-precondition') {
+            console.error(`Firestore Query Error (Failed Precondition) in getManagedArtists for label ${labelUserId} ('${labelProfile.name}'). 
+This VERY LIKELY means a required composite index is missing, disabled, or still building. 
+Please CREATE or ENABLE the following Firestore composite index:
+  Collection ID: 'publicProfile' (ensure this is a collection group query)
+  Fields:
+    1. 'managedByLabelId' (Ascending)
+    2. 'isLabel' (Ascending)
+Scope: Collection group`);
         }
-        throw new Error("Failed to fetch managed artists. Check console for details, Firestore security rules, and indexes.");
+        throw new Error(`Failed to fetch managed artists for label ${labelUserId}. Check console for details, Firestore security rules, and indexes.`);
     }
 }
 
