@@ -4,7 +4,7 @@
 import type { NextPage } from 'next';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Home, Users, Briefcase, Loader2, Edit3, UserCircle2, UserPlus } from 'lucide-react'; 
+import { Home, Users, Briefcase, Loader2, Edit3, UserCircle2, UserPlus, Wand2 } from 'lucide-react'; // Added Wand2
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import UserProfile from '@/components/common/user-profile';
@@ -13,14 +13,14 @@ import { SplashScreen } from '@/components/common/splash-screen';
 import { useAuth } from '@/context/auth-context';
 import { useRouter } from 'next/navigation';
 import type { ProfileFormValues } from '@/components/profile/profile-form';
-import { getUserProfileByUid, createNewArtistAndUser } from '@/services/user'; // Added createNewArtistAndUser
-import type { ManagedArtist } from '@/services/artists'; 
-import { getManagedArtists } from '@/services/artists'; 
-import { ArtistTable } from '@/components/my-artists/artist-table'; 
-import { ArtistProfileDisplay } from '@/components/my-artists/artist-profile-display'; 
-import { ArtistReleaseList } from '@/components/my-artists/artist-release-list'; 
+import { getUserProfileByUid, createNewArtistAndUser } from '@/services/user';
+import type { ManagedArtist } from '@/services/artists';
+import { getManagedArtists } from '@/services/artists';
+import { ArtistTable } from '@/components/my-artists/artist-table';
+import { ArtistProfileDisplay } from '@/components/my-artists/artist-profile-display';
+import { ArtistReleaseList } from '@/components/my-artists/artist-release-list';
 import { useToast } from '@/hooks/use-toast';
-import { CreateArtistModal } from '@/components/dashboard/create-artist-modal'; 
+import { CreateArtistModal } from '@/components/dashboard/create-artist-modal';
 
 const MyArtistsPage: NextPage = () => {
   const { user, loading: authLoading } = useAuth();
@@ -31,11 +31,11 @@ const MyArtistsPage: NextPage = () => {
   const [profileLoading, setProfileLoading] = useState(true);
   const [managedArtists, setManagedArtists] = useState<ManagedArtist[]>([]);
   const [selectedArtist, setSelectedArtist] = useState<ManagedArtist | null>(null);
-  const [selectedArtistProfile, setSelectedArtistProfile] = useState<ProfileFormValues | null | undefined>(undefined); // Init as undefined for loading
+  const [selectedArtistProfile, setSelectedArtistProfile] = useState<ProfileFormValues | null | undefined>(undefined);
   const [isLoadingArtists, setIsLoadingArtists] = useState(true);
   const [isCreateArtistModalOpen, setIsCreateArtistModalOpen] = useState(false);
+  const [isCreatingTestArtist, setIsCreatingTestArtist] = useState(false);
 
-  // Fetch current user's profile to check if they are a label
   useEffect(() => {
     const fetchUserProfile = async () => {
       if (authLoading || !user?.uid) {
@@ -49,7 +49,7 @@ const MyArtistsPage: NextPage = () => {
         setProfileData(fetchedProfile);
         if (fetchedProfile && !fetchedProfile.isLabel) {
           toast({ title: "Access Denied", description: "This page is for label accounts only.", variant: "destructive", duration: 3000 });
-          router.replace('/'); // Redirect if not a label
+          router.replace('/');
         }
       } catch (error) {
         console.error("Error fetching user profile for My Artists page:", error);
@@ -62,7 +62,6 @@ const MyArtistsPage: NextPage = () => {
     fetchUserProfile();
   }, [user, authLoading, router, toast]);
 
-  // Fetch managed artists if the user is a label
   useEffect(() => {
     const fetchArtists = async () => {
       if (user?.uid && profileData?.isLabel) {
@@ -78,22 +77,21 @@ const MyArtistsPage: NextPage = () => {
           setIsLoadingArtists(false);
         }
       } else if (profileData && !profileData.isLabel) {
-        setIsLoadingArtists(false); // Not a label, so no artists to load
+        setIsLoadingArtists(false);
         setManagedArtists([]);
       }
     };
 
-    if (!profileLoading && profileData) { // Only fetch artists after profile check is done and profileData is available
+    if (!profileLoading && profileData) {
         fetchArtists();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, profileData, toast]); // Removed profileLoading
+  }, [user, profileData, toast]);
 
-  // Fetch selected artist's profile
   useEffect(() => {
     const fetchArtistProfileDetails = async () => {
       if (selectedArtist?.id) {
-        setSelectedArtistProfile(undefined); // Set to undefined to show loading state
+        setSelectedArtistProfile(undefined);
         try {
           const artistProfile = await getUserProfileByUid(selectedArtist.id);
           setSelectedArtistProfile(artistProfile);
@@ -103,7 +101,7 @@ const MyArtistsPage: NextPage = () => {
           setSelectedArtistProfile(null);
         }
       } else {
-        setSelectedArtistProfile(null); // Clear if no artist is selected
+        setSelectedArtistProfile(null);
       }
     };
     fetchArtistProfileDetails();
@@ -114,7 +112,7 @@ const MyArtistsPage: NextPage = () => {
     return <SplashScreen loadingText="Loading My Artists..." appletIcon={<Users />} />;
   }
 
-  if (!user) { 
+  if (!user) {
     router.replace('/login');
     return <SplashScreen loadingText="Redirecting to login..." appletIcon={<Users />} />;
   }
@@ -138,7 +136,7 @@ const MyArtistsPage: NextPage = () => {
   const handleArtistSelect = (artist: ManagedArtist) => {
     setSelectedArtist(artist);
   };
-  
+
   const handleRefreshArtists = async () => {
       if (user?.uid && profileData?.isLabel) {
         setIsLoadingArtists(true);
@@ -153,6 +151,28 @@ const MyArtistsPage: NextPage = () => {
           setIsLoadingArtists(false);
         }
       }
+  };
+
+  const handleCreateTestArtist = async () => {
+    if (!user?.uid || !profileData?.isLabel) {
+      toast({ title: "Error", description: "Cannot create test artist. Ensure you are logged in as a label.", variant: "destructive" });
+      return;
+    }
+    setIsCreatingTestArtist(true);
+    const timestamp = Date.now();
+    const testArtistName = `Test Artist ${timestamp.toString().slice(-5)}`;
+    const testArtistEmail = `testartist_${timestamp}@example.com`;
+
+    try {
+      await createNewArtistAndUser(testArtistName, testArtistEmail, undefined, false, user.uid);
+      toast({ title: "Test Artist Created", description: `Successfully created ${testArtistName}.`, duration: 3000 });
+      await handleRefreshArtists();
+    } catch (error) {
+      console.error("Error creating test artist:", error);
+      toast({ title: "Test Artist Creation Failed", description: error instanceof Error ? error.message : "Could not create test artist.", variant: "destructive" });
+    } finally {
+      setIsCreatingTestArtist(false);
+    }
   };
 
 
@@ -193,11 +213,28 @@ const MyArtistsPage: NextPage = () => {
           {/* Artist Table and Add Artist Button */}
           <div className="lg:col-span-1 flex flex-col gap-6">
             <Card className="bg-card/60 dark:bg-card/50 shadow-md rounded-lg border-border/30">
-              <CardHeader className="flex flex-row justify-between items-center">
+              <CardHeader className="flex flex-row justify-between items-center gap-2">
                 <CardTitle className="text-lg font-semibold">Artist Roster</CardTitle>
-                <Button size="sm" onClick={() => setIsCreateArtistModalOpen(true)} disabled={!profileData?.isLabel}>
-                    <UserPlus className="mr-2 h-4 w-4"/> Add Artist
-                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    onClick={handleCreateTestArtist}
+                    disabled={!profileData?.isLabel || isCreatingTestArtist || isLoadingArtists}
+                    variant="outline"
+                    className="border-accent text-accent hover:bg-accent/10 hover:text-accent/90"
+                  >
+                    {isCreatingTestArtist ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Wand2 className="mr-2 h-4 w-4"/>}
+                    Test Artist
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={() => setIsCreateArtistModalOpen(true)}
+                    disabled={!profileData?.isLabel || isCreatingTestArtist || isLoadingArtists}
+                    className="bg-primary hover:bg-primary/90 text-primary-foreground"
+                  >
+                      <UserPlus className="mr-2 h-4 w-4"/> Add Artist
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent>
                 {isLoadingArtists ? (
@@ -233,16 +270,14 @@ const MyArtistsPage: NextPage = () => {
             )}
           </div>
         </div>
-        
+
         <CreateArtistModal
             isOpen={isCreateArtistModalOpen}
             onClose={() => setIsCreateArtistModalOpen(false)}
-            // The createNewArtistAndUser function in user.ts now handles creating the user and profile
-            // This modal's onSuccess should just refresh the list
             onSuccess={(newArtistName) => {
                 toast({ title: "Artist Profile Created", description: `Successfully created profile for ${newArtistName}.`, duration: 3000 });
                 setIsCreateArtistModalOpen(false);
-                handleRefreshArtists(); 
+                handleRefreshArtists();
             }}
         />
       </main>

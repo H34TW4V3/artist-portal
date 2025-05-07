@@ -2,44 +2,22 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Rules for the top-level user document
+    // Allow reading any publicProfile doc from any path (including collectionGroup queries)
+    match /users/{userId}/publicProfile/{docId} {
+      allow read, write: if request.auth != null;
+    }
+
     match /users/{userId} {
-      // Allow reading specific safe fields if authenticated
-      allow read: if request.auth != null && isSafeRead();
+      allow read, write: if request.auth != null && request.auth.uid == userId;
 
-      // Define which fields are safe to read publicly (if needed, though current rule requires auth)
-      function isSafeRead() {
-        // Example: Allow reading email, name, imageUrl if they exist
-        return resource == null || resource.data.keys().hasOnly(['email', 'name', 'imageUrl', 'uid']);
-      }
-
-      // Allow writing to the root document only by the owner (e.g., for email updates)
-      allow write: if request.auth != null && request.auth.uid == userId;
-
-      // Allow full read/write access to subcollections ONLY by the owner
+      // This is redundant now, but can remain if you plan to separately allow nested writes
       match /publicProfile/{docId} {
         allow read, write: if request.auth != null && request.auth.uid == userId;
       }
 
       match /releases/{releaseId} {
-        // Allow authenticated user to read/write their own releases
-        allow read, write: if request.auth != null && request.auth.uid == userId;
-      }
-
-       match /events/{eventId} {
-        // Allow authenticated user to read/write their own events
         allow read, write: if request.auth != null && request.auth.uid == userId;
       }
     }
-
-    // Explicitly deny access to listing the entire 'users' collection
-    match /users {
-        allow list: if false;
-    }
-
-    // Deny all other access by default (implicit, but can be explicit if preferred)
-    // match /{document=**} {
-    //   allow read, write: if false;
-    // }
   }
 }
