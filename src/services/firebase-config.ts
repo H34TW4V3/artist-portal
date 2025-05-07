@@ -1,5 +1,6 @@
 
 // Import the functions you need from the SDKs you need
+import { match } from "assert";
 import { initializeApp, getApps, getApp, type FirebaseApp } from "firebase/app";
 // Add SDKs for Firebase products that you want to use
 // https://firebase.google.com/docs/web/setup#available-libraries
@@ -70,6 +71,7 @@ if (!firebaseConfig.appId) {
 //
 // Firestore Rules Example for Label/Artist Management:
 //
+// ```rules
 // rules_version = '2';
 // service cloud.firestore {
 //   match /databases/{database}/documents {
@@ -109,10 +111,11 @@ if (!firebaseConfig.appId) {
 //       // IMPORTANT: Write access via collection group path is generally not recommended for this use case.
 //       // Artists should update their own profiles via the /users/{artistId}/publicProfile/profile path.
 //       // Labels might trigger updates via backend functions or by creating new artist profiles.
-//       // allow write: if false; // Example: Explicitly disallow writes via this path for safety.
+//       allow write: if false; // Example: Explicitly disallow writes via this path for safety.
 //     }
 //   }
 // }
+// ```
 //
 // === CRITICAL FIRESTORE INDEX for `getManagedArtists` ===
 // For the `publicProfile` collection group, you MUST have a composite index:
@@ -134,6 +137,7 @@ if (!firebaseConfig.appId) {
 // will result in "Permission Denied" or "Failed Precondition" errors for the `getManagedArtists` query.
 //
 // Storage rules usually grant access based on userId in the path. Example:
+// ```rules
 // service firebase.storage {
 //   match /b/{bucket}/o {
 //     // Allow user to read/write their own files in their folder.
@@ -148,9 +152,7 @@ if (!firebaseConfig.appId) {
 //     }
 //   }
 // }
+// ```
 //
 // Always test your rules thoroughly in the Firebase console simulator.
 // The provided rules are a template; adjust them to your exact application needs.
-
-
-    
