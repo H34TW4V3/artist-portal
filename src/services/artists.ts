@@ -36,6 +36,9 @@ export async function getManagedArtists(labelUserId: string): Promise<ManagedArt
         console.warn(`Label user profile not found for UID: ${labelUserId}. Cannot fetch managed artists. Ensure this user exists and has a 'publicProfile/profile' document.`);
         return [];
     }
+    // CRITICAL: Log the actual isLabel status from the fetched profile
+    console.log(`Fetched label profile for ${labelUserId}: Name: '${labelProfile.name}', isLabel: ${labelProfile.isLabel}`);
+
     if (!labelProfile.isLabel) {
         console.warn(`User ${labelUserId} ('${labelProfile.name || 'N/A'}') is not marked as a label in their profile (isLabel: false). This is required to fetch managed artists. Please update their profile at '/users/${labelUserId}/publicProfile/profile' to include 'isLabel: true'.`);
         return [];
@@ -117,4 +120,3 @@ Scope: Collection group`);
         throw new Error(`Failed to fetch managed artists for label ${labelUserId}. Check console for details, Firestore security rules, and indexes.`);
     }
 }
-
